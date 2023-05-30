@@ -66,6 +66,10 @@ type Lexer struct {
  * If tokenization failed, this function returns `nil`.
  */
 func (lexer *Lexer) Parse() []*Token {
+	if len(lexer.FileContent) == 0 {
+		return make([]*Token, 0)
+	}
+
 	matches := matcher.Match(MatcherInput(lexer.FileContent))
 
 	if matches == nil {

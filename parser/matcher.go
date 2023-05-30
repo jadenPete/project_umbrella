@@ -250,13 +250,14 @@ func (matcher *ExhaustiveMatcher) Match(input MatcherInput) []*ExhaustiveMatch {
 					subgroups = append(subgroups, [2]int{match[i], match[i+1]})
 				}
 
-				lastMatchEnd = node.Value.start + match[1]
 				replacements = append(replacements, &ExhaustiveMatch{
 					type_:     type_,
 					start:     node.Value.start + match[0],
-					end:       lastMatchEnd,
+					end:       node.Value.start + match[1],
 					subgroups: subgroups,
 				})
+
+				lastMatchEnd = match[1]
 			}
 
 			if len(replacements) > 0 {
@@ -268,10 +269,10 @@ func (matcher *ExhaustiveMatcher) Match(input MatcherInput) []*ExhaustiveMatch {
 			return nil
 		}
 
-		if lastMatchEnd < node.Value.end {
+		if node.Value.start+lastMatchEnd < node.Value.end {
 			replacements = append(replacements, &ExhaustiveMatch{
 				type_: unrecognizedCode,
-				start: lastMatchEnd,
+				start: node.Value.start + lastMatchEnd,
 				end:   node.Value.end,
 			})
 		}
@@ -296,10 +297,6 @@ func (matcher *ExhaustiveMatcher) Match(input MatcherInput) []*ExhaustiveMatch {
  * If the input couldn't be exhaustively matched against, this function returns `nil`.
  */
 func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*ExhaustiveMatch] {
-	if len(input) == 0 {
-		return nil
-	}
-
 	unmatched := make([]*common.Tree[*ExhaustiveMatch], 0, len(input))
 
 	for i, code := range input {
@@ -314,7 +311,7 @@ func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*E
 		})
 	}
 
-	for len(unmatched) > 1 {
+	for {
 		var compiled MatcherInput
 
 		changed := false
@@ -343,13 +340,26 @@ func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*E
 					)
 				}
 
+				var start int
+				var end int
+
+				if len(unmatched) > 0 {
+					start = unmatched[match[0]].Value.start
+
+					if match[0] == match[1] {
+						end = start
+					} else {
+						end = unmatched[match[1]-1].Value.end
+					}
+				}
+
 				squashed = append(squashed, unmatched[i:match[0]]...)
 				squashed = append(squashed, &common.Tree[*ExhaustiveMatch]{
 					Children: unmatched[match[0]:match[1]],
 					Value: &ExhaustiveMatch{
 						type_:     pattern.type_,
-						start:     unmatched[match[0]].Value.start,
-						end:       unmatched[match[1]-1].Value.end,
+						start:     start,
+						end:       end,
 						subgroups: subgroups,
 					},
 				})
@@ -363,8 +373,12 @@ func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*E
 		}
 
 		if !changed {
-			return nil
+			break
 		}
+	}
+
+	if len(unmatched) != 1 {
+		return nil
 	}
 
 	return unmatched[0]

@@ -1,1 +1,6 @@
-println(println("Hello, world!"))
+println
+(
+	println(
+		"Hello, world!"
+	)
+)

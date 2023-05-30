@@ -115,9 +115,13 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		{
 			type_: assignmentExpressionCode,
 			matcher: CompileMatcher(
-				fmt.Sprintf(`{0}{1}%s`, standaloneExpressionRegex(2)),
+				fmt.Sprintf(`{0}{1}*{2}{1}*(%s)`, standaloneExpressionRegex(3)),
 				append(
-					[]MatcherCode{identifierExpressionCode, assignmentOperatorTokenCode},
+					[]MatcherCode{
+						identifierExpressionCode,
+						newlineTokenCode,
+						assignmentOperatorTokenCode,
+					},
 
 					standaloneExpressionCodes...,
 				)...,
@@ -144,7 +148,7 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		{
 			type_: expressionListExpressionCode,
 			matcher: CompileMatcher(
-				fmt.Sprintf(`(?:%s{0})+`, standaloneExpressionRegex(1)),
+				fmt.Sprintf(`^(?:%s{0}+)*$`, standaloneExpressionRegex(1)),
 				append([]MatcherCode{newlineTokenCode}, standaloneExpressionCodes...)...,
 			),
 		},
@@ -174,15 +178,15 @@ func NewParser(fileContent string, tokens []*Token) *Parser {
 	if len(fileContent) > 0 && fileContent[len(fileContent)-1] != '\n' {
 		fileContent = fileContent + " "
 
-		newTokens := make([]*Token, len(tokens)+1)
+		newTokens := make([]*Token, len(tokens), len(tokens)+1)
 
 		copy(newTokens, tokens)
 
-		newTokens[len(tokens)] = &Token{
+		newTokens = append(newTokens, &Token{
 			type_: NewlineToken,
 			start: len(fileContent) - 1,
 			end:   len(fileContent),
-		}
+		})
 
 		tokens = newTokens
 	}
@@ -211,7 +215,7 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 	case assignmentExpressionCode:
 		return &AssignmentExpression{
 			Name:  parser.parseMatchTree(tree.Children[0]).(*IdentifierExpression),
-			Value: parser.parseMatchTree(tree.Children[2]),
+			Value: parser.parseMatchTree(tree.Children[tree.Value.subgroups[0][0]]),
 		}
 
 	case expressionListExpressionCode:
