@@ -1,0 +1,3 @@
+result = println("Hello, world!")
+
+println(result)

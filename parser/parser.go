@@ -113,22 +113,6 @@ var standaloneExpressionCodes = []MatcherCode{
 var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 	patterns: []*ExhaustiveMatchPattern{
 		{
-			type_: assignmentExpressionCode,
-			matcher: CompileMatcher(
-				fmt.Sprintf(`{0}{1}*{2}{1}*(%s)`, standaloneExpressionRegex(3)),
-				append(
-					[]MatcherCode{
-						identifierExpressionCode,
-						newlineTokenCode,
-						assignmentOperatorTokenCode,
-					},
-
-					standaloneExpressionCodes...,
-				)...,
-			),
-		},
-
-		{
 			type_: callExpressionCode,
 			matcher: CompileMatcher(
 				fmt.Sprintf(`{0}{1}{2}*(%s){2}*{3}`, standaloneExpressionRegex(4)),
@@ -146,10 +130,18 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		},
 
 		{
-			type_: expressionListExpressionCode,
+			type_: assignmentExpressionCode,
 			matcher: CompileMatcher(
-				fmt.Sprintf(`^(?:%s{0}+)*$`, standaloneExpressionRegex(1)),
-				append([]MatcherCode{newlineTokenCode}, standaloneExpressionCodes...)...,
+				fmt.Sprintf(`{0}{1}*{2}{1}*(%s)`, standaloneExpressionRegex(3)),
+				append(
+					[]MatcherCode{
+						identifierExpressionCode,
+						newlineTokenCode,
+						assignmentOperatorTokenCode,
+					},
+
+					standaloneExpressionCodes...,
+				)...,
 			),
 		},
 
@@ -161,6 +153,14 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		{
 			type_:   stringExpressionCode,
 			matcher: CompileMatcher(`{0}`, stringTokenCode),
+		},
+
+		{
+			type_: expressionListExpressionCode,
+			matcher: CompileMatcher(
+				fmt.Sprintf(`^(?:%s{0}+)*$`, standaloneExpressionRegex(1)),
+				append([]MatcherCode{newlineTokenCode}, standaloneExpressionCodes...)...,
+			),
 		},
 	},
 }
@@ -218,6 +218,12 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 			Value: parser.parseMatchTree(tree.Children[tree.Value.subgroups[0][0]]),
 		}
 
+	case callExpressionCode:
+		return &CallExpression{
+			Identifier: parser.parseMatchTree(tree.Children[0]).(*IdentifierExpression),
+			Argument:   parser.parseMatchTree(tree.Children[tree.Value.subgroups[0][0]]),
+		}
+
 	case expressionListExpressionCode:
 		children := make([]Expression, 0, len(tree.Children)/2)
 
@@ -226,12 +232,6 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 		}
 
 		return &ExpressionListExpression{children}
-
-	case callExpressionCode:
-		return &CallExpression{
-			Identifier: parser.parseMatchTree(tree.Children[0]).(*IdentifierExpression),
-			Argument:   parser.parseMatchTree(tree.Children[tree.Value.subgroups[0][0]]),
-		}
 
 	case identifierExpressionCode:
 		token := parser.tokens[tree.Value.start]
