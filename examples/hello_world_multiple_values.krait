@@ -1,0 +1,4 @@
+message1 = message2 = "Hello, world!"
+
+println(message1)
+println(message2)

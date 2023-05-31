@@ -168,11 +168,19 @@ func (translator *BytecodeTranslator) ExpressionToBytecode(
 func (translator *BytecodeTranslator) valueIdForAssignment(assignment *AssignmentExpression) int {
 	valueID := translator.valueIdForExpression(assignment.Value)
 
-	if _, ok := translator.identifierValueIdMap[assignment.Name.Content]; ok {
-		panic("Reassigning to an already declared value is impossible.")
+	/*
+	 * We check for value overloading in a separate pass because we don't want to leave
+	 * `translator.identifierValueIdMap` in a bad state, in case the caller decides to recover.
+	 */
+	for _, nameExpression := range assignment.Names {
+		if _, ok := translator.identifierValueIdMap[nameExpression.Content]; ok {
+			panic("Reassigning to an already declared value is impossible.")
+		}
 	}
 
-	translator.identifierValueIdMap[assignment.Name.Content] = valueID
+	for _, nameExpression := range assignment.Names {
+		translator.identifierValueIdMap[nameExpression.Content] = valueID
+	}
 
 	return valueID
 }

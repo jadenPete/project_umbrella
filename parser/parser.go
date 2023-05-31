@@ -18,7 +18,7 @@ type ExpressionVisitor struct {
 }
 
 type AssignmentExpression struct {
-	Name  *IdentifierExpression
+	Names []*IdentifierExpression
 	Value Expression
 }
 
@@ -132,7 +132,7 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		{
 			type_: assignmentExpressionCode,
 			matcher: CompileMatcher(
-				fmt.Sprintf(`{0}{1}*{2}{1}*(%s)`, standaloneExpressionRegex(3)),
+				fmt.Sprintf(`(?:{0}{1}*{2}{1}*)+(%s)`, standaloneExpressionRegex(3)),
 				append(
 					[]MatcherCode{
 						identifierExpressionCode,
@@ -213,8 +213,18 @@ func (parser *Parser) Parse() Expression {
 func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expression {
 	switch tree.Value.type_ {
 	case assignmentExpressionCode:
+		names := make([]*IdentifierExpression, 0)
+
+		i := tree.Value.subgroups[0][0]
+
+		for _, child := range tree.Children[:i] {
+			if expression := parser.parseMatchTree(child); expression != nil {
+				names = append(names, expression.(*IdentifierExpression))
+			}
+		}
+
 		return &AssignmentExpression{
-			Name:  parser.parseMatchTree(tree.Children[0]).(*IdentifierExpression),
+			Names: names,
 			Value: parser.parseMatchTree(tree.Children[tree.Value.subgroups[0][0]]),
 		}
 
