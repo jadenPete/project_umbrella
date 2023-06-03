@@ -11,6 +11,7 @@ const (
 	StringToken TokenType = iota + 1
 	AdditionOperatorToken
 	AssignmentOperatorToken
+	CommaToken
 	IdentifierToken
 	LeftParenthesisToken
 	RightParenthesisToken
@@ -34,6 +35,11 @@ var matcher = ExhaustiveMatcher{
 		{
 			MatcherCode(AssignmentOperatorToken),
 			CompileMatcher(`=`),
+		},
+
+		{
+			MatcherCode(CommaToken),
+			CompileMatcher(`,`),
 		},
 
 		{
@@ -63,7 +69,7 @@ var matcher = ExhaustiveMatcher{
 
 		{
 			MatcherCode(IdentifierToken),
-			CompileMatcher(`[^\n\t "=()]+`),
+			CompileMatcher(`[^\n\t "=,()]+`),
 		},
 	},
 }

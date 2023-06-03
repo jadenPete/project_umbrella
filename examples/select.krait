@@ -5,4 +5,4 @@ println(
 		__plus__("world!")
 )
 
-println("Hello, world!".__to_str__.__to_str__)
+println("Hello, world!".__to_str__.__to_str__())

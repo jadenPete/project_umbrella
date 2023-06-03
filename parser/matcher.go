@@ -334,10 +334,14 @@ func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*E
 				subgroups := make([][2]int, 0)
 
 				for i := 2; i < len(match); i += 2 {
-					subgroups = append(
-						subgroups,
-						[2]int{match[i] - match[0], match[i+1] - match[0]},
-					)
+					if match[i] == -1 {
+						subgroups = append(subgroups, [2]int{-1, -1})
+					} else {
+						subgroups = append(
+							subgroups,
+							[2]int{match[i] - match[0], match[i+1] - match[0]},
+						)
+					}
 				}
 
 				var start int

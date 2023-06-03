@@ -178,20 +178,18 @@ func (translator *BytecodeTranslator) valueIdForAssignment(assignment *Assignmen
 
 func (translator *BytecodeTranslator) valueIdForCall(call *CallExpression) int {
 	functionValueID := translator.valueIdForExpression(call.Function)
-	argumentValueID := translator.valueIdForExpression(call.Argument)
 
-	translator.instructions = append(
-		translator.instructions,
-		&Instruction{
+	for _, argument := range call.Arguments {
+		translator.instructions = append(translator.instructions, &Instruction{
 			Type:      PushArgumentInstruction,
-			Arguments: []int{argumentValueID},
-		},
+			Arguments: []int{translator.valueIdForExpression(argument)},
+		})
+	}
 
-		&Instruction{
-			Type:      ValueFromCallInstruction,
-			Arguments: []int{functionValueID},
-		},
-	)
+	translator.instructions = append(translator.instructions, &Instruction{
+		Type:      ValueFromCallInstruction,
+		Arguments: []int{functionValueID},
+	})
 
 	result := translator.nextValueId
 

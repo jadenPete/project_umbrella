@@ -26,7 +26,7 @@ func newAddition(leftHandSide Expression, rightHandSide Expression) *CallExpress
 			Value: leftHandSide,
 			Field: &IdentifierExpression{"__plus__"},
 		},
-		Argument: rightHandSide,
+		Arguments: []Expression{rightHandSide},
 	}
 }
 
@@ -65,8 +65,8 @@ func (expressionList *ExpressionListExpression) Visit(visitor *ExpressionVisitor
 }
 
 type CallExpression struct {
-	Function Expression
-	Argument Expression
+	Function  Expression
+	Arguments []Expression
 }
 
 func (call *CallExpression) Visit(visitor *ExpressionVisitor) {
@@ -101,6 +101,7 @@ func (string_ *StringExpression) Visit(visitor *ExpressionVisitor) {
 const (
 	additionOperatorTokenCode MatcherCode = iota + 1
 	assignmentOperatorTokenCode
+	commaTokenCode
 	identifierTokenCode
 	leftParenthesisTokenCode
 	rightParenthesisTokenCode
@@ -120,6 +121,7 @@ const (
 var tokenTypeCodes = map[TokenType]MatcherCode{
 	AdditionOperatorToken:   additionOperatorTokenCode,
 	AssignmentOperatorToken: assignmentOperatorTokenCode,
+	CommaToken:              commaTokenCode,
 	IdentifierToken:         identifierTokenCode,
 	LeftParenthesisToken:    leftParenthesisTokenCode,
 	RightParenthesisToken:   rightParenthesisTokenCode,
@@ -173,14 +175,16 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 			type_: callExpressionCode,
 			matcher: CompileMatcher(
 				fmt.Sprintf(
-					`%s{0}*{1}{0}*(%s){0}*{2}`,
-					standaloneExpressionRegex(3),
-					standaloneExpressionRegex(3),
+					`%s{0}*{1}{0}*(%s(?:{0}*{2}%s)*)?{0}*{3}`,
+					standaloneExpressionRegex(4),
+					standaloneExpressionRegex(4),
+					standaloneExpressionRegex(4),
 				),
 				append(
 					[]MatcherCode{
 						newlineTokenCode,
 						leftParenthesisTokenCode,
+						commaTokenCode,
 						rightParenthesisTokenCode,
 					},
 
@@ -311,9 +315,22 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 		}
 
 	case callExpressionCode:
+		argumentSubgroup := tree.Value.subgroups[0]
+
+		var arguments []Expression
+
+		if argumentSubgroup[0] == -1 {
+			arguments = []Expression{}
+		} else {
+			arguments = parseParsableMatchTrees[Expression](
+				parser,
+				tree.Children[argumentSubgroup[0]:argumentSubgroup[1]],
+			)
+		}
+
 		return &CallExpression{
-			Function: parser.parseMatchTree(tree.Children[0]),
-			Argument: parser.parseMatchTree(tree.Children[tree.Value.subgroups[0][0]]),
+			Function:  parser.parseMatchTree(tree.Children[0]),
+			Arguments: arguments,
 		}
 
 	case expressionListExpressionCode:
