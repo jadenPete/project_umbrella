@@ -2,11 +2,13 @@ package parser
 
 import (
 	"fmt"
+	"strings"
+
 	"project_umbrella/interpreter/common"
 )
 
 type Expression interface {
-	Visit(ExpressionVisitor)
+	Visit(*ExpressionVisitor)
 }
 
 type ExpressionVisitor struct {
@@ -14,7 +16,35 @@ type ExpressionVisitor struct {
 	VisitExpressionListExpression func(*ExpressionListExpression)
 	VisitCall                     func(*CallExpression)
 	VisitIdentifier               func(*IdentifierExpression)
+	VisitSelect                   func(*SelectExpression)
 	VisitString                   func(*StringExpression)
+}
+
+func newAddition(leftHandSide Expression, rightHandSide Expression) *CallExpression {
+	return &CallExpression{
+		Function: &SelectExpression{
+			Value: leftHandSide,
+			Field: &IdentifierExpression{"__plus__"},
+		},
+		Argument: rightHandSide,
+	}
+}
+
+func newBalancedAdditionFromSummands(summands []Expression) *CallExpression {
+	if len(summands) == 2 {
+		return newAddition(summands[0], summands[1])
+	}
+
+	if len(summands) == 3 {
+		return newAddition(newAddition(summands[0], summands[1]), summands[2])
+	}
+
+	middle := len(summands) / 2
+
+	return newAddition(
+		newBalancedAdditionFromSummands(summands[:middle]),
+		newBalancedAdditionFromSummands(summands[middle:]),
+	)
 }
 
 type AssignmentExpression struct {
@@ -22,7 +52,7 @@ type AssignmentExpression struct {
 	Value Expression
 }
 
-func (assignment *AssignmentExpression) Visit(visitor ExpressionVisitor) {
+func (assignment *AssignmentExpression) Visit(visitor *ExpressionVisitor) {
 	visitor.VisitAssignment(assignment)
 }
 
@@ -30,16 +60,16 @@ type ExpressionListExpression struct {
 	Children []Expression
 }
 
-func (expressionList *ExpressionListExpression) Visit(visitor ExpressionVisitor) {
+func (expressionList *ExpressionListExpression) Visit(visitor *ExpressionVisitor) {
 	visitor.VisitExpressionListExpression(expressionList)
 }
 
 type CallExpression struct {
-	Identifier *IdentifierExpression
-	Argument   Expression
+	Function Expression
+	Argument Expression
 }
 
-func (call *CallExpression) Visit(visitor ExpressionVisitor) {
+func (call *CallExpression) Visit(visitor *ExpressionVisitor) {
 	visitor.VisitCall(call)
 }
 
@@ -47,81 +77,130 @@ type IdentifierExpression struct {
 	Content string
 }
 
-func (identifier *IdentifierExpression) Visit(visitor ExpressionVisitor) {
+func (identifier *IdentifierExpression) Visit(visitor *ExpressionVisitor) {
 	visitor.VisitIdentifier(identifier)
+}
+
+type SelectExpression struct {
+	Value Expression
+	Field *IdentifierExpression
+}
+
+func (select_ *SelectExpression) Visit(visitor *ExpressionVisitor) {
+	visitor.VisitSelect(select_)
 }
 
 type StringExpression struct {
 	Content string
 }
 
-func (string_ *StringExpression) Visit(visitor ExpressionVisitor) {
+func (string_ *StringExpression) Visit(visitor *ExpressionVisitor) {
 	visitor.VisitString(string_)
 }
 
 const (
-	assignmentOperatorTokenCode MatcherCode = iota + 1
+	additionOperatorTokenCode MatcherCode = iota + 1
+	assignmentOperatorTokenCode
 	identifierTokenCode
 	leftParenthesisTokenCode
 	rightParenthesisTokenCode
 	newlineTokenCode
+	selectOperatorTokenCode
 	stringTokenCode
 
+	additionExpressionCode
 	assignmentExpressionCode
 	expressionListExpressionCode
 	callExpressionCode
 	identifierExpressionCode
+	selectExpressionCode
 	stringExpressionCode
 )
 
-func tokenCode(token *Token) MatcherCode {
-	switch token.type_ {
-	case StringToken:
-		return stringTokenCode
-	case AssignmentOperatorToken:
-		return assignmentOperatorTokenCode
-	case IdentifierToken:
-		return identifierTokenCode
-	case LeftParenthesisToken:
-		return leftParenthesisTokenCode
-	case RightParenthesisToken:
-		return rightParenthesisTokenCode
-	case NewlineToken:
-		return newlineTokenCode
-	}
-
-	return 0
-}
-
-func standaloneExpressionRegex(startingSubstitutionIndex int) string {
-	return fmt.Sprintf(
-		`[{%d}{%d}{%d}{%d}]`,
-		startingSubstitutionIndex,
-		startingSubstitutionIndex+1,
-		startingSubstitutionIndex+2,
-		startingSubstitutionIndex+3,
-	)
+var tokenTypeCodes = map[TokenType]MatcherCode{
+	AdditionOperatorToken:   additionOperatorTokenCode,
+	AssignmentOperatorToken: assignmentOperatorTokenCode,
+	IdentifierToken:         identifierTokenCode,
+	LeftParenthesisToken:    leftParenthesisTokenCode,
+	RightParenthesisToken:   rightParenthesisTokenCode,
+	NewlineToken:            newlineTokenCode,
+	SelectOperatorToken:     selectOperatorTokenCode,
+	StringToken:             stringTokenCode,
 }
 
 var standaloneExpressionCodes = []MatcherCode{
+	additionExpressionCode,
 	assignmentExpressionCode,
 	callExpressionCode,
 	identifierExpressionCode,
+	selectExpressionCode,
 	stringExpressionCode,
+}
+
+func standaloneExpressionRegex(startingSubstitutionIndex int) string {
+	var stringBuilder strings.Builder
+
+	stringBuilder.WriteString(`[`)
+
+	for i := startingSubstitutionIndex; i < startingSubstitutionIndex+len(standaloneExpressionCodes); i += 1 {
+		stringBuilder.WriteString(fmt.Sprintf(`{%d}`, i))
+	}
+
+	stringBuilder.WriteString(`]`)
+
+	return stringBuilder.String()
 }
 
 var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 	patterns: []*ExhaustiveMatchPattern{
 		{
-			type_: callExpressionCode,
+			type_: selectExpressionCode,
 			matcher: CompileMatcher(
-				fmt.Sprintf(`{0}{1}{2}*(%s){2}*{3}`, standaloneExpressionRegex(4)),
+				fmt.Sprintf(`%s(?:{0}*{1}{0}*{2})+`, standaloneExpressionRegex(3)),
 				append(
 					[]MatcherCode{
-						identifierExpressionCode,
-						leftParenthesisTokenCode,
 						newlineTokenCode,
+						selectOperatorTokenCode,
+						identifierExpressionCode,
+					},
+
+					standaloneExpressionCodes...,
+				)...,
+			),
+		},
+
+		{
+			type_: callExpressionCode,
+			matcher: CompileMatcher(
+				fmt.Sprintf(
+					`%s{0}*{1}{0}*(%s){0}*{2}`,
+					standaloneExpressionRegex(3),
+					standaloneExpressionRegex(3),
+				),
+				append(
+					[]MatcherCode{
+						newlineTokenCode,
+						leftParenthesisTokenCode,
 						rightParenthesisTokenCode,
+					},
+
+					standaloneExpressionCodes...,
+				)...,
+			),
+		},
+
+		{
+			type_: additionExpressionCode,
+			matcher: CompileMatcher(
+				fmt.Sprintf(
+					`(?:%s{0}*{1}{0}*)+%s`,
+					standaloneExpressionRegex(2),
+					standaloneExpressionRegex(2),
+				),
+				append(
+					[]MatcherCode{
+						newlineTokenCode,
+						additionOperatorTokenCode,
 					},
 
 					standaloneExpressionCodes...,
@@ -198,7 +277,7 @@ func (parser *Parser) Parse() Expression {
 	input := make([]MatcherCode, 0, len(parser.tokens))
 
 	for _, token := range parser.tokens {
-		input = append(input, tokenCode(token))
+		input = append(input, tokenTypeCodes[token.type_])
 	}
 
 	tree := parserExhaustiveMatcher.MatchTree(input)
@@ -212,16 +291,19 @@ func (parser *Parser) Parse() Expression {
 
 func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expression {
 	switch tree.Value.type_ {
-	case assignmentExpressionCode:
-		names := make([]*IdentifierExpression, 0)
+	case additionExpressionCode:
+		/*
+		 * Addition is assumed to be associative.
+		 * We take advantage of this to parallelize it as much as possible.
+		 */
+		return newBalancedAdditionFromSummands(
+			parseParsableMatchTrees[Expression](parser, tree.Children),
+		)
 
+	case assignmentExpressionCode:
 		i := tree.Value.subgroups[0][0]
 
-		for _, child := range tree.Children[:i] {
-			if expression := parser.parseMatchTree(child); expression != nil {
-				names = append(names, expression.(*IdentifierExpression))
-			}
-		}
+		names := parseParsableMatchTrees[*IdentifierExpression](parser, tree.Children[:i])
 
 		return &AssignmentExpression{
 			Names: names,
@@ -230,8 +312,8 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 
 	case callExpressionCode:
 		return &CallExpression{
-			Identifier: parser.parseMatchTree(tree.Children[0]).(*IdentifierExpression),
-			Argument:   parser.parseMatchTree(tree.Children[tree.Value.subgroups[0][0]]),
+			Function: parser.parseMatchTree(tree.Children[0]),
+			Argument: parser.parseMatchTree(tree.Children[tree.Value.subgroups[0][0]]),
 		}
 
 	case expressionListExpressionCode:
@@ -250,6 +332,20 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 			Content: parser.fileContent[token.start:token.end],
 		}
 
+	case selectExpressionCode:
+		result := parser.parseMatchTree(tree.Children[0])
+
+		identifiers := parseParsableMatchTrees[*IdentifierExpression](parser, tree.Children[1:])
+
+		for _, identifier := range identifiers {
+			result = &SelectExpression{
+				Value: result,
+				Field: identifier,
+			}
+		}
+
+		return result
+
 	case stringExpressionCode:
 		token := parser.tokens[tree.Value.start]
 
@@ -259,4 +355,16 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 	}
 
 	return nil
+}
+
+func parseParsableMatchTrees[T Expression](parser *Parser, matcheTrees []*common.Tree[*ExhaustiveMatch]) []T {
+	parsed := make([]T, 0)
+
+	for _, matchTree := range matcheTrees {
+		if expression := parser.parseMatchTree(matchTree); expression != nil {
+			parsed = append(parsed, expression.(T))
+		}
+	}
+
+	return parsed
 }

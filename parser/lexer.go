@@ -9,12 +9,14 @@ type Token struct {
 
 const (
 	StringToken TokenType = iota + 1
+	AdditionOperatorToken
 	AssignmentOperatorToken
 	IdentifierToken
 	LeftParenthesisToken
 	RightParenthesisToken
 	NewlineToken
 	SpaceToken
+	SelectOperatorToken
 )
 
 var matcher = ExhaustiveMatcher{
@@ -25,13 +27,13 @@ var matcher = ExhaustiveMatcher{
 		},
 
 		{
-			MatcherCode(AssignmentOperatorToken),
-			CompileMatcher(`=`),
+			MatcherCode(AdditionOperatorToken),
+			CompileMatcher(`\+`),
 		},
 
 		{
-			MatcherCode(IdentifierToken),
-			CompileMatcher(`[^\t\n "=()]+`),
+			MatcherCode(AssignmentOperatorToken),
+			CompileMatcher(`=`),
 		},
 
 		{
@@ -52,6 +54,16 @@ var matcher = ExhaustiveMatcher{
 		{
 			MatcherCode(SpaceToken),
 			CompileMatcher(`[\t ]+`),
+		},
+
+		{
+			MatcherCode(SelectOperatorToken),
+			CompileMatcher(`\.`),
+		},
+
+		{
+			MatcherCode(IdentifierToken),
+			CompileMatcher(`[^\n\t "=()]+`),
 		},
 	},
 }

@@ -10,8 +10,9 @@
  * - print (-1)
  * - println (-2)
  *
- * Likewise, built-in methods are negative; the following are accessible.
- * - __to_str__ (-1)
+ * Likewise, built-in fields are negative; the following are accessible.
+ * - __to_str__ (-1) (available on every type)
+ * - __plus__ (-2) (available on only strings)
  *
  * The following instructions (listed alongside their IDs and parameters) are available.
  *
@@ -142,19 +143,9 @@ func (translator *BytecodeTranslator) ExpressionToBytecode(
 	expression Expression,
 	fileContent string,
 ) *Bytecode {
-	var expressionList *ExpressionListExpression
+	expressionList, ok := expression.(*ExpressionListExpression)
 
-	expression.Visit(ExpressionVisitor{
-		VisitAssignment: func(_ *AssignmentExpression) {},
-		VisitCall:       func(_ *CallExpression) {},
-		VisitIdentifier: func(_ *IdentifierExpression) {},
-		VisitString:     func(_ *StringExpression) {},
-		VisitExpressionListExpression: func(visitedExpressionList *ExpressionListExpression) {
-			expressionList = visitedExpressionList
-		},
-	})
-
-	if expressionList == nil {
+	if !ok {
 		panic("Internal parser error: Expected an expression list, but got a different expression.")
 	}
 
@@ -186,7 +177,7 @@ func (translator *BytecodeTranslator) valueIdForAssignment(assignment *Assignmen
 }
 
 func (translator *BytecodeTranslator) valueIdForCall(call *CallExpression) int {
-	identifierValueID := translator.valueIdForIdentifier(call.Identifier)
+	functionValueID := translator.valueIdForExpression(call.Function)
 	argumentValueID := translator.valueIdForExpression(call.Argument)
 
 	translator.instructions = append(
@@ -198,7 +189,7 @@ func (translator *BytecodeTranslator) valueIdForCall(call *CallExpression) int {
 
 		&Instruction{
 			Type:      ValueFromCallInstruction,
-			Arguments: []int{identifierValueID},
+			Arguments: []int{functionValueID},
 		},
 	)
 
@@ -242,24 +233,28 @@ func (translator *BytecodeTranslator) valueIdForConstant(constant Constant) int 
 func (translator *BytecodeTranslator) valueIdForExpression(expression Expression) int {
 	var result int
 
-	expression.Visit(ExpressionVisitor{
-		VisitAssignment: func(assignment *AssignmentExpression) {
+	expression.Visit(&ExpressionVisitor{
+		func(assignment *AssignmentExpression) {
 			result = translator.valueIdForAssignment(assignment)
 		},
 
-		VisitExpressionListExpression: func(expressionList *ExpressionListExpression) {
+		func(expressionList *ExpressionListExpression) {
 			panic("Encountered a non-top level expression list.")
 		},
 
-		VisitCall: func(call *CallExpression) {
+		func(call *CallExpression) {
 			result = translator.valueIdForCall(call)
 		},
 
-		VisitIdentifier: func(identifier *IdentifierExpression) {
+		func(identifier *IdentifierExpression) {
 			result = translator.valueIdForIdentifier(identifier)
 		},
 
-		VisitString: func(string_ *StringExpression) {
+		func(select_ *SelectExpression) {
+			result = translator.valueIdForSelect(select_)
+		},
+
+		func(string_ *StringExpression) {
 			result = translator.valueIdForConstant(Constant{
 				Type:    StringConstant,
 				Encoded: string_.Content,
@@ -280,6 +275,33 @@ func (translator *BytecodeTranslator) valueIdForIdentifier(identifier *Identifie
 	}
 
 	panic(fmt.Sprintf("Unknown value: %s", identifier.Content))
+}
+
+func (translator *BytecodeTranslator) valueIdForSelect(select_ *SelectExpression) int {
+	valueID := translator.valueIdForExpression(select_.Value)
+
+	var fieldID int
+
+	switch select_.Field.Content {
+	case "__to_str__":
+		fieldID = -1
+	case "__plus__":
+		fieldID = -2
+	}
+
+	translator.instructions = append(
+		translator.instructions,
+		&Instruction{
+			Type:      ValueFromStructValueInstruction,
+			Arguments: []int{valueID, fieldID},
+		},
+	)
+
+	result := translator.nextValueId
+
+	translator.nextValueId++
+
+	return result
 }
 
 type Constant struct {
