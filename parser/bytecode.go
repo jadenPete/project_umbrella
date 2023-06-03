@@ -90,19 +90,19 @@ func (bytecode *Bytecode) Encode() []byte {
 }
 
 type BytecodeTranslator struct {
-	constantIdMap        map[Constant]int
-	constantValueIdMap   map[int]int
-	identifierValueIdMap map[string]int
-	nextValueId          int
+	constantIDMap        map[Constant]int
+	constantValueIDMap   map[int]int
+	identifierValueIDMap map[string]int
+	nextValueID          int
 	instructions         []*Instruction
 }
 
 func NewBytecodeTranslator() *BytecodeTranslator {
 	return &BytecodeTranslator{
-		constantIdMap:        make(map[Constant]int),
-		constantValueIdMap:   make(map[int]int),
-		identifierValueIdMap: make(map[string]int),
-		nextValueId:          0,
+		constantIDMap:        make(map[Constant]int),
+		constantValueIDMap:   make(map[int]int),
+		identifierValueIDMap: make(map[string]int),
+		nextValueID:          0,
 		instructions:         make([]*Instruction, 0),
 	}
 }
@@ -110,13 +110,13 @@ func NewBytecodeTranslator() *BytecodeTranslator {
 func (translator *BytecodeTranslator) generateBytecode(fileContent string) *Bytecode {
 	bytecode := &Bytecode{
 		sourceChecksum: sourceChecksum(fileContent),
-		Constants:      make([]Constant, 0, len(translator.constantIdMap)),
+		Constants:      make([]Constant, 0, len(translator.constantIDMap)),
 		Instructions:   translator.instructions,
 	}
 
-	constantsSet := make([]bool, 0, len(translator.constantIdMap))
+	constantsSet := make([]bool, 0, len(translator.constantIDMap))
 
-	for constant, i := range translator.constantIdMap {
+	for constant, i := range translator.constantIDMap {
 		if i >= len(bytecode.Constants) {
 			bytecode.Constants = common.Resize(bytecode.Constants, i+1)
 		}
@@ -150,39 +150,39 @@ func (translator *BytecodeTranslator) ExpressionToBytecode(
 	}
 
 	for _, subexpression := range expressionList.Children {
-		translator.valueIdForExpression(subexpression)
+		translator.valueIDForExpression(subexpression)
 	}
 
 	return translator.generateBytecode(fileContent)
 }
 
-func (translator *BytecodeTranslator) valueIdForAssignment(assignment *AssignmentExpression) int {
-	valueID := translator.valueIdForExpression(assignment.Value)
+func (translator *BytecodeTranslator) valueIDForAssignment(assignment *AssignmentExpression) int {
+	valueID := translator.valueIDForExpression(assignment.Value)
 
 	/*
 	 * We check for value overloading in a separate pass because we don't want to leave
-	 * `translator.identifierValueIdMap` in a bad state, in case the caller decides to recover.
+	 * `translator.identifierValueIDMap` in a bad state, in case the caller decides to recover.
 	 */
 	for _, nameExpression := range assignment.Names {
-		if _, ok := translator.identifierValueIdMap[nameExpression.Content]; ok {
+		if _, ok := translator.identifierValueIDMap[nameExpression.Content]; ok {
 			panic("Reassigning to an already declared value is impossible.")
 		}
 	}
 
 	for _, nameExpression := range assignment.Names {
-		translator.identifierValueIdMap[nameExpression.Content] = valueID
+		translator.identifierValueIDMap[nameExpression.Content] = valueID
 	}
 
 	return valueID
 }
 
-func (translator *BytecodeTranslator) valueIdForCall(call *CallExpression) int {
-	functionValueID := translator.valueIdForExpression(call.Function)
+func (translator *BytecodeTranslator) valueIDForCall(call *CallExpression) int {
+	functionValueID := translator.valueIDForExpression(call.Function)
 
 	for _, argument := range call.Arguments {
 		translator.instructions = append(translator.instructions, &Instruction{
 			Type:      PushArgumentInstruction,
-			Arguments: []int{translator.valueIdForExpression(argument)},
+			Arguments: []int{translator.valueIDForExpression(argument)},
 		})
 	}
 
@@ -191,27 +191,27 @@ func (translator *BytecodeTranslator) valueIdForCall(call *CallExpression) int {
 		Arguments: []int{functionValueID},
 	})
 
-	result := translator.nextValueId
+	result := translator.nextValueID
 
-	translator.nextValueId++
+	translator.nextValueID++
 
 	return result
 }
 
-func (translator *BytecodeTranslator) valueIdForConstant(constant Constant) int {
+func (translator *BytecodeTranslator) valueIDForConstant(constant Constant) int {
 	var constantID int
 
-	if result, ok := translator.constantIdMap[constant]; ok {
+	if result, ok := translator.constantIDMap[constant]; ok {
 		constantID = result
 	} else {
-		constantID = len(translator.constantIdMap)
+		constantID = len(translator.constantIDMap)
 
-		translator.constantIdMap[constant] = constantID
+		translator.constantIDMap[constant] = constantID
 	}
 
 	var valueID int
 
-	if result, ok := translator.constantValueIdMap[constantID]; ok {
+	if result, ok := translator.constantValueIDMap[constantID]; ok {
 		valueID = result
 	} else {
 		translator.instructions = append(translator.instructions, &Instruction{
@@ -219,21 +219,21 @@ func (translator *BytecodeTranslator) valueIdForConstant(constant Constant) int 
 			Arguments: []int{constantID},
 		})
 
-		valueID = translator.nextValueId
+		valueID = translator.nextValueID
 
-		translator.nextValueId++
-		translator.constantValueIdMap[constantID] = valueID
+		translator.nextValueID++
+		translator.constantValueIDMap[constantID] = valueID
 	}
 
 	return valueID
 }
 
-func (translator *BytecodeTranslator) valueIdForExpression(expression Expression) int {
+func (translator *BytecodeTranslator) valueIDForExpression(expression Expression) int {
 	var result int
 
 	expression.Visit(&ExpressionVisitor{
 		func(assignment *AssignmentExpression) {
-			result = translator.valueIdForAssignment(assignment)
+			result = translator.valueIDForAssignment(assignment)
 		},
 
 		func(expressionList *ExpressionListExpression) {
@@ -241,19 +241,19 @@ func (translator *BytecodeTranslator) valueIdForExpression(expression Expression
 		},
 
 		func(call *CallExpression) {
-			result = translator.valueIdForCall(call)
+			result = translator.valueIDForCall(call)
 		},
 
 		func(identifier *IdentifierExpression) {
-			result = translator.valueIdForIdentifier(identifier)
+			result = translator.valueIDForIdentifier(identifier)
 		},
 
 		func(select_ *SelectExpression) {
-			result = translator.valueIdForSelect(select_)
+			result = translator.valueIDForSelect(select_)
 		},
 
 		func(string_ *StringExpression) {
-			result = translator.valueIdForConstant(Constant{
+			result = translator.valueIDForConstant(Constant{
 				Type:    StringConstant,
 				Encoded: string_.Content,
 			})
@@ -263,8 +263,8 @@ func (translator *BytecodeTranslator) valueIdForExpression(expression Expression
 	return result
 }
 
-func (translator *BytecodeTranslator) valueIdForIdentifier(identifier *IdentifierExpression) int {
-	if valueID, ok := translator.identifierValueIdMap[identifier.Content]; ok {
+func (translator *BytecodeTranslator) valueIDForIdentifier(identifier *IdentifierExpression) int {
+	if valueID, ok := translator.identifierValueIDMap[identifier.Content]; ok {
 		return valueID
 	}
 
@@ -275,8 +275,8 @@ func (translator *BytecodeTranslator) valueIdForIdentifier(identifier *Identifie
 	panic(fmt.Sprintf("Unknown value: %s", identifier.Content))
 }
 
-func (translator *BytecodeTranslator) valueIdForSelect(select_ *SelectExpression) int {
-	valueID := translator.valueIdForExpression(select_.Value)
+func (translator *BytecodeTranslator) valueIDForSelect(select_ *SelectExpression) int {
+	valueID := translator.valueIDForExpression(select_.Value)
 
 	var fieldID int
 
@@ -295,9 +295,9 @@ func (translator *BytecodeTranslator) valueIdForSelect(select_ *SelectExpression
 		},
 	)
 
-	result := translator.nextValueId
+	result := translator.nextValueID
 
-	translator.nextValueId++
+	translator.nextValueID++
 
 	return result
 }

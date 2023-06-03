@@ -8,22 +8,22 @@ import (
 	"project_umbrella/interpreter/parser"
 )
 
-type builtInFieldId int
+type builtInFieldID int
 
 const (
-	toStringMethodId builtInFieldId = -1
-	plusMethodId     builtInFieldId = -2
+	toStringMethodID builtInFieldID = -1
+	plusMethodID     builtInFieldID = -2
 )
 
-type builtInFunctionId int
+type builtInFunctionID int
 
 const (
-	printFunctionId   builtInFunctionId = -1
-	printlnFunctionId builtInFunctionId = -2
+	printFunctionID   builtInFunctionID = -1
+	printlnFunctionID builtInFunctionID = -2
 )
 
 type valueDefinition struct {
-	fields map[builtInFieldId]value
+	fields map[builtInFieldID]value
 }
 
 type value interface {
@@ -66,8 +66,8 @@ func generateStaticToString(result string) *builtInFunction {
 
 func (function_ *builtInFunction) definition() *valueDefinition {
 	return &valueDefinition{
-		fields: map[builtInFieldId]value{
-			toStringMethodId: generateStaticToString("(built-in function)"),
+		fields: map[builtInFieldID]value{
+			toStringMethodID: generateStaticToString("(built-in function)"),
 		},
 	}
 }
@@ -100,7 +100,7 @@ func print(runtime_ *runtime, suffix string, arguments ...value) *unitValue {
 
 func toString(runtime_ *runtime, value_ value) string {
 	if resultingValue, ok := value_.
-		definition().fields[toStringMethodId].(function).
+		definition().fields[toStringMethodID].(function).
 		evaluate(runtime_).(stringValue); ok {
 		return resultingValue.content
 	}
@@ -108,15 +108,15 @@ func toString(runtime_ *runtime, value_ value) string {
 	panic("Runtime error: __to_str__ returned a non-string.")
 }
 
-var builtInFunctions = map[builtInFunctionId]function{
-	printFunctionId: &builtInFunction{
+var builtInFunctions = map[builtInFunctionID]function{
+	printFunctionID: &builtInFunction{
 		isVariadic: true,
 		evaluator: func(runtime_ *runtime, arguments ...value) value {
 			return print(runtime_, "", arguments...)
 		},
 	},
 
-	printlnFunctionId: &builtInFunction{
+	printlnFunctionID: &builtInFunction{
 		isVariadic: true,
 		evaluator: func(runtime_ *runtime, arguments ...value) value {
 			return print(runtime_, "\n", arguments...)
@@ -130,8 +130,8 @@ type bytecodeFunction struct {
 
 func (function_ *bytecodeFunction) definition() *valueDefinition {
 	return &valueDefinition{
-		fields: map[builtInFieldId]value{
-			toStringMethodId: generateStaticToString("(function)"),
+		fields: map[builtInFieldID]value{
+			toStringMethodID: generateStaticToString("(function)"),
 		},
 	}
 }
@@ -156,7 +156,7 @@ func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments
 			case parser.ValueFromCallInstruction:
 				var function_ function
 
-				if builtInFunction_, ok := builtInFunctions[builtInFunctionId(instruction.Arguments[0])]; ok {
+				if builtInFunction_, ok := builtInFunctions[builtInFunctionID(instruction.Arguments[0])]; ok {
 					function_ = builtInFunction_
 				} else {
 					function_ = values[instruction.Arguments[0]].(function)
@@ -171,7 +171,7 @@ func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments
 
 			case parser.ValueFromStructValueInstruction:
 				structValue := values[instruction.Arguments[0]]
-				fieldID := builtInFieldId(instruction.Arguments[1])
+				fieldID := builtInFieldID(instruction.Arguments[1])
 
 				if field, ok := structValue.definition().fields[fieldID]; ok {
 					values[i] = field
@@ -203,15 +203,15 @@ type stringValue struct {
 
 func (value_ stringValue) definition() *valueDefinition {
 	return &valueDefinition{
-		fields: map[builtInFieldId]value{
-			toStringMethodId: &builtInFunction{
+		fields: map[builtInFieldID]value{
+			toStringMethodID: &builtInFunction{
 				argumentCount: 0,
 				evaluator: func(runtime_ *runtime, arguments ...value) value {
 					return value_
 				},
 			},
 
-			plusMethodId: &builtInFunction{
+			plusMethodID: &builtInFunction{
 				argumentCount: 1,
 				evaluator: func(runtime_ *runtime, arguments ...value) value {
 					return stringValue{value_.content + arguments[0].(stringValue).content}
@@ -225,8 +225,8 @@ type unitValue struct{}
 
 func (value_ *unitValue) definition() *valueDefinition {
 	return &valueDefinition{
-		fields: map[builtInFieldId]value{
-			toStringMethodId: generateStaticToString("(unit)"),
+		fields: map[builtInFieldID]value{
+			toStringMethodID: generateStaticToString("(unit)"),
 		},
 	}
 }

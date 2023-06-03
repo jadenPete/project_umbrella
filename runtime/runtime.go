@@ -47,7 +47,7 @@ func newRuntime(bytecode *parser.Bytecode) *runtime {
 
 			dependent := len(valueInstructions.Nodes) - 1
 
-			if _, ok := builtInFunctions[builtInFunctionId(instruction.Arguments[0])]; !ok {
+			if _, ok := builtInFunctions[builtInFunctionID(instruction.Arguments[0])]; !ok {
 				valueInstructions.Edges[instruction.Arguments[0]] = []int{dependent}
 			}
 
