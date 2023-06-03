@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "parser",
+    srcs = glob(["*.go"]),
+    importpath = "project_umbrella/interpreter/parser",
+    visibility = ["//src/interpreter:__subpackages__"],
+    deps = [
+        "//src/interpreter/common",
+        "@com_github_dlclark_regexp2//:go_default_library",
+        "@com_github_ugorji_go_codec//:go_default_library",
+    ],
+)

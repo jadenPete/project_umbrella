@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "interpreter_library",
+    srcs = glob(["*.go"]),
+    importpath = "project_umbrella/interpreter",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//src/interpreter/parser",
+        "//src/interpreter/runtime",
+    ],
+)
+
+go_binary(
+    name = "interpreter",
+    embed = [":interpreter_library"],
+    visibility = ["//visibility:public"],
+)
