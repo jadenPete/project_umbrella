@@ -18,7 +18,10 @@ func executeSource(source string) {
 		panic("The lexer failed.")
 	}
 
-	expression := parser.NewParser(source, tokens).Parse()
+	expression := (&parser.Parser{
+		FileContent: source,
+		Tokens:      tokens,
+	}).Parse()
 
 	if expression == nil {
 		panic("The parser failed.")

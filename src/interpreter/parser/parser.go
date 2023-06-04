@@ -158,7 +158,7 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		{
 			type_: selectExpressionCode,
 			matcher: CompileMatcher(
-				fmt.Sprintf(`%s(?:{0}*{1}{0}*{2})+`, standaloneExpressionRegex(3)),
+				fmt.Sprintf(`%s(?:{0}?{1}{0}?{2})+`, standaloneExpressionRegex(3)),
 				append(
 					[]MatcherCode{
 						newlineTokenCode,
@@ -175,7 +175,7 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 			type_: callExpressionCode,
 			matcher: CompileMatcher(
 				fmt.Sprintf(
-					`%s{0}*{1}{0}*(%s(?:{0}*{2}%s)*)?{0}*{3}`,
+					`%s{0}?{1}{0}?(%s(?:{0}?{2}%s)*)?{0}?{3}`,
 					standaloneExpressionRegex(4),
 					standaloneExpressionRegex(4),
 					standaloneExpressionRegex(4),
@@ -197,7 +197,7 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 			type_: additionExpressionCode,
 			matcher: CompileMatcher(
 				fmt.Sprintf(
-					`(?:%s{0}*{1}{0}*)+%s`,
+					`(?:%s{0}?{1}{0}?)+%s`,
 					standaloneExpressionRegex(2),
 					standaloneExpressionRegex(2),
 				),
@@ -215,7 +215,7 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		{
 			type_: assignmentExpressionCode,
 			matcher: CompileMatcher(
-				fmt.Sprintf(`(?:{0}{1}*{2}{1}*)+(%s)`, standaloneExpressionRegex(3)),
+				fmt.Sprintf(`(?:{0}{1}?{2}{1}?)+(%s)`, standaloneExpressionRegex(3)),
 				append(
 					[]MatcherCode{
 						identifierExpressionCode,
@@ -241,7 +241,11 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		{
 			type_: expressionListExpressionCode,
 			matcher: CompileMatcher(
-				fmt.Sprintf(`^(?:%s{0}+)*$`, standaloneExpressionRegex(1)),
+				fmt.Sprintf(
+					`^{0}?(?:(?:%s{0})*%s{0}?)?$`,
+					standaloneExpressionRegex(1),
+					standaloneExpressionRegex(1),
+				),
 				append([]MatcherCode{newlineTokenCode}, standaloneExpressionCodes...)...,
 			),
 		},
@@ -249,38 +253,14 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 }
 
 type Parser struct {
-	fileContent string
-	tokens      []*Token
-}
-
-func NewParser(fileContent string, tokens []*Token) *Parser {
-	/*
-	 * The caller of Parser.Parse should expect a ExpressionListExpression, which requires
-	 * the newline to be used as a delimeter, not a separator.
-	 */
-	if len(fileContent) > 0 && fileContent[len(fileContent)-1] != '\n' {
-		fileContent = fileContent + " "
-
-		newTokens := make([]*Token, len(tokens), len(tokens)+1)
-
-		copy(newTokens, tokens)
-
-		newTokens = append(newTokens, &Token{
-			type_: NewlineToken,
-			start: len(fileContent) - 1,
-			end:   len(fileContent),
-		})
-
-		tokens = newTokens
-	}
-
-	return &Parser{fileContent, tokens}
+	FileContent string
+	Tokens      []*Token
 }
 
 func (parser *Parser) Parse() Expression {
-	input := make([]MatcherCode, 0, len(parser.tokens))
+	input := make([]MatcherCode, 0, len(parser.Tokens))
 
-	for _, token := range parser.tokens {
+	for _, token := range parser.Tokens {
 		input = append(input, tokenTypeCodes[token.type_])
 	}
 
@@ -334,19 +314,29 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 		}
 
 	case expressionListExpressionCode:
-		children := make([]Expression, 0, len(tree.Children)/2)
+		children := make([]Expression, 0, (len(tree.Children)+1)/2)
 
-		for i := 0; i < len(tree.Children); i += 2 {
+		var i int
+
+		if len(tree.Children) > 0 && tree.Children[0].Value.type_ == newlineTokenCode {
+			i = 1
+		} else {
+			i = 0
+		}
+
+		for i < len(tree.Children) {
 			children = append(children, parser.parseMatchTree(tree.Children[i]))
+
+			i += 2
 		}
 
 		return &ExpressionListExpression{children}
 
 	case identifierExpressionCode:
-		token := parser.tokens[tree.Value.start]
+		token := parser.Tokens[tree.Value.start]
 
 		return &IdentifierExpression{
-			Content: parser.fileContent[token.start:token.end],
+			Content: parser.FileContent[token.start:token.end],
 		}
 
 	case selectExpressionCode:
@@ -364,10 +354,10 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 		return result
 
 	case stringExpressionCode:
-		token := parser.tokens[tree.Value.start]
+		token := parser.Tokens[tree.Value.start]
 
 		return &StringExpression{
-			Content: parser.fileContent[token.start+1 : token.end-1],
+			Content: parser.FileContent[token.start+1 : token.end-1],
 		}
 	}
 

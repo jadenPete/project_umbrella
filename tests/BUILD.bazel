@@ -1,0 +1,8 @@
+load("@python_deps//:requirements.bzl", "requirement")
+
+py_test(
+	name = "tests",
+	srcs = glob(["*.py"]),
+	data = ["//src/interpreter"] + glob(["data/*.krait"]),
+	deps = [requirement("pytest")],
+)
