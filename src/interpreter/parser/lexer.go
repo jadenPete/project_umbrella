@@ -12,7 +12,9 @@ const (
 	AdditionOperatorToken
 	AssignmentOperatorToken
 	CommaToken
+	FloatToken
 	IdentifierToken
+	IntegerToken
 	LeftParenthesisToken
 	RightParenthesisToken
 	NewlineToken
@@ -43,6 +45,11 @@ var matcher = ExhaustiveMatcher{
 		},
 
 		{
+			MatcherCode(FloatToken),
+			CompileMatcher(`(?:\+|-)?(?:\d+\.\d*|\.\d+)`),
+		},
+
+		{
 			MatcherCode(LeftParenthesisToken),
 			CompileMatcher(`\(`),
 		},
@@ -69,7 +76,12 @@ var matcher = ExhaustiveMatcher{
 
 		{
 			MatcherCode(IdentifierToken),
-			CompileMatcher(`[^\n\t "=,()]+`),
+			CompileMatcher(`[^\t\n ="()+,\-.]*[^\t\n ="()+,\-\d]+[^\t\n ="()+,\-.]*`),
+		},
+
+		{
+			MatcherCode(IntegerToken),
+			CompileMatcher(`(?:\+|-)?\d+`),
 		},
 	},
 }

@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"project_umbrella/interpreter/common"
@@ -15,7 +16,9 @@ type ExpressionVisitor struct {
 	VisitAssignment               func(*AssignmentExpression)
 	VisitExpressionListExpression func(*ExpressionListExpression)
 	VisitCall                     func(*CallExpression)
+	VisitFloat                    func(*FloatExpression)
 	VisitIdentifier               func(*IdentifierExpression)
+	VisitInteger                  func(*IntegerExpression)
 	VisitSelect                   func(*SelectExpression)
 	VisitString                   func(*StringExpression)
 }
@@ -73,12 +76,28 @@ func (call *CallExpression) Visit(visitor *ExpressionVisitor) {
 	visitor.VisitCall(call)
 }
 
+type FloatExpression struct {
+	Value float64
+}
+
+func (float *FloatExpression) Visit(visitor *ExpressionVisitor) {
+	visitor.VisitFloat(float)
+}
+
 type IdentifierExpression struct {
 	Content string
 }
 
 func (identifier *IdentifierExpression) Visit(visitor *ExpressionVisitor) {
 	visitor.VisitIdentifier(identifier)
+}
+
+type IntegerExpression struct {
+	Value int64
+}
+
+func (integer *IntegerExpression) Visit(visitor *ExpressionVisitor) {
+	visitor.VisitInteger(integer)
 }
 
 type SelectExpression struct {
@@ -102,7 +121,9 @@ const (
 	additionOperatorTokenCode MatcherCode = iota + 1
 	assignmentOperatorTokenCode
 	commaTokenCode
+	floatTokenCode
 	identifierTokenCode
+	integerTokenCode
 	leftParenthesisTokenCode
 	rightParenthesisTokenCode
 	newlineTokenCode
@@ -113,7 +134,9 @@ const (
 	assignmentExpressionCode
 	expressionListExpressionCode
 	callExpressionCode
+	floatExpressionCode
 	identifierExpressionCode
+	integerExpressionCode
 	selectExpressionCode
 	stringExpressionCode
 )
@@ -122,7 +145,9 @@ var tokenTypeCodes = map[TokenType]MatcherCode{
 	AdditionOperatorToken:   additionOperatorTokenCode,
 	AssignmentOperatorToken: assignmentOperatorTokenCode,
 	CommaToken:              commaTokenCode,
+	FloatToken:              floatTokenCode,
 	IdentifierToken:         identifierTokenCode,
+	IntegerToken:            integerTokenCode,
 	LeftParenthesisToken:    leftParenthesisTokenCode,
 	RightParenthesisToken:   rightParenthesisTokenCode,
 	NewlineToken:            newlineTokenCode,
@@ -134,7 +159,9 @@ var standaloneExpressionCodes = []MatcherCode{
 	additionExpressionCode,
 	assignmentExpressionCode,
 	callExpressionCode,
+	floatExpressionCode,
 	identifierExpressionCode,
+	integerExpressionCode,
 	selectExpressionCode,
 	stringExpressionCode,
 }
@@ -229,8 +256,18 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		},
 
 		{
+			type_:   floatExpressionCode,
+			matcher: CompileMatcher(`{0}`, floatTokenCode),
+		},
+
+		{
 			type_:   identifierExpressionCode,
 			matcher: CompileMatcher(`{0}`, identifierTokenCode),
+		},
+
+		{
+			type_:   integerExpressionCode,
+			matcher: CompileMatcher(`{0}`, integerTokenCode),
 		},
 
 		{
@@ -332,11 +369,29 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 
 		return &ExpressionListExpression{children}
 
+	case floatExpressionCode:
+		token := parser.Tokens[tree.Value.start]
+
+		value, _ := strconv.ParseFloat(parser.FileContent[token.start:token.end], 32)
+
+		return &FloatExpression{
+			Value: value,
+		}
+
 	case identifierExpressionCode:
 		token := parser.Tokens[tree.Value.start]
 
 		return &IdentifierExpression{
 			Content: parser.FileContent[token.start:token.end],
+		}
+
+	case integerExpressionCode:
+		token := parser.Tokens[tree.Value.start]
+
+		value, _ := strconv.ParseInt(parser.FileContent[token.start:token.end], 10, 64)
+
+		return &IntegerExpression{
+			Value: value,
 		}
 
 	case selectExpressionCode:

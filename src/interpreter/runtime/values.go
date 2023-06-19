@@ -1,6 +1,8 @@
 package runtime
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"strings"
 
@@ -32,10 +34,30 @@ type value interface {
 
 func newValueFromConstant(constant parser.Constant) value {
 	switch constant.Type {
-	case parser.StringConstant:
-		return stringValue{
-			content: constant.Encoded,
+	case parser.FloatConstant:
+		var value float64
+
+		buffer := bytes.NewBufferString(constant.Encoded)
+
+		if err := binary.Read(buffer, binary.LittleEndian, &value); err != nil {
+			panic(err)
 		}
+
+		return floatValue{value}
+
+	case parser.IntegerConstant:
+		var value int64
+
+		buffer := bytes.NewBufferString(constant.Encoded)
+
+		if err := binary.Read(buffer, binary.LittleEndian, &value); err != nil {
+			panic(err)
+		}
+
+		return integerValue{value}
+
+	case parser.StringConstant:
+		return stringValue{constant.Encoded}
 	}
 
 	return nil
@@ -53,13 +75,29 @@ type builtInFunction struct {
 	evaluator     func(runtime_ *runtime, arguments ...value) value
 }
 
-func generateStaticToString(result string) *builtInFunction {
+func generatePlusMethod[T value](
+	adder func(rightHandSide T) T,
+	incorrectTypeErrorMessage string,
+) *builtInFunction {
+	return &builtInFunction{
+		argumentCount: 1,
+		evaluator: func(runtime_ *runtime, arguments ...value) value {
+			argument, ok := arguments[0].(T)
+
+			if !ok {
+				panic(incorrectTypeErrorMessage)
+			}
+
+			return adder(argument)
+		},
+	}
+}
+
+func generateToStringMethod(result func() string) *builtInFunction {
 	return &builtInFunction{
 		argumentCount: 0,
 		evaluator: func(runtime_ *runtime, arguments ...value) value {
-			return stringValue{
-				content: result,
-			}
+			return stringValue{result()}
 		},
 	}
 }
@@ -67,7 +105,9 @@ func generateStaticToString(result string) *builtInFunction {
 func (function_ *builtInFunction) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[builtInFieldID]value{
-			toStringMethodID: generateStaticToString("(built-in function)"),
+			toStringMethodID: generateToStringMethod(func() string {
+				return "(built-in function)"
+			}),
 		},
 	}
 }
@@ -131,7 +171,9 @@ type bytecodeFunction struct {
 func (function_ *bytecodeFunction) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[builtInFieldID]value{
-			toStringMethodID: generateStaticToString("(function)"),
+			toStringMethodID: generateToStringMethod(func() string {
+				return "(function)"
+			}),
 		},
 	}
 }
@@ -197,6 +239,50 @@ func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments
 	return values[len(nodes)-1]
 }
 
+type floatValue struct {
+	value float64
+}
+
+func (value_ floatValue) definition() *valueDefinition {
+	return &valueDefinition{
+		fields: map[builtInFieldID]value{
+			toStringMethodID: generateToStringMethod(func() string {
+				return fmt.Sprintf("%g", value_.value)
+			}),
+
+			plusMethodID: generatePlusMethod(
+				func(rightHandSide floatValue) floatValue {
+					return floatValue{value_.value + rightHandSide.value}
+				},
+
+				"Runtime error: Expected the right-hand side of float#__plus__ to be of type float",
+			),
+		},
+	}
+}
+
+type integerValue struct {
+	value int64
+}
+
+func (value_ integerValue) definition() *valueDefinition {
+	return &valueDefinition{
+		fields: map[builtInFieldID]value{
+			toStringMethodID: generateToStringMethod(func() string {
+				return fmt.Sprintf("%d", value_.value)
+			}),
+
+			plusMethodID: generatePlusMethod(
+				func(rightHandSide integerValue) integerValue {
+					return integerValue{value_.value + rightHandSide.value}
+				},
+
+				"Runtime error: Expected the right-hand side of int#__plus__ to be of type int",
+			),
+		},
+	}
+}
+
 type stringValue struct {
 	content string
 }
@@ -211,12 +297,13 @@ func (value_ stringValue) definition() *valueDefinition {
 				},
 			},
 
-			plusMethodID: &builtInFunction{
-				argumentCount: 1,
-				evaluator: func(runtime_ *runtime, arguments ...value) value {
-					return stringValue{value_.content + arguments[0].(stringValue).content}
+			plusMethodID: generatePlusMethod(
+				func(rightHandSide stringValue) stringValue {
+					return stringValue{value_.content + rightHandSide.content}
 				},
-			},
+
+				"Runtime error: Expected the right-hand side of str#__plus__ to be of type str",
+			),
 		},
 	}
 }
@@ -226,7 +313,9 @@ type unitValue struct{}
 func (value_ *unitValue) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[builtInFieldID]value{
-			toStringMethodID: generateStaticToString("(unit)"),
+			toStringMethodID: generateToStringMethod(func() string {
+				return "(unit)"
+			}),
 		},
 	}
 }

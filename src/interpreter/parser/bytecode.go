@@ -38,7 +38,9 @@
 package parser
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 
 	"github.com/ugorji/go/codec"
@@ -244,8 +246,34 @@ func (translator *BytecodeTranslator) valueIDForExpression(expression Expression
 			result = translator.valueIDForCall(call)
 		},
 
+		func(float *FloatExpression) {
+			var buffer bytes.Buffer
+
+			if err := binary.Write(&buffer, binary.LittleEndian, float.Value); err != nil {
+				panic(err)
+			}
+
+			result = translator.valueIDForConstant(Constant{
+				Type:    FloatConstant,
+				Encoded: buffer.String(),
+			})
+		},
+
 		func(identifier *IdentifierExpression) {
 			result = translator.valueIDForIdentifier(identifier)
+		},
+
+		func(integer *IntegerExpression) {
+			var buffer bytes.Buffer
+
+			if err := binary.Write(&buffer, binary.LittleEndian, integer.Value); err != nil {
+				panic(err)
+			}
+
+			result = translator.valueIDForConstant(Constant{
+				Type:    IntegerConstant,
+				Encoded: buffer.String(),
+			})
 		},
 
 		func(select_ *SelectExpression) {
@@ -309,7 +337,11 @@ type Constant struct {
 
 type ConstantType int
 
-const StringConstant ConstantType = iota + 1
+const (
+	StringConstant ConstantType = iota + 1
+	IntegerConstant
+	FloatConstant
+)
 
 type Instruction struct {
 	Type      InstructionType
