@@ -12,7 +12,7 @@
  *
  * Likewise, built-in fields are negative; the following are accessible.
  * - __to_str__ (-1) (available on every type)
- * - __plus__ (-2) (available on only strings)
+ * - + (-2) (available on the types str, int, and float)
  *
  * The following instructions (listed alongside their IDs and parameters) are available.
  *
@@ -50,6 +50,11 @@ import (
 
 const ChecksumSize = 32
 
+var builtInFields = map[string]*BuiltInField{
+	"__to_str__": {-1, false},
+	"+":          {-2, true},
+}
+
 var builtinValues = map[string]int{
 	"print":   -1,
 	"println": -2,
@@ -57,6 +62,11 @@ var builtinValues = map[string]int{
 
 func sourceChecksum(fileContent string) [ChecksumSize]byte {
 	return sha256.Sum256([]byte(fileContent))
+}
+
+type BuiltInField struct {
+	id            int
+	isInfixMethod bool
 }
 
 type Bytecode struct {
@@ -239,7 +249,7 @@ func (translator *BytecodeTranslator) valueIDForExpression(expression Expression
 		},
 
 		func(expressionList *ExpressionListExpression) {
-			panic("Encountered a non-top level expression list.")
+			panic("Parser error: encountered a non-top level expression list.")
 		},
 
 		func(call *CallExpression) {
@@ -300,26 +310,28 @@ func (translator *BytecodeTranslator) valueIDForIdentifier(identifier *Identifie
 		return valueID
 	}
 
-	panic(fmt.Sprintf("Unknown value: %s", identifier.Content))
+	panic(fmt.Sprintf("Unknown value: `%s`", identifier.Content))
 }
 
 func (translator *BytecodeTranslator) valueIDForSelect(select_ *SelectExpression) int {
 	valueID := translator.valueIDForExpression(select_.Value)
 
-	var fieldID int
+	fieldName := select_.Field.Content
+	field, ok := builtInFields[fieldName]
 
-	switch select_.Field.Content {
-	case "__to_str__":
-		fieldID = -1
-	case "__plus__":
-		fieldID = -2
+	if !ok {
+		panic(fmt.Sprintf("Unknown field: `%s`", fieldName))
+	}
+
+	if select_.IsInfix && !field.isInfixMethod {
+		panic(fmt.Sprintf("`%s` cannot is not an infix method and cannot be called so.", fieldName))
 	}
 
 	translator.instructions = append(
 		translator.instructions,
 		&Instruction{
 			Type:      ValueFromStructValueInstruction,
-			Arguments: []int{valueID, fieldID},
+			Arguments: []int{valueID, field.id},
 		},
 	)
 

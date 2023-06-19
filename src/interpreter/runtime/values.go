@@ -116,7 +116,7 @@ func (function *builtInFunction) evaluate(runtime_ *runtime, arguments ...value)
 	if !function.isVariadic && len(arguments) != function.argumentCount {
 		panic(
 			fmt.Sprintf(
-				"Runtime error: A function that accepts %d arguments was called with %d",
+				"Runtime error: A function that accepts %d arguments was called with %d arguments",
 				len(arguments),
 				function.argumentCount,
 			),
@@ -223,7 +223,7 @@ func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments
 
 				panic(
 					fmt.Sprintf(
-						"Runtime error: %d is not a recognized field ID for the value %s",
+						"Runtime error: %d is not a recognized field ID for the value `%s`",
 						fieldID,
 						toString(runtime_, structValue),
 					),
@@ -255,7 +255,7 @@ func (value_ floatValue) definition() *valueDefinition {
 					return floatValue{value_.value + rightHandSide.value}
 				},
 
-				"Runtime error: Expected the right-hand side of float#__plus__ to be of type float",
+				"Runtime error: Expected the right-hand side of float#+ to be of type float",
 			),
 		},
 	}
@@ -277,7 +277,7 @@ func (value_ integerValue) definition() *valueDefinition {
 					return integerValue{value_.value + rightHandSide.value}
 				},
 
-				"Runtime error: Expected the right-hand side of int#__plus__ to be of type int",
+				"Runtime error: Expected the right-hand side of int#+ to be of type int",
 			),
 		},
 	}
@@ -302,7 +302,7 @@ func (value_ stringValue) definition() *valueDefinition {
 					return stringValue{value_.content + rightHandSide.content}
 				},
 
-				"Runtime error: Expected the right-hand side of str#__plus__ to be of type str",
+				"Runtime error: Expected the right-hand side of str#+ to be of type str",
 			),
 		},
 	}

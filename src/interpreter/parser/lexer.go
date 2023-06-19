@@ -9,7 +9,6 @@ type Token struct {
 
 const (
 	StringToken TokenType = iota + 1
-	AdditionOperatorToken
 	AssignmentOperatorToken
 	CommaToken
 	FloatToken
@@ -27,11 +26,6 @@ var matcher = ExhaustiveMatcher{
 		{
 			MatcherCode(StringToken),
 			CompileMatcher(`"[^"]*"`),
-		},
-
-		{
-			MatcherCode(AdditionOperatorToken),
-			CompileMatcher(`\+`),
 		},
 
 		{
@@ -65,18 +59,18 @@ var matcher = ExhaustiveMatcher{
 		},
 
 		{
-			MatcherCode(SpaceToken),
-			CompileMatcher(`[\t ]+`),
-		},
-
-		{
 			MatcherCode(SelectOperatorToken),
 			CompileMatcher(`\.`),
 		},
 
 		{
+			MatcherCode(SpaceToken),
+			CompileMatcher(`[\t ]+`),
+		},
+
+		{
 			MatcherCode(IdentifierToken),
-			CompileMatcher(`[^\t\n ="()+,\-.]*[^\t\n ="()+,\-\d]+[^\t\n ="()+,\-.]*`),
+			CompileMatcher(`[^\t\n ="(),.]*[^\t\n ="(),.\d]+[^\t\n ="(),.]*`),
 		},
 
 		{

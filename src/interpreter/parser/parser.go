@@ -23,33 +23,6 @@ type ExpressionVisitor struct {
 	VisitString                   func(*StringExpression)
 }
 
-func newAddition(leftHandSide Expression, rightHandSide Expression) *CallExpression {
-	return &CallExpression{
-		Function: &SelectExpression{
-			Value: leftHandSide,
-			Field: &IdentifierExpression{"__plus__"},
-		},
-		Arguments: []Expression{rightHandSide},
-	}
-}
-
-func newBalancedAdditionFromSummands(summands []Expression) *CallExpression {
-	if len(summands) == 2 {
-		return newAddition(summands[0], summands[1])
-	}
-
-	if len(summands) == 3 {
-		return newAddition(newAddition(summands[0], summands[1]), summands[2])
-	}
-
-	middle := len(summands) / 2
-
-	return newAddition(
-		newBalancedAdditionFromSummands(summands[:middle]),
-		newBalancedAdditionFromSummands(summands[middle:]),
-	)
-}
-
 type AssignmentExpression struct {
 	Names []*IdentifierExpression
 	Value Expression
@@ -101,8 +74,9 @@ func (integer *IntegerExpression) Visit(visitor *ExpressionVisitor) {
 }
 
 type SelectExpression struct {
-	Value Expression
-	Field *IdentifierExpression
+	Value   Expression
+	Field   *IdentifierExpression
+	IsInfix bool
 }
 
 func (select_ *SelectExpression) Visit(visitor *ExpressionVisitor) {
@@ -118,8 +92,7 @@ func (string_ *StringExpression) Visit(visitor *ExpressionVisitor) {
 }
 
 const (
-	additionOperatorTokenCode MatcherCode = iota + 1
-	assignmentOperatorTokenCode
+	assignmentOperatorTokenCode MatcherCode = iota + 1
 	commaTokenCode
 	floatTokenCode
 	identifierTokenCode
@@ -130,19 +103,18 @@ const (
 	selectOperatorTokenCode
 	stringTokenCode
 
-	additionExpressionCode
 	assignmentExpressionCode
 	expressionListExpressionCode
 	callExpressionCode
 	floatExpressionCode
 	identifierExpressionCode
+	infixCallExpressionCode
 	integerExpressionCode
 	selectExpressionCode
 	stringExpressionCode
 )
 
 var tokenTypeCodes = map[TokenType]MatcherCode{
-	AdditionOperatorToken:   additionOperatorTokenCode,
 	AssignmentOperatorToken: assignmentOperatorTokenCode,
 	CommaToken:              commaTokenCode,
 	FloatToken:              floatTokenCode,
@@ -156,11 +128,11 @@ var tokenTypeCodes = map[TokenType]MatcherCode{
 }
 
 var standaloneExpressionCodes = []MatcherCode{
-	additionExpressionCode,
 	assignmentExpressionCode,
 	callExpressionCode,
 	floatExpressionCode,
 	identifierExpressionCode,
+	infixCallExpressionCode,
 	integerExpressionCode,
 	selectExpressionCode,
 	stringExpressionCode,
@@ -221,21 +193,14 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		},
 
 		{
-			type_: additionExpressionCode,
+			type_: infixCallExpressionCode,
 			matcher: CompileMatcher(
 				fmt.Sprintf(
-					`(?:%s{0}?{1}{0}?)+%s`,
-					standaloneExpressionRegex(2),
-					standaloneExpressionRegex(2),
+					`%s(?:{0}%s)+`,
+					standaloneExpressionRegex(1),
+					standaloneExpressionRegex(1),
 				),
-				append(
-					[]MatcherCode{
-						newlineTokenCode,
-						additionOperatorTokenCode,
-					},
-
-					standaloneExpressionCodes...,
-				)...,
+				append([]MatcherCode{identifierExpressionCode}, standaloneExpressionCodes...)...,
 			),
 		},
 
@@ -312,15 +277,6 @@ func (parser *Parser) Parse() Expression {
 
 func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expression {
 	switch tree.Value.type_ {
-	case additionExpressionCode:
-		/*
-		 * Addition is assumed to be associative.
-		 * We take advantage of this to parallelize it as much as possible.
-		 */
-		return newBalancedAdditionFromSummands(
-			parseParsableMatchTrees[Expression](parser, tree.Children),
-		)
-
 	case assignmentExpressionCode:
 		i := tree.Value.subgroups[0][0]
 
@@ -385,6 +341,23 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 			Content: parser.FileContent[token.start:token.end],
 		}
 
+	case infixCallExpressionCode:
+		result := parser.parseMatchTree(tree.Children[0])
+
+		for i := 1; i < len(tree.Children); i += 2 {
+			result = &CallExpression{
+				Function: &SelectExpression{
+					Value:   result,
+					Field:   parser.parseMatchTree(tree.Children[i]).(*IdentifierExpression),
+					IsInfix: true,
+				},
+
+				Arguments: []Expression{parser.parseMatchTree(tree.Children[i+1])},
+			}
+		}
+
+		return result
+
 	case integerExpressionCode:
 		token := parser.Tokens[tree.Value.start]
 
@@ -401,8 +374,9 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 
 		for _, identifier := range identifiers {
 			result = &SelectExpression{
-				Value: result,
-				Field: identifier,
+				Value:   result,
+				Field:   identifier,
+				IsInfix: false,
 			}
 		}
 

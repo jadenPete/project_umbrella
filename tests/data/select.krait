@@ -2,7 +2,7 @@ println("Hello, " + "world!")
 println(
 	"Hello, "
 		.
-		__plus__("world!")
+		+("world!")
 )
 
 println("Hello, world!".__to_str__.__to_str__())
