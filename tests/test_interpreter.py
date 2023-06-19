@@ -1,5 +1,13 @@
 from tests import output_from_code, output_from_filename
 
+def test_arithmetic():
+	assert set(output_from_filename("arithmetic.krait").splitlines()) == {
+		"4",
+		"10",
+		"4.5",
+		"5"
+	}
+
 def test_calls():
 	assert output_from_filename("call.krait") == "Hello, world!\n"
 	assert \

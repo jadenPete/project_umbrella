@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"os"
 )
 
@@ -24,36 +25,44 @@ func ExpressionToBytecodeFromCache(expression Expression, fileContent string) *B
 	} else if homeDirectory, ok := os.LookupEnv("HOME"); ok {
 		appDirectory = fmt.Sprintf("%s/.cache/projectumbrella", homeDirectory)
 	} else {
-		panic("Parser error: The HOME environment variable is undefined.")
+		log.Println(
+			"Parser warning: The HOME environment variable is undefined. The cache will not be used when generating bytecode.",
+		)
 	}
 
-	if os.MkdirAll(appDirectory, 0755) != nil {
-		panic(fmt.Sprintf("Couldn't create the directory %s", appDirectory))
-	}
+	var bytecodePath string
 
-	checksum := sourceChecksum(fileContent)
+	if appDirectory != "" {
+		if os.MkdirAll(appDirectory, 0755) != nil {
+			panic(fmt.Sprintf("Couldn't create the directory %s", appDirectory))
+		}
 
-	bytecodePath := fmt.Sprintf("%s/%s.krc", appDirectory, hex.EncodeToString(checksum[:16]))
+		checksum := sourceChecksum(fileContent)
 
-	file, err := os.Open(bytecodePath)
+		bytecodePath = fmt.Sprintf("%s/%s.krc", appDirectory, hex.EncodeToString(checksum[:16]))
 
-	if err == nil {
-		defer func() {
-			if err := file.Close(); err != nil {
-				panic(err)
-			}
-		}()
+		file, err := os.Open(bytecodePath)
 
-		if encoded, err := io.ReadAll(file); err == nil {
-			if bytecode := DecodeBytecode(encoded); bytecode.sourceChecksum == checksum {
-				return bytecode
+		if err == nil {
+			defer func() {
+				if err := file.Close(); err != nil {
+					panic(err)
+				}
+			}()
+
+			if encoded, err := io.ReadAll(file); err == nil {
+				if bytecode := DecodeBytecode(encoded); bytecode.sourceChecksum == checksum {
+					return bytecode
+				}
 			}
 		}
 	}
 
 	bytecode := NewBytecodeTranslator().ExpressionToBytecode(expression, fileContent)
 
-	os.WriteFile(bytecodePath, bytecode.Encode(), 0644)
+	if bytecodePath != "" {
+		os.WriteFile(bytecodePath, bytecode.Encode(), 0644)
+	}
 
 	return bytecode
 }
