@@ -51,9 +51,9 @@ import (
 	"project_umbrella/interpreter/common"
 )
 
-const ChecksumSize = 32
+const checksumSize = 32
 
-var builtInFields = map[string]*BuiltInField{
+var builtInFields = map[string]*builtInField{
 	"__to_str__": {-1, false},
 	"+":          {-2, true},
 	"-":          {-3, true},
@@ -66,17 +66,17 @@ var builtinValues = map[string]int{
 	"println": -2,
 }
 
-func sourceChecksum(fileContent string) [ChecksumSize]byte {
+func sourceChecksum(fileContent string) [checksumSize]byte {
 	return sha256.Sum256([]byte(fileContent))
 }
 
-type BuiltInField struct {
+type builtInField struct {
 	id            int
 	isInfixMethod bool
 }
 
 type Bytecode struct {
-	sourceChecksum [ChecksumSize]byte
+	sourceChecksum [checksumSize]byte
 	Constants      []Constant
 	Instructions   []*Instruction
 }

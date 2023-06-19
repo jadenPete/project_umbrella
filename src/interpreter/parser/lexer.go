@@ -2,9 +2,9 @@ package parser
 
 type TokenType MatcherCode
 type Token struct {
-	type_ TokenType
-	start int
-	end   int
+	Type  TokenType
+	Start int
+	End   int
 }
 
 const (
@@ -22,7 +22,7 @@ const (
 )
 
 var matcher = ExhaustiveMatcher{
-	patterns: []*ExhaustiveMatchPattern{
+	[]*ExhaustiveMatchPattern{
 		{
 			MatcherCode(StringToken),
 			CompileMatcher(`"[^"]*"`),
@@ -103,11 +103,11 @@ func (lexer *Lexer) Parse() []*Token {
 	result := make([]*Token, 0)
 
 	for _, match := range matches {
-		if match.type_ != MatcherCode(SpaceToken) {
+		if match.Type != MatcherCode(SpaceToken) {
 			result = append(result, &Token{
-				type_: TokenType(match.type_),
-				start: match.start,
-				end:   match.end,
+				Type:  TokenType(match.Type),
+				Start: match.Start,
+				End:   match.End,
 			})
 		}
 	}

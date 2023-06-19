@@ -145,13 +145,13 @@ func (matcher *Matcher) FindAllSubmatchIndex(input MatcherInput, maximum int) []
 }
 
 type ExhaustiveMatch struct {
-	type_ MatcherCode
+	Type MatcherCode
 
 	// The start index of the match in the input.
-	start int
+	Start int
 
 	// The end index of the match in the input.
-	end int
+	End int
 
 	/*
 	 * The match subgroups as captured by Go's regular expression engine.
@@ -159,16 +159,16 @@ type ExhaustiveMatch struct {
 	 * Note that these are not relative to the input, but to the start of the match. Furthermore, in
 	 * hierarchical matching, these will be in terms of this match's children.
 	 */
-	subgroups [][2]int
+	Subgroups [][2]int
 }
 
 type ExhaustiveMatchPattern struct {
-	type_   MatcherCode
-	matcher *Matcher
+	Type    MatcherCode
+	Matcher *Matcher
 }
 
 type ExhaustiveMatcher struct {
-	patterns []*ExhaustiveMatchPattern
+	Patterns []*ExhaustiveMatchPattern
 }
 
 const unrecognizedCode MatcherCode = 0
@@ -177,7 +177,7 @@ func compiledExhaustiveMatchTreeArray(uncompiled []*common.Tree[*ExhaustiveMatch
 	input := make([]MatcherCode, 0, len(uncompiled))
 
 	for _, tree := range uncompiled {
-		input = append(input, tree.Value.type_)
+		input = append(input, tree.Value.Type)
 	}
 
 	return CompileInput(input)
@@ -191,7 +191,7 @@ func flattenedExhaustiveMatchTree(tree *common.BinaryTree[*ExhaustiveMatch]) []*
 			return false
 		}
 
-		if node.Value.type_ == unrecognizedCode {
+		if node.Value.Type == unrecognizedCode {
 			return true
 		}
 
@@ -213,9 +213,9 @@ func flattenedExhaustiveMatchTree(tree *common.BinaryTree[*ExhaustiveMatch]) []*
 func (matcher *ExhaustiveMatcher) Match(input MatcherInput) []*ExhaustiveMatch {
 	tree := &common.BinaryTree[*ExhaustiveMatch]{
 		Value: &ExhaustiveMatch{
-			type_: unrecognizedCode,
-			start: 0,
-			end:   len(input),
+			Type:  unrecognizedCode,
+			Start: 0,
+			End:   len(input),
 		},
 	}
 
@@ -229,18 +229,18 @@ func (matcher *ExhaustiveMatcher) Match(input MatcherInput) []*ExhaustiveMatch {
 		replacements := make([]*ExhaustiveMatch, 0)
 		lastMatchEnd := 0
 
-		for _, pattern := range matcher.patterns {
-			type_, matcher := pattern.type_, pattern.matcher
+		for _, pattern := range matcher.Patterns {
+			type_, matcher := pattern.Type, pattern.Matcher
 
 			for _, match := range matcher.FindAllSubmatchIndex(
-				input[node.Value.start:node.Value.end],
+				input[node.Value.Start:node.Value.End],
 				-1,
 			) {
 				if match[0] > lastMatchEnd {
 					replacements = append(replacements, &ExhaustiveMatch{
-						type_: unrecognizedCode,
-						start: node.Value.start + lastMatchEnd,
-						end:   node.Value.start + match[0],
+						Type:  unrecognizedCode,
+						Start: node.Value.Start + lastMatchEnd,
+						End:   node.Value.Start + match[0],
 					})
 				}
 
@@ -251,10 +251,10 @@ func (matcher *ExhaustiveMatcher) Match(input MatcherInput) []*ExhaustiveMatch {
 				}
 
 				replacements = append(replacements, &ExhaustiveMatch{
-					type_:     type_,
-					start:     node.Value.start + match[0],
-					end:       node.Value.start + match[1],
-					subgroups: subgroups,
+					Type:      type_,
+					Start:     node.Value.Start + match[0],
+					End:       node.Value.Start + match[1],
+					Subgroups: subgroups,
 				})
 
 				lastMatchEnd = match[1]
@@ -269,18 +269,18 @@ func (matcher *ExhaustiveMatcher) Match(input MatcherInput) []*ExhaustiveMatch {
 			return nil
 		}
 
-		if node.Value.start+lastMatchEnd < node.Value.end {
+		if node.Value.Start+lastMatchEnd < node.Value.End {
 			replacements = append(replacements, &ExhaustiveMatch{
-				type_: unrecognizedCode,
-				start: node.Value.start + lastMatchEnd,
-				end:   node.Value.end,
+				Type:  unrecognizedCode,
+				Start: node.Value.Start + lastMatchEnd,
+				End:   node.Value.End,
 			})
 		}
 
 		*node = *common.NewBalancedBinaryTreeFromSlice(replacements)
 
 		node.DFS(func(descendent *common.BinaryTree[*ExhaustiveMatch]) bool {
-			if descendent.Value != nil && descendent.Value.type_ == unrecognizedCode {
+			if descendent.Value != nil && descendent.Value.Type == unrecognizedCode {
 				stack = append(stack, descendent)
 			}
 
@@ -303,10 +303,10 @@ func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*E
 		unmatched = append(unmatched, &common.Tree[*ExhaustiveMatch]{
 			Children: []*common.Tree[*ExhaustiveMatch]{},
 			Value: &ExhaustiveMatch{
-				type_:     code,
-				start:     i,
-				end:       i + 1,
-				subgroups: make([][2]int, 0),
+				Type:      code,
+				Start:     i,
+				End:       i + 1,
+				Subgroups: make([][2]int, 0),
 			},
 		})
 	}
@@ -317,7 +317,7 @@ func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*E
 		changed := false
 		recompile := true
 
-		for _, pattern := range matcher.patterns {
+		for _, pattern := range matcher.Patterns {
 			if recompile {
 				compiled = compiledExhaustiveMatchTreeArray(unmatched)
 				recompile = false
@@ -327,7 +327,7 @@ func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*E
 
 			i := 0
 
-			for _, match := range pattern.matcher.FindAllSubmatchIndex(compiled, -1) {
+			for _, match := range pattern.Matcher.FindAllSubmatchIndex(compiled, -1) {
 				changed = true
 				recompile = true
 
@@ -348,12 +348,12 @@ func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*E
 				var end int
 
 				if len(unmatched) > 0 {
-					start = unmatched[match[0]].Value.start
+					start = unmatched[match[0]].Value.Start
 
 					if match[0] == match[1] {
 						end = start
 					} else {
-						end = unmatched[match[1]-1].Value.end
+						end = unmatched[match[1]-1].Value.End
 					}
 				}
 
@@ -361,10 +361,10 @@ func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*E
 				squashed = append(squashed, &common.Tree[*ExhaustiveMatch]{
 					Children: unmatched[match[0]:match[1]],
 					Value: &ExhaustiveMatch{
-						type_:     pattern.type_,
-						start:     start,
-						end:       end,
-						subgroups: subgroups,
+						Type:      pattern.Type,
+						Start:     start,
+						End:       end,
+						Subgroups: subgroups,
 					},
 				})
 

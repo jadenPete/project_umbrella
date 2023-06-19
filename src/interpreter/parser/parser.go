@@ -222,10 +222,10 @@ func standaloneExpressionRegex(startingSubstitutionIndex int) string {
 }
 
 var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
-	patterns: []*ExhaustiveMatchPattern{
+	[]*ExhaustiveMatchPattern{
 		{
-			type_: selectExpressionCode,
-			matcher: CompileMatcher(
+			Type: selectExpressionCode,
+			Matcher: CompileMatcher(
 				fmt.Sprintf(`%s(?:{0}?{1}{0}?{2})+`, standaloneExpressionRegex(3)),
 				append(
 					[]MatcherCode{
@@ -240,8 +240,8 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		},
 
 		{
-			type_: callExpressionCode,
-			matcher: CompileMatcher(
+			Type: callExpressionCode,
+			Matcher: CompileMatcher(
 				fmt.Sprintf(
 					`%s{0}?{1}{0}?(%s(?:{0}?{2}%s)*)?{0}?{3}`,
 					standaloneExpressionRegex(4),
@@ -262,8 +262,8 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		},
 
 		{
-			type_: infixCallExpressionCode,
-			matcher: CompileMatcher(
+			Type: infixCallExpressionCode,
+			Matcher: CompileMatcher(
 				fmt.Sprintf(
 					`%s(?:{0}%s)+`,
 					standaloneExpressionRegex(1),
@@ -274,8 +274,8 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		},
 
 		{
-			type_: assignmentExpressionCode,
-			matcher: CompileMatcher(
+			Type: assignmentExpressionCode,
+			Matcher: CompileMatcher(
 				fmt.Sprintf(`(?:{0}{1}?{2}{1}?)+(%s)`, standaloneExpressionRegex(3)),
 				append(
 					[]MatcherCode{
@@ -290,28 +290,28 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		},
 
 		{
-			type_:   floatExpressionCode,
-			matcher: CompileMatcher(`{0}`, floatTokenCode),
+			Type:    floatExpressionCode,
+			Matcher: CompileMatcher(`{0}`, floatTokenCode),
 		},
 
 		{
-			type_:   identifierExpressionCode,
-			matcher: CompileMatcher(`{0}`, identifierTokenCode),
+			Type:    identifierExpressionCode,
+			Matcher: CompileMatcher(`{0}`, identifierTokenCode),
 		},
 
 		{
-			type_:   integerExpressionCode,
-			matcher: CompileMatcher(`{0}`, integerTokenCode),
+			Type:    integerExpressionCode,
+			Matcher: CompileMatcher(`{0}`, integerTokenCode),
 		},
 
 		{
-			type_:   stringExpressionCode,
-			matcher: CompileMatcher(`{0}`, stringTokenCode),
+			Type:    stringExpressionCode,
+			Matcher: CompileMatcher(`{0}`, stringTokenCode),
 		},
 
 		{
-			type_: expressionListExpressionCode,
-			matcher: CompileMatcher(
+			Type: expressionListExpressionCode,
+			Matcher: CompileMatcher(
 				fmt.Sprintf(
 					`^{0}?(?:(?:%s{0})*%s{0}?)?$`,
 					standaloneExpressionRegex(1),
@@ -332,7 +332,7 @@ func (parser *Parser) Parse() Expression {
 	input := make([]MatcherCode, 0, len(parser.Tokens))
 
 	for _, token := range parser.Tokens {
-		input = append(input, tokenTypeCodes[token.type_])
+		input = append(input, tokenTypeCodes[token.Type])
 	}
 
 	tree := parserExhaustiveMatcher.MatchTree(input)
@@ -345,19 +345,19 @@ func (parser *Parser) Parse() Expression {
 }
 
 func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expression {
-	switch tree.Value.type_ {
+	switch tree.Value.Type {
 	case assignmentExpressionCode:
-		i := tree.Value.subgroups[0][0]
+		i := tree.Value.Subgroups[0][0]
 
 		names := parseParsableMatchTrees[*IdentifierExpression](parser, tree.Children[:i])
 
 		return &AssignmentExpression{
 			Names: names,
-			Value: parser.parseMatchTree(tree.Children[tree.Value.subgroups[0][0]]),
+			Value: parser.parseMatchTree(tree.Children[tree.Value.Subgroups[0][0]]),
 		}
 
 	case callExpressionCode:
-		argumentSubgroup := tree.Value.subgroups[0]
+		argumentSubgroup := tree.Value.Subgroups[0]
 
 		var arguments []Expression
 
@@ -380,7 +380,7 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 
 		var i int
 
-		if len(tree.Children) > 0 && tree.Children[0].Value.type_ == newlineTokenCode {
+		if len(tree.Children) > 0 && tree.Children[0].Value.Type == newlineTokenCode {
 			i = 1
 		} else {
 			i = 0
@@ -395,19 +395,19 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 		return &ExpressionListExpression{children}
 
 	case floatExpressionCode:
-		token := parser.Tokens[tree.Value.start]
+		token := parser.Tokens[tree.Value.Start]
 
-		value, _ := strconv.ParseFloat(parser.FileContent[token.start:token.end], 32)
+		value, _ := strconv.ParseFloat(parser.FileContent[token.Start:token.End], 32)
 
 		return &FloatExpression{
 			Value: value,
 		}
 
 	case identifierExpressionCode:
-		token := parser.Tokens[tree.Value.start]
+		token := parser.Tokens[tree.Value.Start]
 
 		return &IdentifierExpression{
-			Content: parser.FileContent[token.start:token.end],
+			Content: parser.FileContent[token.Start:token.End],
 		}
 
 	case infixCallExpressionCode:
@@ -420,9 +420,9 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 		return newChainedInfixCallExpression(parsedChildren)
 
 	case integerExpressionCode:
-		token := parser.Tokens[tree.Value.start]
+		token := parser.Tokens[tree.Value.Start]
 
-		value, _ := strconv.ParseInt(parser.FileContent[token.start:token.end], 10, 64)
+		value, _ := strconv.ParseInt(parser.FileContent[token.Start:token.End], 10, 64)
 
 		return &IntegerExpression{
 			Value: value,
@@ -444,10 +444,10 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 		return result
 
 	case stringExpressionCode:
-		token := parser.Tokens[tree.Value.start]
+		token := parser.Tokens[tree.Value.Start]
 
 		return &StringExpression{
-			Content: parser.FileContent[token.start+1 : token.end-1],
+			Content: parser.FileContent[token.Start+1 : token.End-1],
 		}
 	}
 
