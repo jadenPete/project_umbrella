@@ -10,9 +10,12 @@
  * - print (-1)
  * - println (-2)
  *
- * Likewise, built-in fields are negative; the following are accessible.
- * - __to_str__ (-1) (available on every type)
- * - + (-2) (available on the types str, int, and float)
+ * Likewise, built-in fields are negative; the following are accessible on the following types.
+ * - __to_str__ (-1) (every type)
+ * - + (-2) (str, int, float)
+ * - - (-3) (int, float)
+ * - * (-4) (int, float)
+ * - / (-5) (int, float)
  *
  * The following instructions (listed alongside their IDs and parameters) are available.
  *
@@ -53,6 +56,9 @@ const ChecksumSize = 32
 var builtInFields = map[string]*BuiltInField{
 	"__to_str__": {-1, false},
 	"+":          {-2, true},
+	"-":          {-3, true},
+	"*":          {-4, true},
+	"/":          {-5, true},
 }
 
 var builtinValues = map[string]int{

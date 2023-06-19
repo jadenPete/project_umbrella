@@ -1,12 +1,15 @@
-from tests import output_from_code, output_from_filename
+from tests import has_expected_lines, output_from_code, output_from_filename
 
 def test_arithmetic():
-	assert set(output_from_filename("arithmetic.krait").splitlines()) == {
-		"4",
-		"10",
-		"4.5",
-		"5"
-	}
+	assert has_expected_lines(
+		output_from_filename("arithmetic.krait"),
+		["4", "10", "4.5", "5"] +
+		["1", "1"] +
+		["6", "8.75"] +
+		["0", "3.2857142857142856"]
+	)
+
+	assert output_from_filename("arithmetic_precedence.krait") == "3.5\n"
 
 def test_calls():
 	assert output_from_filename("call.krait") == "Hello, world!\n"
@@ -24,16 +27,16 @@ def test_empty():
 	assert output_from_code("\n") == ""
 
 def test_select():
-	assert set(output_from_filename("select.krait").splitlines()) == {
+	assert has_expected_lines(output_from_filename("select.krait"), [
 		"Hello, world!",
 		"Hello, world!",
 		"(built-in function)",
-	}
+	])
 
 def test_values():
 	assert output_from_filename("value_alias.krait") == "Hello, world!\nHello, world!\n"
 	assert output_from_filename("value_storing_function.krait") == "Hello, world!\n"
-	assert set(output_from_filename("value.krait").splitlines()) == {
+	assert has_expected_lines(output_from_filename("value.krait"), [
 		"Hello, world!",
 		"It's nice to see you."
-	}
+	])

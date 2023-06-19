@@ -1,6 +1,11 @@
+import collections
 import os
 import subprocess
 import tempfile
+import typing
+
+def has_expected_lines(output: str, expected_lines: typing.List[str]) -> bool:
+	return collections.Counter(output.splitlines()) == collections.Counter(expected_lines)
 
 def output_from_code(code: str) -> str:
 	with tempfile.NamedTemporaryFile(mode="w+") as file:

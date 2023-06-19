@@ -45,6 +45,75 @@ type CallExpression struct {
 	Arguments []Expression
 }
 
+/*
+ * Apply the shunting yard algorithm on a parsed operation
+ * (infix expression comprising operands and identifier operators), reducing it to an AST
+ * containing `CallExpression`s and `SelectExpression`s.
+ *
+ * Operator precedence is determined according to operators' first character.
+ * Those at the top of the following list are of higher precedence.
+ * Characters on the same row are of equal precedence.
+ *
+ * 1. *, /
+ * 2. +, -
+ * 3. Every other character
+ */
+func newChainedInfixCallExpression(operation []Expression) *CallExpression {
+	operandStack := make([]Expression, 0, len(operation)/2+1)
+	operatorStack := make([]*IdentifierExpression, 0, len(operation)/2)
+
+	evaluateTopOperation := func() {
+		topOperation := &CallExpression{
+			Function: &SelectExpression{
+				Value:   operandStack[len(operandStack)-2],
+				Field:   operatorStack[len(operatorStack)-1],
+				IsInfix: true,
+			},
+
+			Arguments: []Expression{operandStack[len(operandStack)-1]},
+		}
+
+		operandStack = operandStack[:len(operandStack)-2]
+		operatorStack = operatorStack[:len(operatorStack)-1]
+		operandStack = append(operandStack, topOperation)
+	}
+
+	for i, expression := range operation {
+		if i%2 == 0 {
+			operandStack = append(operandStack, expression)
+		} else {
+			operator := expression.(*IdentifierExpression)
+
+			for len(operatorStack) > 0 &&
+				operatorPrecedence(operatorStack[len(operatorStack)-1]) <=
+					operatorPrecedence(operator) {
+				evaluateTopOperation()
+			}
+
+			operatorStack = append(operatorStack, operator)
+		}
+	}
+
+	for len(operatorStack) > 0 {
+		evaluateTopOperation()
+	}
+
+	return operandStack[0].(*CallExpression)
+}
+
+func operatorPrecedence(operator *IdentifierExpression) int {
+	switch []rune(operator.Content)[0] {
+	case '*', '/':
+		return 0
+
+	case '+', '-':
+		return 1
+
+	default:
+		return 2
+	}
+}
+
 func (call *CallExpression) Visit(visitor *ExpressionVisitor) {
 	visitor.VisitCall(call)
 }
@@ -342,21 +411,13 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 		}
 
 	case infixCallExpressionCode:
-		result := parser.parseMatchTree(tree.Children[0])
+		parsedChildren := make([]Expression, 0, len(tree.Children))
 
-		for i := 1; i < len(tree.Children); i += 2 {
-			result = &CallExpression{
-				Function: &SelectExpression{
-					Value:   result,
-					Field:   parser.parseMatchTree(tree.Children[i]).(*IdentifierExpression),
-					IsInfix: true,
-				},
-
-				Arguments: []Expression{parser.parseMatchTree(tree.Children[i+1])},
-			}
+		for _, child := range tree.Children {
+			parsedChildren = append(parsedChildren, parser.parseMatchTree(child))
 		}
 
-		return result
+		return newChainedInfixCallExpression(parsedChildren)
 
 	case integerExpressionCode:
 		token := parser.Tokens[tree.Value.start]

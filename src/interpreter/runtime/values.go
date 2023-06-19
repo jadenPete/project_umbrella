@@ -15,6 +15,9 @@ type builtInFieldID int
 const (
 	toStringMethodID builtInFieldID = -1
 	plusMethodID     builtInFieldID = -2
+	minusMethodID    builtInFieldID = -3
+	timesMethodID    builtInFieldID = -4
+	overMethodID     builtInFieldID = -5
 )
 
 type builtInFunctionID int
@@ -75,9 +78,10 @@ type builtInFunction struct {
 	evaluator     func(runtime_ *runtime, arguments ...value) value
 }
 
-func generatePlusMethod[T value](
-	adder func(rightHandSide T) T,
-	incorrectTypeErrorMessage string,
+func generateInfixMethod[T value](
+	operation func(rightHandSide T) T,
+	typeName string,
+	methodName string,
 ) *builtInFunction {
 	return &builtInFunction{
 		argumentCount: 1,
@@ -85,10 +89,16 @@ func generatePlusMethod[T value](
 			argument, ok := arguments[0].(T)
 
 			if !ok {
-				panic(incorrectTypeErrorMessage)
+				panic(
+					fmt.Sprintf(
+						"Runtime error: Expected the right-hand side of %[1]s#%[2]s to be of type %[1]s.",
+						typeName,
+						methodName,
+					),
+				)
 			}
 
-			return adder(argument)
+			return operation(argument)
 		},
 	}
 }
@@ -116,7 +126,7 @@ func (function *builtInFunction) evaluate(runtime_ *runtime, arguments ...value)
 	if !function.isVariadic && len(arguments) != function.argumentCount {
 		panic(
 			fmt.Sprintf(
-				"Runtime error: A function that accepts %d arguments was called with %d arguments",
+				"Runtime error: A function that accepts %d arguments was called with %d arguments.",
 				len(arguments),
 				function.argumentCount,
 			),
@@ -223,7 +233,7 @@ func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments
 
 				panic(
 					fmt.Sprintf(
-						"Runtime error: %d is not a recognized field ID for the value `%s`",
+						"Runtime error: %d is not a recognized field ID for the value `%s`.",
 						fieldID,
 						toString(runtime_, structValue),
 					),
@@ -250,12 +260,46 @@ func (value_ floatValue) definition() *valueDefinition {
 				return fmt.Sprintf("%g", value_.value)
 			}),
 
-			plusMethodID: generatePlusMethod(
+			plusMethodID: generateInfixMethod(
 				func(rightHandSide floatValue) floatValue {
 					return floatValue{value_.value + rightHandSide.value}
 				},
 
-				"Runtime error: Expected the right-hand side of float#+ to be of type float",
+				"float",
+				"+",
+			),
+
+			minusMethodID: generateInfixMethod(
+				func(rightHandSide floatValue) floatValue {
+					return floatValue{value_.value - rightHandSide.value}
+				},
+
+				"float",
+				"-",
+			),
+
+			timesMethodID: generateInfixMethod(
+				func(rightHandSide floatValue) floatValue {
+					return floatValue{value_.value * rightHandSide.value}
+				},
+
+				"float",
+				"*",
+			),
+
+			overMethodID: generateInfixMethod(
+				func(rightHandSide floatValue) floatValue {
+					if rightHandSide.value == 0 {
+						panic(
+							"Runtime error: Expected the right-hand side of float#/ to be nonzero.",
+						)
+					}
+
+					return floatValue{value_.value / rightHandSide.value}
+				},
+
+				"float",
+				"/",
 			),
 		},
 	}
@@ -272,12 +316,46 @@ func (value_ integerValue) definition() *valueDefinition {
 				return fmt.Sprintf("%d", value_.value)
 			}),
 
-			plusMethodID: generatePlusMethod(
+			plusMethodID: generateInfixMethod(
 				func(rightHandSide integerValue) integerValue {
 					return integerValue{value_.value + rightHandSide.value}
 				},
 
-				"Runtime error: Expected the right-hand side of int#+ to be of type int",
+				"int",
+				"+",
+			),
+
+			minusMethodID: generateInfixMethod(
+				func(rightHandSide integerValue) integerValue {
+					return integerValue{value_.value - rightHandSide.value}
+				},
+
+				"int",
+				"-",
+			),
+
+			timesMethodID: generateInfixMethod(
+				func(rightHandSide integerValue) integerValue {
+					return integerValue{value_.value * rightHandSide.value}
+				},
+
+				"int",
+				"*",
+			),
+
+			overMethodID: generateInfixMethod(
+				func(rightHandSide integerValue) integerValue {
+					if rightHandSide.value == 0 {
+						panic(
+							"Runtime error: Expected the right-hand side of int#/ to be nonzero.",
+						)
+					}
+
+					return integerValue{value_.value / rightHandSide.value}
+				},
+
+				"int",
+				"/",
 			),
 		},
 	}
@@ -297,12 +375,13 @@ func (value_ stringValue) definition() *valueDefinition {
 				},
 			},
 
-			plusMethodID: generatePlusMethod(
+			plusMethodID: generateInfixMethod(
 				func(rightHandSide stringValue) stringValue {
 					return stringValue{value_.content + rightHandSide.content}
 				},
 
-				"Runtime error: Expected the right-hand side of str#+ to be of type str",
+				"str",
+				"+",
 			),
 		},
 	}
