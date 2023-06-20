@@ -165,10 +165,12 @@ const (
 	commaTokenCode
 	floatTokenCode
 	identifierTokenCode
+	indentTokenCode
+	outdentTokenCode
+	newlineTokenCode
 	integerTokenCode
 	leftParenthesisTokenCode
 	rightParenthesisTokenCode
-	newlineTokenCode
 	selectOperatorTokenCode
 	stringTokenCode
 
@@ -188,14 +190,17 @@ var tokenTypeCodes = map[TokenType]MatcherCode{
 	CommaToken:              commaTokenCode,
 	FloatToken:              floatTokenCode,
 	IdentifierToken:         identifierTokenCode,
+	IndentToken:             indentTokenCode,
+	OutdentToken:            outdentTokenCode,
+	NewlineToken:            newlineTokenCode,
 	IntegerToken:            integerTokenCode,
 	LeftParenthesisToken:    leftParenthesisTokenCode,
 	RightParenthesisToken:   rightParenthesisTokenCode,
-	NewlineToken:            newlineTokenCode,
 	SelectOperatorToken:     selectOperatorTokenCode,
 	StringToken:             stringTokenCode,
 }
 
+var formattingExpressionCodes = []MatcherCode{indentTokenCode, outdentTokenCode, newlineTokenCode}
 var standaloneExpressionCodes = []MatcherCode{
 	assignmentExpressionCode,
 	callExpressionCode,
@@ -207,12 +212,12 @@ var standaloneExpressionCodes = []MatcherCode{
 	stringExpressionCode,
 }
 
-func standaloneExpressionRegex(startingSubstitutionIndex int) string {
+func compositeExpressionRegex(expressionCodes []MatcherCode, startingSubstitutionIndex int) string {
 	var stringBuilder strings.Builder
 
 	stringBuilder.WriteString(`[`)
 
-	for i := startingSubstitutionIndex; i < startingSubstitutionIndex+len(standaloneExpressionCodes); i += 1 {
+	for i := startingSubstitutionIndex; i < startingSubstitutionIndex+len(expressionCodes); i++ {
 		stringBuilder.WriteString(fmt.Sprintf(`{%d}`, i))
 	}
 
@@ -226,15 +231,22 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 		{
 			Type: selectExpressionCode,
 			Matcher: CompileMatcher(
-				fmt.Sprintf(`%s(?:{0}?{1}{0}?{2})+`, standaloneExpressionRegex(3)),
-				append(
-					[]MatcherCode{
-						newlineTokenCode,
-						selectOperatorTokenCode,
-						identifierExpressionCode,
-					},
+				fmt.Sprintf(
+					`%[1]s(?:%[2]s*{0}%[2]s*{1})+`,
+					compositeExpressionRegex(standaloneExpressionCodes, 2),
+					compositeExpressionRegex(
+						formattingExpressionCodes,
+						len(standaloneExpressionCodes)+2,
+					),
+				),
 
-					standaloneExpressionCodes...,
+				append(
+					append(
+						[]MatcherCode{selectOperatorTokenCode, identifierExpressionCode},
+						standaloneExpressionCodes...,
+					),
+
+					formattingExpressionCodes...,
 				)...,
 			),
 		},
@@ -243,20 +255,28 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 			Type: callExpressionCode,
 			Matcher: CompileMatcher(
 				fmt.Sprintf(
-					`%s{0}?{1}{0}?(%s(?:{0}?{2}%s)*)?{0}?{3}`,
-					standaloneExpressionRegex(4),
-					standaloneExpressionRegex(4),
-					standaloneExpressionRegex(4),
+					`%[1]s[{0}{1}]?{2}%[2]s*(%[1]s(?:%[2]s*{3}%[1]s)*)?%[2]s*{4}`,
+					compositeExpressionRegex(standaloneExpressionCodes, 5),
+					compositeExpressionRegex(
+						formattingExpressionCodes,
+						len(standaloneExpressionCodes)+5,
+					),
 				),
-				append(
-					[]MatcherCode{
-						newlineTokenCode,
-						leftParenthesisTokenCode,
-						commaTokenCode,
-						rightParenthesisTokenCode,
-					},
 
-					standaloneExpressionCodes...,
+				append(
+					append(
+						[]MatcherCode{
+							indentTokenCode,
+							outdentTokenCode,
+							leftParenthesisTokenCode,
+							commaTokenCode,
+							rightParenthesisTokenCode,
+						},
+
+						standaloneExpressionCodes...,
+					),
+
+					formattingExpressionCodes...,
 				)...,
 			),
 		},
@@ -265,24 +285,38 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 			Type: infixCallExpressionCode,
 			Matcher: CompileMatcher(
 				fmt.Sprintf(
-					`%s(?:{0}%s)+`,
-					standaloneExpressionRegex(1),
-					standaloneExpressionRegex(1),
+					`%[1]s(?:%[2]s*{0}%[2]s*%[1]s)+`,
+					compositeExpressionRegex(standaloneExpressionCodes, 1),
+					compositeExpressionRegex(
+						formattingExpressionCodes,
+						len(standaloneExpressionCodes)+1,
+					),
 				),
-				append([]MatcherCode{identifierExpressionCode}, standaloneExpressionCodes...)...,
+
+				append(
+					append([]MatcherCode{identifierExpressionCode}, standaloneExpressionCodes...),
+					formattingExpressionCodes...,
+				)...,
 			),
 		},
 
 		{
 			Type: assignmentExpressionCode,
 			Matcher: CompileMatcher(
-				fmt.Sprintf(`(?:{0}{1}?{2}{1}?)+(%s)`, standaloneExpressionRegex(3)),
+				fmt.Sprintf(
+					`(?:{0}%[1]s*{1}%[1]s*)+(%[2]s)`,
+					compositeExpressionRegex(formattingExpressionCodes, 2),
+					compositeExpressionRegex(
+						standaloneExpressionCodes,
+						len(formattingExpressionCodes)+2,
+					),
+				),
+
 				append(
-					[]MatcherCode{
-						identifierExpressionCode,
-						newlineTokenCode,
-						assignmentOperatorTokenCode,
-					},
+					append(
+						[]MatcherCode{identifierExpressionCode, assignmentOperatorTokenCode},
+						formattingExpressionCodes...,
+					),
 
 					standaloneExpressionCodes...,
 				)...,
@@ -313,10 +347,10 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 			Type: expressionListExpressionCode,
 			Matcher: CompileMatcher(
 				fmt.Sprintf(
-					`^{0}?(?:(?:%s{0})*%s{0}?)?$`,
-					standaloneExpressionRegex(1),
-					standaloneExpressionRegex(1),
+					`^{0}*(?:(?:%[1]s{0}+)*%[1]s{0}*)?$`,
+					compositeExpressionRegex(standaloneExpressionCodes, 1),
 				),
+
 				append([]MatcherCode{newlineTokenCode}, standaloneExpressionCodes...)...,
 			),
 		},
@@ -328,6 +362,85 @@ type Parser struct {
 	Tokens      []*Token
 }
 
+/*
+ * This function was added to solve the problem of what I've deemed hanging expressions.
+ * Consider the following program.
+ *
+ * ```
+ * message =
+ *     "Hello, world!"
+ *
+ * println(message)
+ * ```
+ *
+ * Although the assignment to `message` and call to `println` will be parsed correctly,
+ * the former is implicitly followed by a newline, then outdent token. This is a problem because
+ * conjoining both expressions into a final expression list requires they be separated only by
+ * newlines.
+ *
+ * To solve this issue, we "float" indentation parsed in an expression out and to the right of that
+ * expression, cancelling it out with converse indentation where possible. In the above example, the
+ * indent token inside the assignment would float outward and cancel with the outdent following the
+ * assignment, allowing for the formation of a proper expression list.
+ */
+func addIndentationAfterHangingExpressions(
+	unmatched []*common.Tree[*ExhaustiveMatch],
+	newIndices []int,
+) []*common.Tree[*ExhaustiveMatch] {
+	result := make([]*common.Tree[*ExhaustiveMatch], 0)
+
+	indentsNeeded := 0
+	i := 0
+
+	for j, tree := range unmatched {
+		if tree.Value.Type == indentTokenCode {
+			indentsNeeded++
+		} else if tree.Value.Type == outdentTokenCode {
+			indentsNeeded--
+		} else {
+			if tree.Value.Type != newlineTokenCode {
+				var indentMatcherCode MatcherCode
+
+				if indentsNeeded >= 0 {
+					indentMatcherCode = indentTokenCode
+				} else {
+					indentMatcherCode = outdentTokenCode
+				}
+
+				for i := 0; i < common.Abs(indentsNeeded); i++ {
+					result = append(result, &common.Tree[*ExhaustiveMatch]{
+						Children: make([]*common.Tree[*ExhaustiveMatch], 0),
+						Value: &ExhaustiveMatch{
+							Type:      indentMatcherCode,
+							Start:     tree.Value.Start,
+							End:       tree.Value.Start,
+							Subgroups: make([][2]int, 0),
+						},
+					})
+				}
+
+				indentsNeeded = 0
+
+				if i < len(newIndices) && newIndices[i] == j {
+					for _, child := range tree.Children {
+						if child.Value.Type == indentTokenCode {
+							indentsNeeded++
+						} else if child.Value.Type == outdentTokenCode {
+							indentsNeeded--
+						}
+					}
+
+					i++
+				}
+			}
+
+			result = append(result, tree)
+		}
+	}
+
+	return result
+}
+
 func (parser *Parser) Parse() Expression {
 	input := make([]MatcherCode, 0, len(parser.Tokens))
 
@@ -335,7 +448,10 @@ func (parser *Parser) Parse() Expression {
 		input = append(input, tokenTypeCodes[token.Type])
 	}
 
-	tree := parserExhaustiveMatcher.MatchTree(input)
+	tree := parserExhaustiveMatcher.MatchTreeWithTransformation(
+		input,
+		addIndentationAfterHangingExpressions,
+	)
 
 	if tree == nil {
 		return nil
@@ -376,23 +492,7 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 		}
 
 	case expressionListExpressionCode:
-		children := make([]Expression, 0, (len(tree.Children)+1)/2)
-
-		var i int
-
-		if len(tree.Children) > 0 && tree.Children[0].Value.Type == newlineTokenCode {
-			i = 1
-		} else {
-			i = 0
-		}
-
-		for i < len(tree.Children) {
-			children = append(children, parser.parseMatchTree(tree.Children[i]))
-
-			i += 2
-		}
-
-		return &ExpressionListExpression{children}
+		return &ExpressionListExpression{parseParsableMatchTrees[Expression](parser, tree.Children)}
 
 	case floatExpressionCode:
 		token := parser.Tokens[tree.Value.Start]
@@ -454,10 +554,13 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 	return nil
 }
 
-func parseParsableMatchTrees[T Expression](parser *Parser, matcheTrees []*common.Tree[*ExhaustiveMatch]) []T {
+func parseParsableMatchTrees[T Expression](
+	parser *Parser,
+	matchTrees []*common.Tree[*ExhaustiveMatch],
+) []T {
 	parsed := make([]T, 0)
 
-	for _, matchTree := range matcheTrees {
+	for _, matchTree := range matchTrees {
 		if expression := parser.parseMatchTree(matchTree); expression != nil {
 			parsed = append(parsed, expression.(T))
 		}

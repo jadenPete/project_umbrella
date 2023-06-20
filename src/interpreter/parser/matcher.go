@@ -171,7 +171,7 @@ type ExhaustiveMatcher struct {
 	Patterns []*ExhaustiveMatchPattern
 }
 
-const unrecognizedCode MatcherCode = 0
+const UnrecognizedMatcherCode MatcherCode = 0
 
 func compiledExhaustiveMatchTreeArray(uncompiled []*common.Tree[*ExhaustiveMatch]) MatcherInput {
 	input := make([]MatcherCode, 0, len(uncompiled))
@@ -191,7 +191,7 @@ func flattenedExhaustiveMatchTree(tree *common.BinaryTree[*ExhaustiveMatch]) []*
 			return false
 		}
 
-		if node.Value.Type == unrecognizedCode {
+		if node.Value.Type == UnrecognizedMatcherCode {
 			return true
 		}
 
@@ -206,20 +206,38 @@ func flattenedExhaustiveMatchTree(tree *common.BinaryTree[*ExhaustiveMatch]) []*
 }
 
 /*
- * Perform linear matching as described in the package description.
+ * `Match` and `MatchWithInitial` perform linear matching as described in the package description.
  *
- * If the input couldn't be exhaustively matched against, this function returns `nil`.
+ * If the input couldn't be exhaustively matched against, they return `nil`.
  */
 func (matcher *ExhaustiveMatcher) Match(input MatcherInput) []*ExhaustiveMatch {
-	tree := &common.BinaryTree[*ExhaustiveMatch]{
-		Value: &ExhaustiveMatch{
-			Type:  unrecognizedCode,
+	return matcher.MatchWithInitial(input, []*ExhaustiveMatch{
+		{
+			Type:  UnrecognizedMatcherCode,
 			Start: 0,
 			End:   len(input),
 		},
+	})
+}
+
+func (matcher *ExhaustiveMatcher) MatchWithInitial(
+	input MatcherInput,
+	initialMatches []*ExhaustiveMatch,
+) []*ExhaustiveMatch {
+	tree := common.NewBalancedBinaryTreeFromSlice(initialMatches)
+	stack := make([]*common.BinaryTree[*ExhaustiveMatch], 0)
+
+	appendUnrecognizedMatchesToStack := func(node *common.BinaryTree[*ExhaustiveMatch]) {
+		node.DFS(func(node *common.BinaryTree[*ExhaustiveMatch]) bool {
+			if node.Value != nil && node.Value.Type == UnrecognizedMatcherCode {
+				stack = append(stack, node)
+			}
+
+			return false
+		})
 	}
 
-	stack := []*common.BinaryTree[*ExhaustiveMatch]{tree}
+	appendUnrecognizedMatchesToStack(tree)
 
 	for len(stack) > 0 {
 		node := stack[len(stack)-1]
@@ -238,7 +256,7 @@ func (matcher *ExhaustiveMatcher) Match(input MatcherInput) []*ExhaustiveMatch {
 			) {
 				if match[0] > lastMatchEnd {
 					replacements = append(replacements, &ExhaustiveMatch{
-						Type:  unrecognizedCode,
+						Type:  UnrecognizedMatcherCode,
 						Start: node.Value.Start + lastMatchEnd,
 						End:   node.Value.Start + match[0],
 					})
@@ -271,7 +289,7 @@ func (matcher *ExhaustiveMatcher) Match(input MatcherInput) []*ExhaustiveMatch {
 
 		if node.Value.Start+lastMatchEnd < node.Value.End {
 			replacements = append(replacements, &ExhaustiveMatch{
-				Type:  unrecognizedCode,
+				Type:  UnrecognizedMatcherCode,
 				Start: node.Value.Start + lastMatchEnd,
 				End:   node.Value.End,
 			})
@@ -279,24 +297,35 @@ func (matcher *ExhaustiveMatcher) Match(input MatcherInput) []*ExhaustiveMatch {
 
 		*node = *common.NewBalancedBinaryTreeFromSlice(replacements)
 
-		node.DFS(func(descendent *common.BinaryTree[*ExhaustiveMatch]) bool {
-			if descendent.Value != nil && descendent.Value.Type == unrecognizedCode {
-				stack = append(stack, descendent)
-			}
-
-			return false
-		})
+		appendUnrecognizedMatchesToStack(node)
 	}
 
 	return flattenedExhaustiveMatchTree(tree)
 }
 
 /*
- * Perform hierarchical matching as described in the package description.
+ * `MatchTree` and `MatchTreeWithTransformation` perform hierarchical matching as described in the
+ * package description.
  *
- * If the input couldn't be exhaustively matched against, this function returns `nil`.
+ * If the input couldn't be exhaustively matched against, they return `nil`.
+ *
+ * `MatchTreeWithTransformation` accepts a `transformation` argument, a function transforming the
+ * current AST slice after it's modified, given it and the indices of the newly generated ASTs.
+ * See `parser.go` to understand how this argument is used (it helps with handling indentation).
  */
 func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*ExhaustiveMatch] {
+	return matcher.MatchTreeWithTransformation(
+		input,
+		func(unmatched []*common.Tree[*ExhaustiveMatch], _ []int) []*common.Tree[*ExhaustiveMatch] {
+			return unmatched
+		},
+	)
+}
+
+func (matcher *ExhaustiveMatcher) MatchTreeWithTransformation(
+	input []MatcherCode,
+	transformation func([]*common.Tree[*ExhaustiveMatch], []int) []*common.Tree[*ExhaustiveMatch],
+) *common.Tree[*ExhaustiveMatch] {
 	unmatched := make([]*common.Tree[*ExhaustiveMatch], 0, len(input))
 
 	for i, code := range input {
@@ -324,6 +353,7 @@ func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*E
 			}
 
 			squashed := make([]*common.Tree[*ExhaustiveMatch], 0)
+			squashedNewIndices := make([]int, 0)
 
 			i := 0
 
@@ -358,6 +388,7 @@ func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*E
 				}
 
 				squashed = append(squashed, unmatched[i:match[0]]...)
+				squashedNewIndices = append(squashedNewIndices, len(squashed))
 				squashed = append(squashed, &common.Tree[*ExhaustiveMatch]{
 					Children: unmatched[match[0]:match[1]],
 					Value: &ExhaustiveMatch{
@@ -372,7 +403,7 @@ func (matcher *ExhaustiveMatcher) MatchTree(input []MatcherCode) *common.Tree[*E
 			}
 
 			if recompile {
-				unmatched = append(squashed, unmatched[i:]...)
+				unmatched = transformation(append(squashed, unmatched[i:]...), squashedNewIndices)
 			}
 		}
 

@@ -1,5 +1,13 @@
 package common
 
+func Abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+
+	return x
+}
+
 /*
  * Resize a slice to a given size.
  *
