@@ -340,24 +340,20 @@ func (matcher *ExhaustiveMatcher) MatchTreeWithTransformation(
 		})
 	}
 
-	for {
-		var compiled MatcherInput
+	unmatchedCompiled := compiledExhaustiveMatchTreeArray(unmatched)
 
+	for {
 		changed := false
-		recompile := true
 
 		for _, pattern := range matcher.Patterns {
-			if recompile {
-				compiled = compiledExhaustiveMatchTreeArray(unmatched)
-				recompile = false
-			}
+			recompile := false
 
 			squashed := make([]*common.Tree[*ExhaustiveMatch], 0)
 			squashedNewIndices := make([]int, 0)
 
 			i := 0
 
-			for _, match := range pattern.Matcher.FindAllSubmatchIndex(compiled, -1) {
+			for _, match := range pattern.Matcher.FindAllSubmatchIndex(unmatchedCompiled, -1) {
 				changed = true
 				recompile = true
 
@@ -404,6 +400,9 @@ func (matcher *ExhaustiveMatcher) MatchTreeWithTransformation(
 
 			if recompile {
 				unmatched = transformation(append(squashed, unmatched[i:]...), squashedNewIndices)
+				unmatchedCompiled = compiledExhaustiveMatchTreeArray(unmatched)
+
+				break
 			}
 		}
 

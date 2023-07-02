@@ -26,6 +26,11 @@ def test_empty():
 	assert output_from_code("") == ""
 	assert output_from_code("\n") == ""
 
+def test_functions():
+	assert \
+		output_from_filename("function_basic.krait") == \
+		output_from_filename("function_nested.krait") == "Hello, world!\n"
+
 def test_select():
 	assert has_expected_lines(output_from_filename("select.krait"), [
 		"Hello, world!",

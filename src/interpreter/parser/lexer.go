@@ -3,8 +3,6 @@ package parser
 import (
 	"fmt"
 	"strings"
-
-	"project_umbrella/interpreter/common"
 )
 
 type TokenType MatcherCode
@@ -17,8 +15,10 @@ type Token struct {
 const (
 	StringToken TokenType = iota + 1
 	AssignmentOperatorToken
+	ColonToken
 	CommaToken
 	FloatToken
+	FunctionKeywordToken
 	IdentifierToken
 	IndentToken
 	OutdentToken
@@ -43,6 +43,11 @@ var matcher = ExhaustiveMatcher{
 		},
 
 		{
+			MatcherCode(ColonToken),
+			CompileMatcher(`:`),
+		},
+
+		{
 			MatcherCode(CommaToken),
 			CompileMatcher(`,`),
 		},
@@ -50,6 +55,16 @@ var matcher = ExhaustiveMatcher{
 		{
 			MatcherCode(FloatToken),
 			CompileMatcher(`(?:\+|-)?(?:\d+\.\d*|\.\d+)`),
+		},
+
+		{
+			MatcherCode(FunctionKeywordToken),
+			CompileMatcher(`^fn$`),
+		},
+
+		{
+			MatcherCode(IntegerToken),
+			CompileMatcher(`^(?:\+|-)?\d+$`),
 		},
 
 		{
@@ -79,12 +94,7 @@ var matcher = ExhaustiveMatcher{
 
 		{
 			MatcherCode(IdentifierToken),
-			CompileMatcher(`[^\t\n ="(),.]*[^\t\n ="(),.\d]+[^\t\n ="(),.]*`),
-		},
-
-		{
-			MatcherCode(IntegerToken),
-			CompileMatcher(`(?:\+|-)?\d+`),
+			CompileMatcher(`[^\t\n ="(),.]+`),
 		},
 	},
 }
@@ -100,7 +110,7 @@ func isLineBlank(line string) bool {
 		}
 	}
 
-	return len(line) > 0
+	return true
 }
 
 /*
@@ -134,30 +144,68 @@ func (lexer *Lexer) Parse() []*Token {
 	return result
 }
 
+/*
+ * Before we tokenize the input, we replace indentation with indent and outde nt meta-tokens, which
+ * effectively act as opening and closing tags. Iterating through each line, we record the
+ * difference in indentation between it and the previous one, adding indents or outdents to it as
+ * appropriate.
+ *
+ * For example, the following input...
+ *
+ * fn print_hello_world():
+ *     print("Hello, world!")
+ *
+ * print_hello_world()
+ *
+ * ...becomes the following.
+ *
+ * fn print_hello_world():\n
+ * ->print("Hello, world!")<-\n
+ * \n
+ * print_hello_world()\n
+ *
+ * Note that the indentation character (tab or space) and length is auto-determined and checked for
+ * consistency. Additionally, added indent tokens always precede lines, while outdent tokens always
+ * succeed them.
+ */
 func (lexer *Lexer) parseIndentation() []*ExhaustiveMatch {
 	result := make([]*ExhaustiveMatch, 0)
 
+	addMatchToResult := func(type_ MatcherCode, start int, end int) {
+		result = append(result, &ExhaustiveMatch{
+			Type:      type_,
+			Start:     start,
+			End:       end,
+			Subgroups: make([][2]int, 0),
+		})
+	}
+
+	endOfLastMatch := func() int {
+		if len(result) == 0 {
+			return 0
+		}
+
+		return result[len(result)-1].End
+	}
+
 	var indentCharacter rune
 
+	fileOffset := 0
 	indentLength := 0
 	lastIndentCount := 0
 
-	fileLines := strings.Split(lexer.FileContent, "\n")
-	fileOffset := 0
+	for _, line := range strings.Split(lexer.FileContent, "\n") {
+		isLineBlank := isLineBlank(line)
+		indentCount := 0
 
-	for i, line := range fileLines {
-		lineCharacters := []rune(line)
+		if !isLineBlank {
+			lineCharacters := []rune(line)
 
-		if !isLineBlank(line) {
-			if indentCharacter == 0 &&
-				len(lineCharacters) > 0 &&
-				(lineCharacters[0] == '\t' || lineCharacters[0] == ' ') {
+			if indentCharacter == 0 && (lineCharacters[0] == '\t' || lineCharacters[0] == ' ') {
 				indentCharacter = lineCharacters[0]
 			}
 
 			if indentCharacter != 0 {
-				indentCount := 0
-
 				for indentCount < len(lineCharacters) &&
 					lineCharacters[indentCount] == indentCharacter {
 					indentCount++
@@ -185,47 +233,43 @@ func (lexer *Lexer) parseIndentation() []*ExhaustiveMatch {
 				}
 
 				indentCount /= indentLength
-
-				indentDelta := common.Abs(indentCount - lastIndentCount)
-
-				var indentMatcherCode MatcherCode
-
-				if indentCount >= lastIndentCount {
-					indentMatcherCode = MatcherCode(IndentToken)
-				} else {
-					indentMatcherCode = MatcherCode(OutdentToken)
-				}
-
-				for i := 0; i < indentDelta; i++ {
-					result = append(result, &ExhaustiveMatch{
-						Type:      indentMatcherCode,
-						Start:     fileOffset + indentCount*indentLength,
-						End:       fileOffset + indentCount*indentLength,
-						Subgroups: make([][2]int, 0),
-					})
-				}
-
-				lastIndentCount = indentCount
 			}
 		}
 
-		start := fileOffset + lastIndentCount*indentLength
-		end := fileOffset + len(line)
+		if !isLineBlank {
+			endOfLastUnrecognizedMatch := endOfLastMatch()
+			lineStart := fileOffset + indentCount*indentLength
 
-		if i < len(fileLines)-1 {
-			end++
-		}
+			if indentCount < lastIndentCount {
+				for i := 0; i < lastIndentCount-indentCount; i++ {
+					addMatchToResult(
+						MatcherCode(OutdentToken),
+						endOfLastUnrecognizedMatch,
+						endOfLastUnrecognizedMatch,
+					)
+				}
+			}
 
-		if end-start > 0 {
-			result = append(result, &ExhaustiveMatch{
-				Type:      UnrecognizedMatcherCode,
-				Start:     start,
-				End:       end,
-				Subgroups: make([][2]int, 0),
-			})
+			if endOfLastUnrecognizedMatch > 0 {
+				addMatchToResult(UnrecognizedMatcherCode, endOfLastUnrecognizedMatch, fileOffset)
+			}
+
+			if indentCount > lastIndentCount {
+				for i := 0; i < indentCount-lastIndentCount; i++ {
+					addMatchToResult(MatcherCode(IndentToken), lineStart, lineStart)
+				}
+			}
+
+			lastIndentCount = indentCount
+
+			addMatchToResult(UnrecognizedMatcherCode, lineStart, fileOffset+len(line))
 		}
 
 		fileOffset += len(line) + 1
+	}
+
+	if endOfLastMatch() < len(lexer.FileContent) {
+		addMatchToResult(UnrecognizedMatcherCode, endOfLastMatch(), len(lexer.FileContent))
 	}
 
 	return result

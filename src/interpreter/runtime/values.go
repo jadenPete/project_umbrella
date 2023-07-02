@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"project_umbrella/interpreter/common"
 	"project_umbrella/interpreter/parser"
 )
 
@@ -20,11 +19,12 @@ const (
 	overMethodID     builtInFieldID = -5
 )
 
-type builtInFunctionID int
+type builtInValueID int
 
 const (
-	printFunctionID   builtInFunctionID = -1
-	printlnFunctionID builtInFunctionID = -2
+	printFunctionID   builtInValueID = -1
+	printlnFunctionID builtInValueID = -2
+	unitValueID       builtInValueID = -3
 )
 
 type valueDefinition struct {
@@ -136,7 +136,7 @@ func (function *builtInFunction) evaluate(runtime_ *runtime, arguments ...value)
 	return function.evaluator(runtime_, arguments...)
 }
 
-func print(runtime_ *runtime, suffix string, arguments ...value) *unitValue {
+func print(runtime_ *runtime, suffix string, arguments ...value) unitValue {
 	serialized := make([]string, 0, len(arguments))
 
 	for _, argument := range arguments {
@@ -145,7 +145,7 @@ func print(runtime_ *runtime, suffix string, arguments ...value) *unitValue {
 
 	fmt.Print(strings.Join(serialized, " ") + suffix)
 
-	return &unitValue{}
+	return unitValue{}
 }
 
 func toString(runtime_ *runtime, value_ value) string {
@@ -158,7 +158,7 @@ func toString(runtime_ *runtime, value_ value) string {
 	panic("Runtime error: __to_str__ returned a non-string.")
 }
 
-var builtInFunctions = map[builtInFunctionID]function{
+var builtInValues = map[builtInValueID]value{
 	printFunctionID: &builtInFunction{
 		isVariadic: true,
 		evaluator: func(runtime_ *runtime, arguments ...value) value {
@@ -172,10 +172,14 @@ var builtInFunctions = map[builtInFunctionID]function{
 			return print(runtime_, "\n", arguments...)
 		},
 	},
+
+	unitValueID: unitValue{},
 }
 
 type bytecodeFunction struct {
-	valueInstructions *common.Graph[[]*parser.Instruction]
+	scope      *scope
+	valueID    int
+	blockGraph *bytecodeFunctionBlockGraph
 }
 
 func (function_ *bytecodeFunction) definition() *valueDefinition {
@@ -190,63 +194,90 @@ func (function_ *bytecodeFunction) definition() *valueDefinition {
 
 // TODO: Make this concurrent
 func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments ...value) value {
-	nodes := bytecodeFunction_.valueInstructions.Nodes
-	values := make(map[int]value)
+	firstValueID := 0
+
+	if bytecodeFunction_.scope != nil {
+		firstValueID = bytecodeFunction_.valueID + 1
+	}
+
+	scope := &scope{
+		parent:       bytecodeFunction_.scope,
+		firstValueID: firstValueID,
+		values:       make(map[int]value),
+	}
 
 	for i, argument := range arguments {
-		values[i] = argument
+		scope.values[scope.firstValueID+i] = argument
 	}
 
-	bytecodeFunction_.valueInstructions.Evaluate(func(i int) {
+	nodes := bytecodeFunction_.blockGraph.graph.Nodes
+
+	bytecodeFunction_.blockGraph.graph.Evaluate(func(i int) {
 		callArguments := make([]value, 0)
 
-		for _, instruction := range nodes[i] {
-			switch instruction.Type {
-			case parser.PushArgumentInstruction:
-				callArguments = append(callArguments, values[instruction.Arguments[0]])
-
-			case parser.ValueFromCallInstruction:
-				var function_ function
-
-				if builtInFunction_, ok := builtInFunctions[builtInFunctionID(instruction.Arguments[0])]; ok {
-					function_ = builtInFunction_
-				} else {
-					function_ = values[instruction.Arguments[0]].(function)
+		nodes[i].Visit(&bytecodeFunctionBlockVisitor{
+			VisitBytecodeFunctionBlockGraph: func(blockGraph *bytecodeFunctionBlockGraph) {
+				scope.values[scope.firstValueID+i] = &bytecodeFunction{
+					scope:      scope,
+					valueID:    scope.firstValueID + i,
+					blockGraph: blockGraph,
 				}
+			},
 
-				values[i] = function_.evaluate(runtime_, callArguments...)
+			VisitInstructionList: func(instructionList_ *instructionList) {
+				for _, instruction := range instructionList_.instructions {
+					switch instruction.Type {
+					case parser.PushArgumentInstruction:
+						callArguments =
+							append(callArguments, scope.getValue(instruction.Arguments[0]))
 
-			case parser.ValueFromConstantInstruction:
-				values[i] = runtime_.constants[instruction.Arguments[0]]
+					case parser.ValueCopyInstruction:
+						scope.values[scope.firstValueID+i] =
+							scope.getValue(instruction.Arguments[0])
 
-				return
+					case parser.ValueFromCallInstruction:
+						scope.values[scope.firstValueID+i] = scope.
+							getValue(instruction.Arguments[0]).(function).
+							evaluate(runtime_, callArguments...)
 
-			case parser.ValueFromStructValueInstruction:
-				structValue := values[instruction.Arguments[0]]
-				fieldID := builtInFieldID(instruction.Arguments[1])
+					case parser.ValueFromConstantInstruction:
+						scope.values[scope.firstValueID+i] =
+							runtime_.constants[instruction.Arguments[0]]
 
-				if field, ok := structValue.definition().fields[fieldID]; ok {
-					values[i] = field
+						return
 
-					return
+					case parser.ValueFromStructValueInstruction:
+						structValue := scope.getValue(instruction.Arguments[0])
+						fieldID := builtInFieldID(instruction.Arguments[1])
+
+						if field, ok := structValue.definition().fields[fieldID]; ok {
+							scope.values[scope.firstValueID+i] = field
+
+							return
+						}
+
+						panic(
+							fmt.Sprintf(
+								"Runtime error: %d is not a recognized field ID for the value `%s`.",
+								fieldID,
+								toString(runtime_, structValue),
+							),
+						)
+					}
 				}
-
-				panic(
-					fmt.Sprintf(
-						"Runtime error: %d is not a recognized field ID for the value `%s`.",
-						fieldID,
-						toString(runtime_, structValue),
-					),
-				)
-			}
-		}
+			},
+		})
 	})
 
-	if len(values) != len(nodes) {
-		panic("Runtime error: A cycle was found in the value tree.")
+	if len(scope.values) != len(nodes) {
+		panic("Runtime error: A cycle between values was found.")
 	}
 
-	return values[len(nodes)-1]
+	if len(scope.values) == 0 {
+		panic("Internal runtime error: A function block graph was empty.")
+	}
+
+	return scope.values[len(scope.values)-1]
 }
 
 type floatValue struct {
@@ -387,9 +418,29 @@ func (value_ stringValue) definition() *valueDefinition {
 	}
 }
 
+type scope struct {
+	parent       *scope
+	firstValueID int
+	values       map[int]value
+}
+
+func (scope_ *scope) getValue(valueID int) value {
+	if builtInValue, ok := builtInValues[builtInValueID(valueID)]; ok {
+		return builtInValue
+	}
+
+	currentScope := scope_
+
+	for currentScope.firstValueID > valueID {
+		currentScope = currentScope.parent
+	}
+
+	return currentScope.values[valueID]
+}
+
 type unitValue struct{}
 
-func (value_ *unitValue) definition() *valueDefinition {
+func (value_ unitValue) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[builtInFieldID]value{
 			toStringMethodID: generateToStringMethod(func() string {
