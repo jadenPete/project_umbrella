@@ -88,12 +88,14 @@ func newRuntime(bytecode *parser.Bytecode) *runtime {
 		relativeDependencyValueID := dependencyValueID - scopeStack[i].firstValueID
 		relativeDependentValueID := len(scopeStack[i].blockGraph.graph.Nodes) - 1
 
-		if dependents, ok := scopeStack[i].blockGraph.graph.Edges[relativeDependencyValueID]; ok {
-			scopeStack[i].blockGraph.graph.Edges[relativeDependencyValueID] =
-				append(dependents, relativeDependentValueID)
-		} else {
-			scopeStack[i].blockGraph.graph.Edges[relativeDependencyValueID] =
-				[]int{relativeDependentValueID}
+		if relativeDependencyValueID != relativeDependentValueID {
+			if dependents, ok := scopeStack[i].blockGraph.graph.Edges[relativeDependencyValueID]; ok {
+				scopeStack[i].blockGraph.graph.Edges[relativeDependencyValueID] =
+					append(dependents, relativeDependentValueID)
+			} else {
+				scopeStack[i].blockGraph.graph.Edges[relativeDependencyValueID] =
+					[]int{relativeDependentValueID}
+			}
 		}
 	}
 
