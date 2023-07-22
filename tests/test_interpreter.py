@@ -1,6 +1,6 @@
 from tests import has_expected_lines, output_from_code, output_from_filename
 
-def test_arithmetic():
+def test_arithmetic() -> None:
 	assert has_expected_lines(
 		output_from_filename("arithmetic.krait"),
 		["4", "10", "4.5", "5"] +
@@ -11,10 +11,10 @@ def test_arithmetic():
 
 	assert output_from_filename("arithmetic_precedence.krait") == "3.5\n"
 
-def test_booleans():
+def test_booleans() -> None:
 	assert has_expected_lines(output_from_filename("boolean.krait"), ["true", "false"])
 
-def test_calls():
+def test_calls() -> None:
 	assert output_from_filename("call.krait") == "Hello, world!\n"
 	assert \
 		output_from_filename("call_nested.krait") == \
@@ -25,23 +25,23 @@ def test_calls():
 		""
 	}
 
-def test_empty():
+def test_empty() -> None:
 	assert output_from_code("") == ""
 	assert output_from_code("\n") == ""
 
-def test_functions():
+def test_functions() -> None:
 	assert \
 		output_from_filename("function_basic.krait") == \
 		output_from_filename("function_nested.krait") == "Hello, world!\n"
 
-def test_select():
+def test_select() -> None:
 	assert has_expected_lines(output_from_filename("select.krait"), [
 		"Hello, world!",
 		"Hello, world!",
 		"(built-in function)",
 	])
 
-def test_values():
+def test_values() -> None:
 	assert output_from_filename("value_alias.krait") == "Hello, world!\nHello, world!\n"
 	assert output_from_filename("value_storing_function.krait") == "Hello, world!\n"
 	assert has_expected_lines(output_from_filename("value.krait"), [
