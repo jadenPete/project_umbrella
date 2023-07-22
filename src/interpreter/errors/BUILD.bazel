@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "errors",
+    srcs = glob(["*.go"]),
+    importpath = "project_umbrella/interpreter/errors",
+    visibility = ["//src/interpreter:__subpackages__"],
+	deps = ["//src/interpreter/common"],
+)

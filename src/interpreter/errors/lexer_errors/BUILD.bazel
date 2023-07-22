@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "lexer_errors",
+    srcs = glob(["*.go"]),
+    importpath = "project_umbrella/interpreter/errors/lexer_errors",
+    visibility = ["//src/interpreter:__subpackages__"],
+	deps = ["//src/interpreter/errors"],
+)

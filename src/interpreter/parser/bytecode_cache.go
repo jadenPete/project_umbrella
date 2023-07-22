@@ -58,7 +58,7 @@ func ExpressionToBytecodeFromCache(expression Expression, fileContent string) *B
 		}
 	}
 
-	bytecode := NewBytecodeTranslator().ExpressionToBytecode(expression, fileContent)
+	bytecode := NewBytecodeTranslator(fileContent).ExpressionToBytecode(expression)
 
 	if bytecodePath != "" {
 		os.WriteFile(bytecodePath, bytecode.Encode(), 0644)

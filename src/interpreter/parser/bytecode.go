@@ -69,11 +69,12 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
-	"fmt"
 
 	"github.com/ugorji/go/codec"
 
 	"project_umbrella/interpreter/common"
+	"project_umbrella/interpreter/errors"
+	"project_umbrella/interpreter/errors/parser_errors"
 )
 
 const checksumSize = 32
@@ -127,19 +128,20 @@ func (bytecode *Bytecode) Encode() []byte {
 			"instructions": bytecode.Instructions,
 		},
 	) != nil {
-		panic("Internal parser error: Couldn't encode the resulting bytecode.")
+		errors.RaiseError(parser_errors.BytecodeEncodingFailed)
 	}
 
 	return output
 }
 
 type BytecodeTranslator struct {
+	fileContent   string
 	constantIDMap map[Constant]int
 	instructions  []*Instruction
 	scopeStack    []*scope
 }
 
-func NewBytecodeTranslator() *BytecodeTranslator {
+func NewBytecodeTranslator(fileContent string) *BytecodeTranslator {
 	return &BytecodeTranslator{
 		constantIDMap: make(map[Constant]int),
 		instructions:  make([]*Instruction, 0),
@@ -157,24 +159,21 @@ func (translator *BytecodeTranslator) currentScope() *scope {
 	return translator.scopeStack[len(translator.scopeStack)-1]
 }
 
-func (translator *BytecodeTranslator) ExpressionToBytecode(
-	expression Expression,
-	fileContent string,
-) *Bytecode {
+func (translator *BytecodeTranslator) ExpressionToBytecode(expression Expression) *Bytecode {
 	expressionList, ok := expression.(*ExpressionListExpression)
 
 	if !ok {
-		panic("Internal parser error: Expected an expression list, but got a different expression.")
+		errors.RaiseError(parser_errors.InvalidRootExpression)
 	}
 
 	translator.valueIDForExpression(expressionList)
 
-	return translator.generateBytecode(fileContent)
+	return translator.generateBytecode()
 }
 
-func (translator *BytecodeTranslator) generateBytecode(fileContent string) *Bytecode {
+func (translator *BytecodeTranslator) generateBytecode() *Bytecode {
 	bytecode := &Bytecode{
-		sourceChecksum: sourceChecksum(fileContent),
+		sourceChecksum: sourceChecksum(translator.fileContent),
 		Constants:      make([]Constant, 0, len(translator.constantIDMap)),
 		Instructions:   translator.instructions,
 	}
@@ -197,7 +196,7 @@ func (translator *BytecodeTranslator) generateBytecode(fileContent string) *Byte
 
 	for _, isSet := range constantsSet {
 		if !isSet {
-			panic("Internal parser error: Nonexhaustive constant ID map.")
+			errors.RaiseError(parser_errors.NonexhaustiveConstantIDMap)
 		}
 	}
 
@@ -213,7 +212,14 @@ func (translator *BytecodeTranslator) valueIDForAssignment(assignment *Assignmen
 	 */
 	for _, nameExpression := range assignment.Names {
 		if _, ok := translator.valueIDForNonBuiltInIdentifierInScope(nameExpression); ok {
-			panic("Parser error: Reassigning to an already declared value is impossible.")
+			errors.RaisePositionalError(
+				&errors.PositionalError{
+					Error:    parser_errors.ValueReassigned,
+					Position: assignment.Position(),
+				},
+
+				translator.fileContent,
+			)
 		}
 	}
 
@@ -393,11 +399,20 @@ func (translator *BytecodeTranslator) valueIDForIdentifier(identifier *Identifie
 		return valueID
 	}
 
-	if valueID, ok := builtInValues[identifier.Content]; ok {
-		return valueID
+	valueID, ok := builtInValues[identifier.Content]
+
+	if !ok {
+		errors.RaisePositionalError(
+			&errors.PositionalError{
+				Error:    parser_errors.UnknownValue(identifier.Content),
+				Position: identifier.position,
+			},
+
+			translator.fileContent,
+		)
 	}
 
-	panic(fmt.Sprintf("Parser error: Unknown value: `%s`", identifier.Content))
+	return valueID
 }
 
 func (translator *BytecodeTranslator) valueIDForFunction(function *FunctionExpression) int {
@@ -455,15 +470,28 @@ func (translator *BytecodeTranslator) valueIDForSelect(select_ *SelectExpression
 	field, ok := builtInFields[fieldName]
 
 	if !ok {
-		panic(fmt.Sprintf("Parser error: Unknown field: `%s`", fieldName))
+		errors.RaisePositionalError(
+			&errors.PositionalError{
+				Error:    parser_errors.UnknownField(fieldName),
+				Position: select_.Field.Position(),
+			},
+
+			translator.fileContent,
+		)
 	}
 
 	if select_.IsInfix && !field.isInfixMethod {
-		panic(
-			fmt.Sprintf(
-				"Parser error: `%s` cannot is not an infix method and cannot be called so.",
-				fieldName,
-			),
+		errors.RaisePositionalError(
+			&errors.PositionalError{
+				Error: parser_errors.NonInfixMethodCalledImproperly(
+					translator.fileContent[select_.Value.Position().Start:select_.Value.Position().End],
+					fieldName,
+				),
+
+				Position: select_.Field.Position(),
+			},
+
+			translator.fileContent,
 		)
 	}
 

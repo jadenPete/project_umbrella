@@ -6,9 +6,11 @@ import (
 	"strings"
 
 	"project_umbrella/interpreter/common"
+	"project_umbrella/interpreter/errors"
 )
 
 type Expression interface {
+	Position() *errors.Position
 	Visit(*ExpressionVisitor)
 }
 
@@ -29,12 +31,26 @@ type AssignmentExpression struct {
 	Value Expression
 }
 
+func (assignment *AssignmentExpression) Position() *errors.Position {
+	return &errors.Position{
+		Start: assignment.Names[0].Position().Start,
+		End:   assignment.Value.Position().End,
+	}
+}
+
 func (assignment *AssignmentExpression) Visit(visitor *ExpressionVisitor) {
 	visitor.VisitAssignment(assignment)
 }
 
 type ExpressionListExpression struct {
 	Children []Expression
+}
+
+func (expressionList *ExpressionListExpression) Position() *errors.Position {
+	return &errors.Position{
+		Start: expressionList.Children[0].Position().Start,
+		End:   expressionList.Children[len(expressionList.Children)-1].Position().End,
+	}
 }
 
 func (expressionList *ExpressionListExpression) Visit(visitor *ExpressionVisitor) {
@@ -44,6 +60,7 @@ func (expressionList *ExpressionListExpression) Visit(visitor *ExpressionVisitor
 type CallExpression struct {
 	Function  Expression
 	Arguments []Expression
+	position  *errors.Position
 }
 
 /*
@@ -72,6 +89,10 @@ func newChainedInfixCallExpression(operation []Expression) *CallExpression {
 			},
 
 			Arguments: []Expression{operandStack[len(operandStack)-1]},
+			position: &errors.Position{
+				Start: operandStack[len(operandStack)-2].Position().Start,
+				End:   operandStack[len(operandStack)-1].Position().End,
+			},
 		}
 
 		operandStack = operandStack[:len(operandStack)-2]
@@ -115,12 +136,21 @@ func operatorPrecedence(operator *IdentifierExpression) int {
 	}
 }
 
+func (call *CallExpression) Position() *errors.Position {
+	return call.position
+}
+
 func (call *CallExpression) Visit(visitor *ExpressionVisitor) {
 	visitor.VisitCall(call)
 }
 
 type FloatExpression struct {
-	Value float64
+	position *errors.Position
+	Value    float64
+}
+
+func (float *FloatExpression) Position() *errors.Position {
+	return float.position
 }
 
 func (float *FloatExpression) Visit(visitor *ExpressionVisitor) {
@@ -131,6 +161,11 @@ type FunctionExpression struct {
 	Name       *IdentifierExpression
 	Parameters []*IdentifierExpression
 	Value      *ExpressionListExpression
+	position   *errors.Position
+}
+
+func (function *FunctionExpression) Position() *errors.Position {
+	return function.position
 }
 
 func (function *FunctionExpression) Visit(visitor *ExpressionVisitor) {
@@ -138,7 +173,12 @@ func (function *FunctionExpression) Visit(visitor *ExpressionVisitor) {
 }
 
 type IdentifierExpression struct {
-	Content string
+	Content  string
+	position *errors.Position
+}
+
+func (identifier *IdentifierExpression) Position() *errors.Position {
+	return identifier.position
 }
 
 func (identifier *IdentifierExpression) Visit(visitor *ExpressionVisitor) {
@@ -146,7 +186,12 @@ func (identifier *IdentifierExpression) Visit(visitor *ExpressionVisitor) {
 }
 
 type IntegerExpression struct {
-	Value int64
+	position *errors.Position
+	Value    int64
+}
+
+func (integer *IntegerExpression) Position() *errors.Position {
+	return integer.position
 }
 
 func (integer *IntegerExpression) Visit(visitor *ExpressionVisitor) {
@@ -159,12 +204,24 @@ type SelectExpression struct {
 	IsInfix bool
 }
 
+func (select_ *SelectExpression) Position() *errors.Position {
+	return &errors.Position{
+		Start: select_.Value.Position().Start,
+		End:   select_.Field.Position().End,
+	}
+}
+
 func (select_ *SelectExpression) Visit(visitor *ExpressionVisitor) {
 	visitor.VisitSelect(select_)
 }
 
 type StringExpression struct {
-	Content string
+	Content  string
+	position *errors.Position
+}
+
+func (string_ *StringExpression) Position() *errors.Position {
+	return string_.position
 }
 
 func (string_ *StringExpression) Visit(visitor *ExpressionVisitor) {
@@ -307,7 +364,7 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 			Type: functionDeclarationExpressionCode,
 			Matcher: CompileMatcher(
 				fmt.Sprintf(
-					`{0}%[1]s*({1})%[1]s*{2}%[1]s*((?:{1}(?:%[1]s*{3}%[1]s*{1})*)?)%[1]s*{4}`,
+					`({0})%[1]s*({1})%[1]s*{2}%[1]s*((?:{1}(?:%[1]s*{3}%[1]s*{1})*)?)%[1]s*{4}`,
 					compositeExpressionRegex(formattingExpressionCodes, 5),
 				),
 
@@ -329,7 +386,7 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 			Type: callExpressionCode,
 			Matcher: CompileMatcher(
 				fmt.Sprintf(
-					`%[1]s[{0}{1}]*{2}%[2]s*((?:%[1]s(?:%[2]s*{3}%[2]s*%[1]s)*)?)%[2]s*{4}`,
+					`%[1]s[{0}{1}]*{2}%[2]s*((?:%[1]s(?:%[2]s*{3}%[2]s*%[1]s)*)?)%[2]s*({4})`,
 					compositeExpressionRegex(composableExpressionCodes, 5),
 					compositeExpressionRegex(
 						formattingExpressionCodes,
@@ -548,18 +605,20 @@ func (parser *Parser) Parse() Expression {
 }
 
 func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expression {
+	var expression Expression
+
 	switch tree.Value.Type {
 	case assignmentExpressionCode:
 		i := tree.Value.Subgroups[0][0]
-
 		names := parseParsableMatchTrees[*IdentifierExpression](parser, tree.Children[:i])
 
-		return &AssignmentExpression{
+		expression = &AssignmentExpression{
 			Names: names,
 			Value: parser.parseMatchTree(tree.Children[i]),
 		}
 
 	case callExpressionCode:
+		function := parser.parseMatchTree(tree.Children[0])
 		argumentSubgroup := tree.Value.Subgroups[0]
 
 		var arguments []Expression
@@ -573,33 +632,45 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 			)
 		}
 
-		return &CallExpression{
-			Function:  parser.parseMatchTree(tree.Children[0]),
+		rightParenthesisTree := tree.Children[tree.Value.Subgroups[1][0]]
+		rightParenthesisToken := parser.Tokens[rightParenthesisTree.Value.Start]
+
+		expression = &CallExpression{
+			Function:  function,
 			Arguments: arguments,
+			position: &errors.Position{
+				Start: function.Position().Start,
+				End:   rightParenthesisToken.Position.End,
+			},
 		}
 
 	case expressionListExpressionCode:
-		return &ExpressionListExpression{parseParsableMatchTrees[Expression](parser, tree.Children)}
+		expression = &ExpressionListExpression{
+			parseParsableMatchTrees[Expression](parser, tree.Children),
+		}
 
 	case indentedExpressionListCode:
-		return &ExpressionListExpression{parseParsableMatchTrees[Expression](parser, tree.Children)}
+		expression = &ExpressionListExpression{
+			parseParsableMatchTrees[Expression](parser, tree.Children),
+		}
 
 	case floatExpressionCode:
 		token := parser.Tokens[tree.Value.Start]
 
-		value, _ := strconv.ParseFloat(parser.FileContent[token.Start:token.End], 32)
+		value, _ := strconv.ParseFloat(parser.FileContent[token.Position.Start:token.Position.End], 32)
 
-		return &FloatExpression{
-			Value: value,
+		expression = &FloatExpression{
+			position: token.Position,
+			Value:    value,
 		}
 
 	case functionExpressionCode:
 		declarationTree := tree.Children[0]
 		name := parser.parseMatchTree(
-			declarationTree.Children[declarationTree.Value.Subgroups[0][0]],
+			declarationTree.Children[declarationTree.Value.Subgroups[1][0]],
 		).(*IdentifierExpression)
 
-		parameterSubgroup := declarationTree.Value.Subgroups[1]
+		parameterSubgroup := declarationTree.Value.Subgroups[2]
 		parameters := parseParsableMatchTrees[*IdentifierExpression](
 			parser,
 			declarationTree.Children[parameterSubgroup[0]:parameterSubgroup[1]],
@@ -607,17 +678,25 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 
 		value := parser.parseMatchTree(tree.Children[3]).(*ExpressionListExpression)
 
-		return &FunctionExpression{
+		functionKeywordTree := declarationTree.Children[declarationTree.Value.Subgroups[0][0]]
+		functionKeywordToken := parser.Tokens[functionKeywordTree.Value.Start]
+
+		expression = &FunctionExpression{
 			Name:       name,
 			Parameters: parameters,
 			Value:      value,
+			position: &errors.Position{
+				Start: functionKeywordToken.Position.Start,
+				End:   value.Position().End,
+			},
 		}
 
 	case identifierExpressionCode:
 		token := parser.Tokens[tree.Value.Start]
 
-		return &IdentifierExpression{
-			Content: parser.FileContent[token.Start:token.End],
+		expression = &IdentifierExpression{
+			Content:  parser.FileContent[token.Position.Start:token.Position.End],
+			position: token.Position,
 		}
 
 	case infixCallExpressionCode:
@@ -627,41 +706,44 @@ func (parser *Parser) parseMatchTree(tree *common.Tree[*ExhaustiveMatch]) Expres
 			parsedChildren = append(parsedChildren, parser.parseMatchTree(child))
 		}
 
-		return newChainedInfixCallExpression(parsedChildren)
+		expression = newChainedInfixCallExpression(parsedChildren)
 
 	case integerExpressionCode:
 		token := parser.Tokens[tree.Value.Start]
 
-		value, _ := strconv.ParseInt(parser.FileContent[token.Start:token.End], 10, 64)
+		value, _ := strconv.ParseInt(
+			parser.FileContent[token.Position.Start:token.Position.End],
+			10,
+			64,
+		)
 
-		return &IntegerExpression{
-			Value: value,
+		expression = &IntegerExpression{
+			position: token.Position,
+			Value:    value,
 		}
 
 	case selectExpressionCode:
-		result := parser.parseMatchTree(tree.Children[0])
-
+		expression = parser.parseMatchTree(tree.Children[0])
 		identifiers := parseParsableMatchTrees[*IdentifierExpression](parser, tree.Children[1:])
 
 		for _, identifier := range identifiers {
-			result = &SelectExpression{
-				Value:   result,
+			expression = &SelectExpression{
+				Value:   expression,
 				Field:   identifier,
 				IsInfix: false,
 			}
 		}
 
-		return result
-
 	case stringExpressionCode:
 		token := parser.Tokens[tree.Value.Start]
 
-		return &StringExpression{
-			Content: parser.FileContent[token.Start+1 : token.End-1],
+		expression = &StringExpression{
+			Content:  parser.FileContent[token.Position.Start+1 : token.Position.End-1],
+			position: token.Position,
 		}
 	}
 
-	return nil
+	return expression
 }
 
 func parseParsableMatchTrees[T Expression](

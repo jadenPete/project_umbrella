@@ -4,8 +4,11 @@ go_library(
     name = "interpreter_library",
     srcs = glob(["*.go"]),
     importpath = "project_umbrella/interpreter",
-    visibility = ["//visibility:private"],
     deps = [
+        "//src/interpreter/errors",
+        "//src/interpreter/errors/entry_errors",
+        "//src/interpreter/errors/lexer_errors",
+        "//src/interpreter/errors/parser_errors",
         "//src/interpreter/parser",
         "//src/interpreter/runtime",
     ],

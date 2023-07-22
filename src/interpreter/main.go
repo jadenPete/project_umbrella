@@ -3,6 +3,10 @@ package main
 import (
 	"os"
 
+	"project_umbrella/interpreter/errors"
+	"project_umbrella/interpreter/errors/entry_errors"
+	"project_umbrella/interpreter/errors/lexer_errors"
+	"project_umbrella/interpreter/errors/parser_errors"
 	"project_umbrella/interpreter/parser"
 	"project_umbrella/interpreter/runtime"
 )
@@ -15,7 +19,7 @@ func executeSource(source string) {
 	tokens := lexer.Parse()
 
 	if tokens == nil {
-		panic("The lexer failed.")
+		errors.RaiseError(lexer_errors.LexerFailed)
 	}
 
 	expression := (&parser.Parser{
@@ -24,7 +28,7 @@ func executeSource(source string) {
 	}).Parse()
 
 	if expression == nil {
-		panic("The parser failed.")
+		errors.RaiseError(parser_errors.ParserFailed)
 	}
 
 	runtime.ExecuteBytecode(parser.ExpressionToBytecodeFromCache(expression, source))
@@ -32,13 +36,13 @@ func executeSource(source string) {
 
 func main() {
 	if len(os.Args) < 2 {
-		panic("Please specify a file to run.")
+		errors.RaiseError(entry_errors.FileNotSpecified)
 	}
 
 	content, err := os.ReadFile(os.Args[1])
 
 	if err != nil {
-		panic("Couldn't open the specified file.")
+		errors.RaiseError(entry_errors.FileNotOpened)
 	}
 
 	executeSource(string(content))

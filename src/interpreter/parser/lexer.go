@@ -1,15 +1,16 @@
 package parser
 
 import (
-	"fmt"
 	"strings"
+
+	"project_umbrella/interpreter/errors"
+	"project_umbrella/interpreter/errors/lexer_errors"
 )
 
 type TokenType MatcherCode
 type Token struct {
-	Type  TokenType
-	Start int
-	End   int
+	Type     TokenType
+	Position *errors.Position
 }
 
 const (
@@ -103,6 +104,23 @@ type Lexer struct {
 	FileContent string
 }
 
+func indentCharacterAndCount(line string) (rune, int) {
+	lineCharacters := []rune(line)
+
+	if len(lineCharacters) == 0 || (lineCharacters[0] != '\t' && lineCharacters[0] != ' ') {
+		return 0, 0
+	}
+
+	indentCharacter := lineCharacters[0]
+	indentCount := 0
+
+	for indentCount < len(lineCharacters) && lineCharacters[indentCount] == indentCharacter {
+		indentCount++
+	}
+
+	return indentCharacter, indentCount
+}
+
 func isLineBlank(line string) bool {
 	for _, character := range line {
 		if character != '\t' && character != ' ' {
@@ -134,9 +152,11 @@ func (lexer *Lexer) Parse() []*Token {
 	for _, match := range matches {
 		if match.Type != MatcherCode(SpaceToken) {
 			result = append(result, &Token{
-				Type:  TokenType(match.Type),
-				Start: match.Start,
-				End:   match.End,
+				Type: TokenType(match.Type),
+				Position: &errors.Position{
+					Start: match.Start,
+					End:   match.End,
+				},
 			})
 		}
 	}
@@ -188,55 +208,46 @@ func (lexer *Lexer) parseIndentation() []*ExhaustiveMatch {
 		return result[len(result)-1].End
 	}
 
-	var indentCharacter rune
-
 	fileOffset := 0
+	indentCharacter := rune(0)
 	indentLength := 0
 	lastIndentCount := 0
 
 	for _, line := range strings.Split(lexer.FileContent, "\n") {
-		isLineBlank := isLineBlank(line)
-		indentCount := 0
+		if !isLineBlank(line) {
+			currentIndentCharacter, indentCount := indentCharacterAndCount(line)
 
-		if !isLineBlank {
-			lineCharacters := []rune(line)
-
-			if indentCharacter == 0 && (lineCharacters[0] == '\t' || lineCharacters[0] == ' ') {
-				indentCharacter = lineCharacters[0]
+			if indentCharacter == 0 {
+				indentCharacter = currentIndentCharacter
+				indentLength = indentCount
 			}
 
-			if indentCharacter != 0 {
-				for indentCount < len(lineCharacters) &&
-					lineCharacters[indentCount] == indentCharacter {
-					indentCount++
-				}
-
-				if indentLength == 0 {
-					indentLength = indentCount
-				} else if indentCount%indentLength > 0 {
-					var indentCharacterName string
-
-					if indentCharacter == '\t' {
-						indentCharacterName = "tabs"
-					} else {
-						indentCharacterName = "spaces"
-					}
-
-					panic(
-						fmt.Sprintf(
-							"Inconsistent indentation; you indent using %[2]d %[1]s, but this line is prefixed with %[3]d %[1]s",
-							indentCharacterName,
+			if currentIndentCharacter != 0 &&
+				(currentIndentCharacter != indentCharacter ||
+					(indentLength > 0 && indentCount%indentLength > 0)) {
+				errors.RaisePositionalError(
+					&errors.PositionalError{
+						Error: lexer_errors.InconsistentIndentation(
+							indentCharacter,
 							indentLength,
+							currentIndentCharacter,
 							indentCount,
 						),
-					)
-				}
 
+						Position: &errors.Position{
+							Start: fileOffset,
+							End:   fileOffset + indentCount,
+						},
+					},
+
+					lexer.FileContent,
+				)
+			}
+
+			if indentLength > 0 {
 				indentCount /= indentLength
 			}
-		}
 
-		if !isLineBlank {
 			endOfLastUnrecognizedMatch := endOfLastMatch()
 			lineStart := fileOffset + indentCount*indentLength
 
@@ -260,9 +271,9 @@ func (lexer *Lexer) parseIndentation() []*ExhaustiveMatch {
 				}
 			}
 
-			lastIndentCount = indentCount
-
 			addMatchToResult(UnrecognizedMatcherCode, lineStart, fileOffset+len(line))
+
+			lastIndentCount = indentCount
 		}
 
 		fileOffset += len(line) + 1

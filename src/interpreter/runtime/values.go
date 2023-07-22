@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"project_umbrella/interpreter/errors"
+	"project_umbrella/interpreter/errors/runtime_errors"
 	"project_umbrella/interpreter/parser"
 )
 
@@ -89,12 +91,8 @@ func generateInfixMethod[T value](
 			argument, ok := arguments[0].(T)
 
 			if !ok {
-				panic(
-					fmt.Sprintf(
-						"Runtime error: Expected the right-hand side of %[1]s#%[2]s to be of type %[1]s.",
-						typeName,
-						methodName,
-					),
+				errors.RaiseError(
+					runtime_errors.IncorrectBuiltInInfixMethodArgumentType(typeName, methodName),
 				)
 			}
 
@@ -124,12 +122,8 @@ func (function_ *builtInFunction) definition() *valueDefinition {
 
 func (function *builtInFunction) evaluate(runtime_ *runtime, arguments ...value) value {
 	if !function.isVariadic && len(arguments) != function.argumentCount {
-		panic(
-			fmt.Sprintf(
-				"Runtime error: A function that accepts %d arguments was called with %d arguments.",
-				len(arguments),
-				function.argumentCount,
-			),
+		errors.RaiseError(
+			runtime_errors.IncorrectCallArgumentCount(function.argumentCount, len(arguments)),
 		)
 	}
 
@@ -149,13 +143,15 @@ func print(runtime_ *runtime, suffix string, arguments ...value) unitValue {
 }
 
 func toString(runtime_ *runtime, value_ value) string {
-	if resultingValue, ok := value_.
+	resultingValue, ok := value_.
 		definition().fields[toStringMethodID].(function).
-		evaluate(runtime_).(stringValue); ok {
-		return resultingValue.content
+		evaluate(runtime_).(stringValue)
+
+	if !ok {
+		errors.RaiseError(runtime_errors.ToStrReturnedNonString)
 	}
 
-	panic("Runtime error: __to_str__ returned a non-string.")
+	return resultingValue.content
 }
 
 var builtInValues = map[builtInValueID]value{
@@ -256,11 +252,10 @@ func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments
 							return
 						}
 
-						panic(
-							fmt.Sprintf(
-								"Runtime error: %d is not a recognized field ID for the value `%s`.",
-								fieldID,
+						errors.RaiseError(
+							runtime_errors.UnrecognizedFieldID(
 								toString(runtime_, structValue),
+								int(fieldID),
 							),
 						)
 					}
@@ -270,11 +265,11 @@ func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments
 	})
 
 	if len(scope.values) != len(nodes) {
-		panic("Runtime error: A cycle between values was found.")
+		errors.RaiseError(runtime_errors.ValueCycle)
 	}
 
 	if len(scope.values) == 0 {
-		panic("Internal runtime error: A function block graph was empty.")
+		errors.RaiseError(runtime_errors.EmptyFunctionBlockGraph)
 	}
 
 	return scope.values[len(scope.values)-1]
@@ -321,9 +316,7 @@ func (value_ floatValue) definition() *valueDefinition {
 			overMethodID: generateInfixMethod(
 				func(rightHandSide floatValue) floatValue {
 					if rightHandSide.value == 0 {
-						panic(
-							"Runtime error: Expected the right-hand side of float#/ to be nonzero.",
-						)
+						errors.RaiseError(runtime_errors.DivisionByZero("float"))
 					}
 
 					return floatValue{value_.value / rightHandSide.value}
@@ -377,9 +370,7 @@ func (value_ integerValue) definition() *valueDefinition {
 			overMethodID: generateInfixMethod(
 				func(rightHandSide integerValue) integerValue {
 					if rightHandSide.value == 0 {
-						panic(
-							"Runtime error: Expected the right-hand side of int#/ to be nonzero.",
-						)
+						errors.RaiseError(runtime_errors.DivisionByZero("int"))
 					}
 
 					return integerValue{value_.value / rightHandSide.value}
