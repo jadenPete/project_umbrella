@@ -27,6 +27,8 @@ const (
 	printFunctionID   builtInValueID = -1
 	printlnFunctionID builtInValueID = -2
 	unitValueID       builtInValueID = -3
+	falseValueID      builtInValueID = -4
+	trueValueID       builtInValueID = -5
 )
 
 type valueDefinition struct {
@@ -66,6 +68,69 @@ func newValueFromConstant(constant parser.Constant) value {
 	}
 
 	return nil
+}
+
+var builtInValues = map[builtInValueID]value{
+	printFunctionID: &builtInFunction{
+		isVariadic: true,
+		evaluator: func(runtime_ *runtime, arguments ...value) value {
+			return print(runtime_, "", arguments...)
+		},
+	},
+
+	printlnFunctionID: &builtInFunction{
+		isVariadic: true,
+		evaluator: func(runtime_ *runtime, arguments ...value) value {
+			return print(runtime_, "\n", arguments...)
+		},
+	},
+
+	unitValueID: unitValue{},
+	falseValueID: booleanValue{
+		value: false,
+	},
+
+	trueValueID: booleanValue{
+		value: true,
+	},
+}
+
+func print(runtime_ *runtime, suffix string, arguments ...value) unitValue {
+	serialized := make([]string, 0, len(arguments))
+
+	for _, argument := range arguments {
+		serialized = append(serialized, toString(runtime_, argument))
+	}
+
+	fmt.Print(strings.Join(serialized, " ") + suffix)
+
+	return unitValue{}
+}
+
+func toString(runtime_ *runtime, value_ value) string {
+	resultingValue, ok := value_.
+		definition().fields[toStringMethodID].(function).
+		evaluate(runtime_).(stringValue)
+
+	if !ok {
+		errors.RaiseError(runtime_errors.ToStrReturnedNonString)
+	}
+
+	return resultingValue.content
+}
+
+type booleanValue struct {
+	value bool
+}
+
+func (value_ booleanValue) definition() *valueDefinition {
+	return &valueDefinition{
+		fields: map[builtInFieldID]value{
+			toStringMethodID: generateToStringMethod(func() string {
+				return fmt.Sprintf("%t", value_.value)
+			}),
+		},
+	}
 }
 
 type function interface {
@@ -128,48 +193,6 @@ func (function *builtInFunction) evaluate(runtime_ *runtime, arguments ...value)
 	}
 
 	return function.evaluator(runtime_, arguments...)
-}
-
-func print(runtime_ *runtime, suffix string, arguments ...value) unitValue {
-	serialized := make([]string, 0, len(arguments))
-
-	for _, argument := range arguments {
-		serialized = append(serialized, toString(runtime_, argument))
-	}
-
-	fmt.Print(strings.Join(serialized, " ") + suffix)
-
-	return unitValue{}
-}
-
-func toString(runtime_ *runtime, value_ value) string {
-	resultingValue, ok := value_.
-		definition().fields[toStringMethodID].(function).
-		evaluate(runtime_).(stringValue)
-
-	if !ok {
-		errors.RaiseError(runtime_errors.ToStrReturnedNonString)
-	}
-
-	return resultingValue.content
-}
-
-var builtInValues = map[builtInValueID]value{
-	printFunctionID: &builtInFunction{
-		isVariadic: true,
-		evaluator: func(runtime_ *runtime, arguments ...value) value {
-			return print(runtime_, "", arguments...)
-		},
-	},
-
-	printlnFunctionID: &builtInFunction{
-		isVariadic: true,
-		evaluator: func(runtime_ *runtime, arguments ...value) value {
-			return print(runtime_, "\n", arguments...)
-		},
-	},
-
-	unitValueID: unitValue{},
 }
 
 type bytecodeFunction struct {

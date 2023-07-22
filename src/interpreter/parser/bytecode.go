@@ -14,6 +14,8 @@
  * - print (-1)
  * - println (-2)
  * - unit (-3)
+ * - false (-4)
+ * - true (-5)
  *
  * Likewise, built-in fields are negative; the following are accessible on the following types.
  * - __to_str__ (-1) (every type)
@@ -91,6 +93,8 @@ var builtInValues = map[string]int{
 	"print":   -1,
 	"println": -2,
 	"unit":    -3,
+	"false":   -4,
+	"true":    -5,
 }
 
 func sourceChecksum(fileContent string) [checksumSize]byte {

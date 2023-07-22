@@ -237,10 +237,10 @@ const (
 	identifierTokenCode
 	indentTokenCode
 	outdentTokenCode
-	newlineTokenCode
 	integerTokenCode
 	leftParenthesisTokenCode
 	rightParenthesisTokenCode
+	newlineTokenCode
 	selectOperatorTokenCode
 	stringTokenCode
 
@@ -308,7 +308,7 @@ func compositeExpressionRegex(expressionCodes []MatcherCode, startingSubstitutio
 
 var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 	[]*ExhaustiveMatchPattern{
-		// Single-token expression
+		// Single-token expressions
 
 		{
 			Type:    floatExpressionCode,

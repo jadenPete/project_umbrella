@@ -14,8 +14,7 @@ type Token struct {
 }
 
 const (
-	StringToken TokenType = iota + 1
-	AssignmentOperatorToken
+	AssignmentOperatorToken TokenType = iota + 1
 	ColonToken
 	CommaToken
 	FloatToken
@@ -23,16 +22,21 @@ const (
 	IdentifierToken
 	IndentToken
 	OutdentToken
-	NewlineToken
-	SpaceToken
 	IntegerToken
 	LeftParenthesisToken
 	RightParenthesisToken
+	NewlineToken
 	SelectOperatorToken
+	SpaceToken
+	StringToken
 )
 
 var matcher = ExhaustiveMatcher{
 	[]*ExhaustiveMatchPattern{
+		/*
+		 * Strings are parsed first because they can contain nearly any character,
+		 * and their content shouldn't be mistaken for other tokens.
+		 */
 		{
 			MatcherCode(StringToken),
 			CompileMatcher(`"[^"]*"`),
@@ -93,6 +97,10 @@ var matcher = ExhaustiveMatcher{
 			CompileMatcher(`[\t ]+`),
 		},
 
+		/*
+		 * Identifiers are parsed last because they shouldn't contain anything that would be
+		 * _identified_ (get it?) as another token.
+		 */
 		{
 			MatcherCode(IdentifierToken),
 			CompileMatcher(`[^\t\n ="(),.]+`),
