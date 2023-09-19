@@ -21,7 +21,7 @@ func Max(x int, y int) int {
  *
  * If `size > len(slice)`, the zero value of `T` is repeatedly appended to `slice`.
  */
-func Resize[T interface{}](slice []T, size int) []T {
+func Resize[T any](slice []T, size int) []T {
 	if size < len(slice) {
 		return slice[:size]
 	}

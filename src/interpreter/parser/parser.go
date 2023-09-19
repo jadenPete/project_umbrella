@@ -330,7 +330,7 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 			Matcher: CompileMatcher(`{0}`, stringTokenCode),
 		},
 
-		// Standalone expressions
+		// Multi-token expressions
 
 		{
 			Type: selectExpressionCode,
@@ -439,7 +439,7 @@ var parserExhaustiveMatcher ExhaustiveMatcher = ExhaustiveMatcher{
 			),
 		},
 
-		// Aggregative expressions
+		// Statements
 
 		{
 			Type: assignmentExpressionCode,
