@@ -234,57 +234,55 @@ func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments
 	bytecodeFunction_.blockGraph.graph.Evaluate(func(i int) {
 		callArguments := make([]value, 0)
 
-		nodes[i].Visit(&bytecodeFunctionBlockVisitor{
-			VisitBytecodeFunctionBlockGraph: func(blockGraph *bytecodeFunctionBlockGraph) {
-				scope.values[scope.firstValueID+i] = &bytecodeFunction{
-					scope:      scope,
-					valueID:    scope.firstValueID + i,
-					blockGraph: blockGraph,
-				}
-			},
+		switch node := nodes[i].(type) {
+		case *bytecodeFunctionBlockGraph:
+			scope.values[scope.firstValueID+i] = &bytecodeFunction{
+				scope:      scope,
+				valueID:    scope.firstValueID + i,
+				blockGraph: node,
+			}
 
-			VisitInstructionList: func(instructionList_ *instructionList) {
-				for _, instruction := range instructionList_.instructions {
-					switch instruction.Type {
-					case parser.PushArgumentInstruction:
-						callArguments =
-							append(callArguments, scope.getValue(instruction.Arguments[0]))
+		case *instructionList:
+			for _, instruction := range node.instructions {
+				switch instruction.Type {
+				case parser.PushArgumentInstruction:
+					callArguments =
+						append(callArguments, scope.getValue(instruction.Arguments[0]))
 
-					case parser.ValueCopyInstruction:
-						scope.values[scope.firstValueID+i] =
-							scope.getValue(instruction.Arguments[0])
+				case parser.ValueCopyInstruction:
+					scope.values[scope.firstValueID+i] =
+						scope.getValue(instruction.Arguments[0])
 
-					case parser.ValueFromCallInstruction:
-						scope.values[scope.firstValueID+i] = scope.
-							getValue(instruction.Arguments[0]).(function).
-							evaluate(runtime_, callArguments...)
+				case parser.ValueFromCallInstruction:
+					scope.values[scope.firstValueID+i] = scope.
+						getValue(instruction.Arguments[0]).(function).
+						evaluate(runtime_, callArguments...)
 
-					case parser.ValueFromConstantInstruction:
-						scope.values[scope.firstValueID+i] =
-							runtime_.constants[instruction.Arguments[0]]
+				case parser.ValueFromConstantInstruction:
+					scope.values[scope.firstValueID+i] =
+						runtime_.constants[instruction.Arguments[0]]
+
+					return
+
+				case parser.ValueFromStructValueInstruction:
+					structValue := scope.getValue(instruction.Arguments[0])
+					fieldID := builtInFieldID(instruction.Arguments[1])
+
+					if field, ok := structValue.definition().fields[fieldID]; ok {
+						scope.values[scope.firstValueID+i] = field
 
 						return
-
-					case parser.ValueFromStructValueInstruction:
-						structValue := scope.getValue(instruction.Arguments[0])
-						fieldID := builtInFieldID(instruction.Arguments[1])
-
-						if field, ok := structValue.definition().fields[fieldID]; ok {
-							scope.values[scope.firstValueID+i] = field
-
-							return
-						}
-
-						errors.RaiseError(
-							runtime_errors.UnrecognizedFieldID(
-								toString(runtime_, structValue),
-								int(fieldID),
-							),
-						)
 					}
+
+					errors.RaiseError(
+						runtime_errors.UnrecognizedFieldID(
+							toString(runtime_, structValue),
+							int(fieldID),
+						),
+					)
 				}
-			},
-		})
+			}
+		}
 	})
 
 	if len(scope.values) != len(nodes) {

@@ -27,29 +27,20 @@ import (
 )
 
 type bytecodeFunctionBlock interface {
-	Visit(*bytecodeFunctionBlockVisitor)
+	bytecodeFunctionBlock()
 }
 
 type bytecodeFunctionBlockGraph struct {
 	graph *common.Graph[bytecodeFunctionBlock]
 }
 
-func (bytecodeFunctionBlockGraph_ *bytecodeFunctionBlockGraph) Visit(visitor *bytecodeFunctionBlockVisitor) {
-	visitor.VisitBytecodeFunctionBlockGraph(bytecodeFunctionBlockGraph_)
-}
-
-type bytecodeFunctionBlockVisitor struct {
-	VisitBytecodeFunctionBlockGraph func(*bytecodeFunctionBlockGraph)
-	VisitInstructionList            func(*instructionList)
-}
+func (*bytecodeFunctionBlockGraph) bytecodeFunctionBlock()
 
 type instructionList struct {
 	instructions []*parser.Instruction
 }
 
-func (instructionList_ *instructionList) Visit(visitor *bytecodeFunctionBlockVisitor) {
-	visitor.VisitInstructionList(instructionList_)
-}
+func (*instructionList) bytecodeFunctionBlock()
 
 type runtime struct {
 	constants      []value

@@ -289,64 +289,55 @@ func (translator *BytecodeTranslator) valueIDForConstant(constant Constant) int 
 func (translator *BytecodeTranslator) valueIDForExpression(expression Expression) int {
 	var result int
 
-	expression.Visit(&ExpressionVisitor{
-		func(assignment *AssignmentExpression) {
-			result = translator.valueIDForAssignment(assignment)
-		},
+	switch expression := expression.(type) {
+	case *AssignmentExpression:
+		result = translator.valueIDForAssignment(expression)
 
-		func(call *CallExpression) {
-			result = translator.valueIDForCall(call)
-		},
+	case *CallExpression:
+		result = translator.valueIDForCall(expression)
 
-		func(expressionList *ExpressionListExpression) {
-			result = translator.valueIDForExpressionList(expressionList)
-		},
+	case *ExpressionListExpression:
+		result = translator.valueIDForExpressionList(expression)
 
-		func(float *FloatExpression) {
-			var buffer bytes.Buffer
+	case *FloatExpression:
+		var buffer bytes.Buffer
 
-			if err := binary.Write(&buffer, binary.LittleEndian, float.Value); err != nil {
-				panic(err)
-			}
+		if err := binary.Write(&buffer, binary.LittleEndian, expression.Value); err != nil {
+			panic(err)
+		}
 
-			result = translator.valueIDForConstant(Constant{
-				Type:    FloatConstant,
-				Encoded: buffer.String(),
-			})
-		},
+		result = translator.valueIDForConstant(Constant{
+			Type:    FloatConstant,
+			Encoded: buffer.String(),
+		})
 
-		func(function *FunctionExpression) {
-			result = translator.valueIDForFunction(function)
-		},
+	case *FunctionExpression:
+		result = translator.valueIDForFunction(expression)
 
-		func(identifier *IdentifierExpression) {
-			result = translator.valueIDForIdentifier(identifier)
-		},
+	case *IdentifierExpression:
+		result = translator.valueIDForIdentifier(expression)
 
-		func(integer *IntegerExpression) {
-			var buffer bytes.Buffer
+	case *IntegerExpression:
+		var buffer bytes.Buffer
 
-			if err := binary.Write(&buffer, binary.LittleEndian, integer.Value); err != nil {
-				panic(err)
-			}
+		if err := binary.Write(&buffer, binary.LittleEndian, expression.Value); err != nil {
+			panic(err)
+		}
 
-			result = translator.valueIDForConstant(Constant{
-				Type:    IntegerConstant,
-				Encoded: buffer.String(),
-			})
-		},
+		result = translator.valueIDForConstant(Constant{
+			Type:    IntegerConstant,
+			Encoded: buffer.String(),
+		})
 
-		func(select_ *SelectExpression) {
-			result = translator.valueIDForSelect(select_)
-		},
+	case *SelectExpression:
+		result = translator.valueIDForSelect(expression)
 
-		func(string_ *StringExpression) {
-			result = translator.valueIDForConstant(Constant{
-				Type:    StringConstant,
-				Encoded: string_.Content,
-			})
-		},
-	})
+	case *StringExpression:
+		result = translator.valueIDForConstant(Constant{
+			Type:    StringConstant,
+			Encoded: expression.Content,
+		})
+	}
 
 	return result
 }

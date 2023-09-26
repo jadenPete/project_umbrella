@@ -11,19 +11,6 @@ import (
 
 type Expression interface {
 	Position() *errors.Position
-	Visit(*ExpressionVisitor)
-}
-
-type ExpressionVisitor struct {
-	VisitAssignment               func(*AssignmentExpression)
-	VisitCall                     func(*CallExpression)
-	VisitExpressionListExpression func(*ExpressionListExpression)
-	VisitFloat                    func(*FloatExpression)
-	VisitFunction                 func(*FunctionExpression)
-	VisitIdentifier               func(*IdentifierExpression)
-	VisitInteger                  func(*IntegerExpression)
-	VisitSelect                   func(*SelectExpression)
-	VisitString                   func(*StringExpression)
 }
 
 type AssignmentExpression struct {
@@ -38,10 +25,6 @@ func (assignment *AssignmentExpression) Position() *errors.Position {
 	}
 }
 
-func (assignment *AssignmentExpression) Visit(visitor *ExpressionVisitor) {
-	visitor.VisitAssignment(assignment)
-}
-
 type ExpressionListExpression struct {
 	Children []Expression
 }
@@ -51,10 +34,6 @@ func (expressionList *ExpressionListExpression) Position() *errors.Position {
 		Start: expressionList.Children[0].Position().Start,
 		End:   expressionList.Children[len(expressionList.Children)-1].Position().End,
 	}
-}
-
-func (expressionList *ExpressionListExpression) Visit(visitor *ExpressionVisitor) {
-	visitor.VisitExpressionListExpression(expressionList)
 }
 
 type CallExpression struct {
@@ -140,10 +119,6 @@ func (call *CallExpression) Position() *errors.Position {
 	return call.position
 }
 
-func (call *CallExpression) Visit(visitor *ExpressionVisitor) {
-	visitor.VisitCall(call)
-}
-
 type FloatExpression struct {
 	position *errors.Position
 	Value    float64
@@ -151,10 +126,6 @@ type FloatExpression struct {
 
 func (float *FloatExpression) Position() *errors.Position {
 	return float.position
-}
-
-func (float *FloatExpression) Visit(visitor *ExpressionVisitor) {
-	visitor.VisitFloat(float)
 }
 
 type FunctionExpression struct {
@@ -168,10 +139,6 @@ func (function *FunctionExpression) Position() *errors.Position {
 	return function.position
 }
 
-func (function *FunctionExpression) Visit(visitor *ExpressionVisitor) {
-	visitor.VisitFunction(function)
-}
-
 type IdentifierExpression struct {
 	Content  string
 	position *errors.Position
@@ -181,10 +148,6 @@ func (identifier *IdentifierExpression) Position() *errors.Position {
 	return identifier.position
 }
 
-func (identifier *IdentifierExpression) Visit(visitor *ExpressionVisitor) {
-	visitor.VisitIdentifier(identifier)
-}
-
 type IntegerExpression struct {
 	position *errors.Position
 	Value    int64
@@ -192,10 +155,6 @@ type IntegerExpression struct {
 
 func (integer *IntegerExpression) Position() *errors.Position {
 	return integer.position
-}
-
-func (integer *IntegerExpression) Visit(visitor *ExpressionVisitor) {
-	visitor.VisitInteger(integer)
 }
 
 type SelectExpression struct {
@@ -211,10 +170,6 @@ func (select_ *SelectExpression) Position() *errors.Position {
 	}
 }
 
-func (select_ *SelectExpression) Visit(visitor *ExpressionVisitor) {
-	visitor.VisitSelect(select_)
-}
-
 type StringExpression struct {
 	Content  string
 	position *errors.Position
@@ -222,10 +177,6 @@ type StringExpression struct {
 
 func (string_ *StringExpression) Position() *errors.Position {
 	return string_.position
-}
-
-func (string_ *StringExpression) Visit(visitor *ExpressionVisitor) {
-	visitor.VisitString(string_)
 }
 
 const (
