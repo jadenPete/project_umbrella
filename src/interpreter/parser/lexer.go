@@ -142,6 +142,10 @@ func isLineBlank(line string) bool {
 func (lexer_ *Lexer) Next() (lexer.Token, error) {
 	if lexer_.cachedTokens == nil {
 		lexer_.cachedTokens = lexer_.tokens()
+
+		if lexer_.cachedTokens == nil {
+			errors.RaiseError(lexer_errors.LexerFailed)
+		}
 	}
 
 	if lexer_.i == len(lexer_.cachedTokens) {
@@ -198,7 +202,7 @@ func (lexer_ *Lexer) tokens() []*lexer.Token {
 }
 
 /*
- * Before we tokenize the input, we replace indentation with indent and outde nt meta-tokens, which
+ * Before we tokenize the input, we replace indentation with indent and outdent meta-tokens, which
  * effectively act as opening and closing tags. Iterating through each line, we record the
  * difference in indentation between it and the previous one, adding indents or outdents to it as
  * appropriate.

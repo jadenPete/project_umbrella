@@ -6,12 +6,6 @@ import (
 	"project_umbrella/interpreter/errors"
 )
 
-var ParserFailed = &errors.Error{
-	Section: "PARSER",
-	Code:    1,
-	Name:    "The parser failed",
-}
-
 var BytecodeEncodingFailed = &errors.Error{
 	Section: "PARSER",
 	Code:    2,
