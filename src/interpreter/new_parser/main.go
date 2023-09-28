@@ -7,11 +7,11 @@ import (
 )
 
 func main() {
-	parser := participle.MustBuild[Expression](
+	parser := participle.MustBuild[ConcreteExpression](
 		participle.Lexer(&parser.LexerDefinition{}),
-		participle.Union[Statement](&Assignment{}, &Function{}, &InfixAddition{}),
-		participle.Union[Expression](&InfixAddition{}),
-		participle.Union[Primary](&Float{}, &Identifier{}, &Integer{}, &String{}),
+		participle.Union[ConcreteStatement](&ConcreteAssignment{}, &ConcreteFunction{}, &ConcreteInfixAddition{}),
+		participle.Union[ConcreteExpression](&ConcreteInfixAddition{}),
+		participle.Union[ConcretePrimary](&ConcreteFloat{}, &ConcreteIdentifier{}, &ConcreteInteger{}, &ConcreteString{}),
 	)
 
 	tree, err := parser.ParseString("", `2 + println(2 + 2) + 2`)

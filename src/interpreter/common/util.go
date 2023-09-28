@@ -16,6 +16,28 @@ func Max(x int, y int) int {
 	return x
 }
 
+func LinkedListToSlice[LinkedList any, Element any](
+	linkedList *LinkedList,
+	head func(*LinkedList) Element,
+	tail func(*LinkedList) *LinkedList,
+) ([]Element, *LinkedList) {
+	result := make([]Element, 0)
+	current := linkedList
+
+	for {
+		result = append(result, head(current))
+		next := tail(current)
+
+		if next == nil {
+			break
+		}
+
+		current = next
+	}
+
+	return result, current
+}
+
 /*
  * Resize a slice to a given size.
  *
