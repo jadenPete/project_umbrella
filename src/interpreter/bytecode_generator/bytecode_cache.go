@@ -1,4 +1,4 @@
-package parser
+package bytecode_generator
 
 import (
 	"encoding/hex"
@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"os"
+
+	"project_umbrella/interpreter/parser"
 )
 
 /*
@@ -17,7 +19,7 @@ import (
  *
  * They're stored as a literal MessagePack pickling of the resulting `Bytecode` object.
  */
-func ExpressionToBytecodeFromCache(expression Expression, fileContent string) *Bytecode {
+func ExpressionToBytecodeFromCache(expression parser.Expression, fileContent string) *Bytecode {
 	var appDirectory string
 
 	if cacheDirectory, ok := os.LookupEnv("XDG_CACHE_HOME"); ok {

@@ -281,21 +281,20 @@ func (lexer_ *Lexer) parseIndentation() []*ExhaustiveMatch {
 				indentCount /= indentLength
 			}
 
-			endOfLastUnrecognizedMatch := endOfLastMatch()
 			lineStart := fileOffset + indentCount*indentLength
 
 			if indentCount < lastIndentCount {
 				for i := 0; i < lastIndentCount-indentCount; i++ {
 					addMatchToResult(
 						MatcherCode(OutdentToken),
-						endOfLastUnrecognizedMatch,
-						endOfLastUnrecognizedMatch,
+						endOfLastMatch(),
+						endOfLastMatch(),
 					)
 				}
 			}
 
-			if endOfLastUnrecognizedMatch > 0 {
-				addMatchToResult(UnrecognizedMatcherCode, endOfLastUnrecognizedMatch, fileOffset)
+			if endOfLastMatch() > 0 {
+				addMatchToResult(UnrecognizedMatcherCode, endOfLastMatch(), fileOffset)
 			}
 
 			if indentCount > lastIndentCount {
@@ -310,6 +309,10 @@ func (lexer_ *Lexer) parseIndentation() []*ExhaustiveMatch {
 		}
 
 		fileOffset += len(line) + 1
+	}
+
+	for i := 0; i < lastIndentCount; i++ {
+		addMatchToResult(MatcherCode(OutdentToken), endOfLastMatch(), endOfLastMatch())
 	}
 
 	if endOfLastMatch() < len(lexer_.fileContent) {
