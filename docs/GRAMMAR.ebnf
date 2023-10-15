@@ -1,0 +1,85 @@
+(* Union expressions *)
+
+Statement =
+	| Function
+	| Assignment
+	| Expression;
+
+Expression = InfixAddition;
+Primary =
+	| Float
+	| Identifier
+	| Integer
+	| String;
+
+Formatting =
+	| IndentToken
+	| OutdentToken
+	| NewlineToken;
+
+(* Statements *)
+
+Function = FunctionDeclaration ":" NewlineToken IndentedStatementList;
+FunctionDeclaration =
+	"fn"
+	{Formatting}
+	Identifier
+	{Formatting}
+	"("
+	{Formatting}
+	[FunctionParameters]
+	{Formatting}
+	")";
+
+FunctionParameters =
+	| Identifier {Formatting} "," {Formatting} FunctionParameters
+	| Identifier;
+
+IndentedStatementList = IndentToken StatementList (OutdentToken | EOF);
+StatementList =
+	| {NewlineToken} Statement NewlineToken StatementList
+	| {NewlineToken} Statement {NewlineToken};
+
+Assignment = Identifier {Formatting} "=" {Formatting} (Expression | Assignment);
+
+(* Multi-token expressions *)
+
+InfixAddition = InfixMultiplication {InfixAdditionRight};
+InfixAdditionRight =
+	(
+		| {IndentToken | OutdentToken} ("+" | "-") {Formatting}
+		| {Formatting} ("+" | "-") {IndentToken | OutdentToken}
+	)
+	InfixMultiplication;
+
+InfixMultiplication = InfixMiscellaneous {InfixMultiplicationRight};
+InfixMultiplicationRight =
+	(
+		| {IndentToken | OutdentToken} ("*" | "/") {Formatting}
+		| {Formatting} ("*" | "/") {IndentToken | OutdentToken}
+	)
+	InfixMiscellaneous;
+
+InfixMiscellaneous = Call {InfixMiscellaneousRight};
+InfixMiscellaneousRight =
+	(
+		| {IndentToken | OutdentToken} Identifier {Formatting}
+		| {Formatting} Identifier {IndentToken | OutdentToken}
+	)
+	Call;
+
+Call = Select {CallRight | SelectRight};
+CallRight = {IndentToken | OutdentToken} "(" {Formatting} [CallArguments] {Formatting} ")";
+CallArguments =
+	| Expression [{Formatting} "," {Formatting} CallArguments]
+	| Expression;
+
+Select = Primary {SelectRight};
+SelectRight = {Formatting} "." {Formatting} Identifier;
+
+(* Single-token expressions *)
+
+Float = FloatToken;
+Identifier = IdentifierToken;
+Integer = IntegerToken;
+String = StringToken;

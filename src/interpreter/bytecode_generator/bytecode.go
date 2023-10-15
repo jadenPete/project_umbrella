@@ -65,7 +65,7 @@
  *  Retrieve the value referred to by `VAL_ID` from the value list and push it to the value list
  *  again.
  */
-package parser
+package bytecode_generator
 
 import (
 	"bytes"
@@ -77,6 +77,7 @@ import (
 	"project_umbrella/interpreter/common"
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/parser_errors"
+	"project_umbrella/interpreter/parser"
 )
 
 const checksumSize = 32
@@ -163,8 +164,8 @@ func (translator *BytecodeTranslator) currentScope() *scope {
 	return translator.scopeStack[len(translator.scopeStack)-1]
 }
 
-func (translator *BytecodeTranslator) ExpressionToBytecode(expression Expression) *Bytecode {
-	expressionList, ok := expression.(*ExpressionListExpression)
+func (translator *BytecodeTranslator) ExpressionToBytecode(expression parser.Expression) *Bytecode {
+	expressionList, ok := expression.(*parser.ExpressionList)
 
 	if !ok {
 		errors.RaiseError(parser_errors.InvalidRootExpression)
@@ -207,7 +208,9 @@ func (translator *BytecodeTranslator) generateBytecode() *Bytecode {
 	return bytecode
 }
 
-func (translator *BytecodeTranslator) valueIDForAssignment(assignment *AssignmentExpression) int {
+func (translator *BytecodeTranslator) valueIDForAssignment(
+	assignment *parser.Assignment,
+) int {
 	valueID := translator.valueIDForExpression(assignment.Value)
 
 	/*
@@ -228,13 +231,13 @@ func (translator *BytecodeTranslator) valueIDForAssignment(assignment *Assignmen
 	}
 
 	for _, nameExpression := range assignment.Names {
-		translator.currentScope().identifierValueIDMap[nameExpression.Content] = valueID
+		translator.currentScope().identifierValueIDMap[nameExpression.Value] = valueID
 	}
 
 	return valueID
 }
 
-func (translator *BytecodeTranslator) valueIDForCall(call *CallExpression) int {
+func (translator *BytecodeTranslator) valueIDForCall(call *parser.Call) int {
 	functionValueID := translator.valueIDForExpression(call.Function)
 
 	for _, argument := range call.Arguments {
@@ -286,78 +289,69 @@ func (translator *BytecodeTranslator) valueIDForConstant(constant Constant) int 
 	return valueID
 }
 
-func (translator *BytecodeTranslator) valueIDForExpression(expression Expression) int {
+func (translator *BytecodeTranslator) valueIDForExpression(expression parser.Expression) int {
 	var result int
 
-	expression.Visit(&ExpressionVisitor{
-		func(assignment *AssignmentExpression) {
-			result = translator.valueIDForAssignment(assignment)
-		},
+	switch expression := expression.(type) {
+	case *parser.Assignment:
+		result = translator.valueIDForAssignment(expression)
 
-		func(call *CallExpression) {
-			result = translator.valueIDForCall(call)
-		},
+	case *parser.Call:
+		result = translator.valueIDForCall(expression)
 
-		func(expressionList *ExpressionListExpression) {
-			result = translator.valueIDForExpressionList(expressionList)
-		},
+	case *parser.ExpressionList:
+		result = translator.valueIDForExpressionList(expression)
 
-		func(float *FloatExpression) {
-			var buffer bytes.Buffer
+	case *parser.Float:
+		var buffer bytes.Buffer
 
-			if err := binary.Write(&buffer, binary.LittleEndian, float.Value); err != nil {
-				panic(err)
-			}
+		if err := binary.Write(&buffer, binary.LittleEndian, expression.Value); err != nil {
+			panic(err)
+		}
 
-			result = translator.valueIDForConstant(Constant{
-				Type:    FloatConstant,
-				Encoded: buffer.String(),
-			})
-		},
+		result = translator.valueIDForConstant(Constant{
+			Type:    FloatConstant,
+			Encoded: buffer.String(),
+		})
 
-		func(function *FunctionExpression) {
-			result = translator.valueIDForFunction(function)
-		},
+	case *parser.Function:
+		result = translator.valueIDForFunction(expression)
 
-		func(identifier *IdentifierExpression) {
-			result = translator.valueIDForIdentifier(identifier)
-		},
+	case *parser.Identifier:
+		result = translator.valueIDForIdentifier(expression)
 
-		func(integer *IntegerExpression) {
-			var buffer bytes.Buffer
+	case *parser.Integer:
+		var buffer bytes.Buffer
 
-			if err := binary.Write(&buffer, binary.LittleEndian, integer.Value); err != nil {
-				panic(err)
-			}
+		if err := binary.Write(&buffer, binary.LittleEndian, expression.Value); err != nil {
+			panic(err)
+		}
 
-			result = translator.valueIDForConstant(Constant{
-				Type:    IntegerConstant,
-				Encoded: buffer.String(),
-			})
-		},
+		result = translator.valueIDForConstant(Constant{
+			Type:    IntegerConstant,
+			Encoded: buffer.String(),
+		})
 
-		func(select_ *SelectExpression) {
-			result = translator.valueIDForSelect(select_)
-		},
+	case *parser.Select:
+		result = translator.valueIDForSelect(expression)
 
-		func(string_ *StringExpression) {
-			result = translator.valueIDForConstant(Constant{
-				Type:    StringConstant,
-				Encoded: string_.Content,
-			})
-		},
-	})
+	case *parser.String:
+		result = translator.valueIDForConstant(Constant{
+			Type:    StringConstant,
+			Encoded: expression.Value,
+		})
+	}
 
 	return result
 }
 
 func (translator *BytecodeTranslator) valueIDForExpressionList(
-	expressionList *ExpressionListExpression,
+	expressionList *parser.ExpressionList,
 ) int {
 	// Hoist declared functions
 	for _, subexpression := range expressionList.Children {
-		if function, ok := subexpression.(*FunctionExpression); ok {
-			translator.currentScope().identifierValueIDMap[function.Name.Content] =
+		if function, ok := subexpression.(*parser.Function); ok {
+			translator.currentScope().identifierValueIDMap[function.Name.Value] =
 				translator.currentScope().nextValueID
 
 			translator.currentScope().nextValueID++
@@ -384,7 +378,7 @@ func (translator *BytecodeTranslator) valueIDForExpressionList(
 		 * if the identifier is an standalone expression
 		 * (in which case it's possible that it refers to a value other than the last one).
 		 */
-		if _, ok := subexpression.(*IdentifierExpression); ok {
+		if _, ok := subexpression.(*parser.Identifier); ok {
 			addValueCopyInstruction()
 		}
 	}
@@ -398,18 +392,18 @@ func (translator *BytecodeTranslator) valueIDForExpressionList(
 	return returnValueID
 }
 
-func (translator *BytecodeTranslator) valueIDForIdentifier(identifier *IdentifierExpression) int {
+func (translator *BytecodeTranslator) valueIDForIdentifier(identifier *parser.Identifier) int {
 	if valueID, ok := translator.valueIDForNonBuiltInIdentifierInScope(identifier); ok {
 		return valueID
 	}
 
-	valueID, ok := builtInValues[identifier.Content]
+	valueID, ok := builtInValues[identifier.Value]
 
 	if !ok {
 		errors.RaisePositionalError(
 			&errors.PositionalError{
-				Error:    parser_errors.UnknownValue(identifier.Content),
-				Position: identifier.position,
+				Error:    parser_errors.UnknownValue(identifier.Value),
+				Position: identifier.Position(),
 			},
 
 			translator.fileContent,
@@ -419,7 +413,7 @@ func (translator *BytecodeTranslator) valueIDForIdentifier(identifier *Identifie
 	return valueID
 }
 
-func (translator *BytecodeTranslator) valueIDForFunction(function *FunctionExpression) int {
+func (translator *BytecodeTranslator) valueIDForFunction(function *parser.Function) int {
 	translator.instructions = append(translator.instructions, &Instruction{
 		Type: PushFunctionInstruction,
 	})
@@ -431,7 +425,7 @@ func (translator *BytecodeTranslator) valueIDForFunction(function *FunctionExpre
 	}
 
 	for _, parameter := range function.Parameters {
-		scope.identifierValueIDMap[parameter.Content] = scope.nextValueID
+		scope.identifierValueIDMap[parameter.Value] = scope.nextValueID
 		scope.nextValueID++
 	}
 
@@ -442,7 +436,7 @@ func (translator *BytecodeTranslator) valueIDForFunction(function *FunctionExpre
 		Type: PopFunctionInstruction,
 	})
 
-	return translator.currentScope().identifierValueIDMap[function.Name.Content]
+	return translator.currentScope().identifierValueIDMap[function.Name.Value]
 }
 
 func (translator *BytecodeTranslator) valueIDForNonBuiltInConstantInScope(constantID int) (int, bool) {
@@ -456,10 +450,10 @@ func (translator *BytecodeTranslator) valueIDForNonBuiltInConstantInScope(consta
 }
 
 func (translator *BytecodeTranslator) valueIDForNonBuiltInIdentifierInScope(
-	identifier *IdentifierExpression,
+	identifier *parser.Identifier,
 ) (int, bool) {
 	for i := len(translator.scopeStack) - 1; i >= 0; i-- {
-		if valueID, ok := translator.scopeStack[i].identifierValueIDMap[identifier.Content]; ok {
+		if valueID, ok := translator.scopeStack[i].identifierValueIDMap[identifier.Value]; ok {
 			return valueID, true
 		}
 	}
@@ -467,10 +461,10 @@ func (translator *BytecodeTranslator) valueIDForNonBuiltInIdentifierInScope(
 	return 0, false
 }
 
-func (translator *BytecodeTranslator) valueIDForSelect(select_ *SelectExpression) int {
+func (translator *BytecodeTranslator) valueIDForSelect(select_ *parser.Select) int {
 	valueID := translator.valueIDForExpression(select_.Value)
 
-	fieldName := select_.Field.Content
+	fieldName := select_.Field.Value
 	field, ok := builtInFields[fieldName]
 
 	if !ok {

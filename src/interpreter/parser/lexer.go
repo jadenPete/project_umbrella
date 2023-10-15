@@ -1,20 +1,17 @@
 package parser
 
 import (
+	"io"
 	"strings"
+
+	"github.com/alecthomas/participle/v2/lexer"
 
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/lexer_errors"
 )
 
-type TokenType MatcherCode
-type Token struct {
-	Type     TokenType
-	Position *errors.Position
-}
-
 const (
-	AssignmentOperatorToken TokenType = iota + 1
+	AssignmentOperatorToken lexer.TokenType = iota + 1
 	ColonToken
 	CommaToken
 	FloatToken
@@ -109,7 +106,10 @@ var matcher = ExhaustiveMatcher{
 }
 
 type Lexer struct {
-	FileContent string
+	cachedTokens []*lexer.Token
+	fileContent  string
+	filename     string
+	i            int
 }
 
 func indentCharacterAndCount(line string) (rune, int) {
@@ -139,31 +139,60 @@ func isLineBlank(line string) bool {
 	return true
 }
 
-/*
- * Tokenize the input file content, converting it into a slice of tokens.
- *
- * If tokenization failed, this function returns `nil`.
- */
-func (lexer *Lexer) Parse() []*Token {
-	if len(lexer.FileContent) == 0 {
-		return make([]*Token, 0)
+func (lexer_ *Lexer) Next() (lexer.Token, error) {
+	if lexer_.cachedTokens == nil {
+		lexer_.cachedTokens = lexer_.tokens()
+
+		if lexer_.cachedTokens == nil {
+			errors.RaiseError(lexer_errors.LexerFailed)
+		}
 	}
 
-	matches := matcher.MatchWithInitial(MatcherInput(lexer.FileContent), lexer.parseIndentation())
+	if lexer_.i == len(lexer_.cachedTokens) {
+		return lexer.EOFToken(
+			lexer.Position{
+				Filename: lexer_.filename,
+				Offset:   len(lexer_.fileContent),
+
+				// TODO: Compute these fields' values
+				Line:   0,
+				Column: 0,
+			},
+		), nil
+	}
+
+	token := lexer_.cachedTokens[lexer_.i]
+
+	lexer_.i++
+
+	return *token, nil
+}
+
+func (lexer_ *Lexer) tokens() []*lexer.Token {
+	if len(lexer_.fileContent) == 0 {
+		return make([]*lexer.Token, 0)
+	}
+
+	matches := matcher.MatchWithInitial(MatcherInput(lexer_.fileContent), lexer_.parseIndentation())
 
 	if matches == nil {
 		return nil
 	}
 
-	result := make([]*Token, 0)
+	result := make([]*lexer.Token, 0)
 
 	for _, match := range matches {
 		if match.Type != MatcherCode(SpaceToken) {
-			result = append(result, &Token{
-				Type: TokenType(match.Type),
-				Position: &errors.Position{
-					Start: match.Start,
-					End:   match.End,
+			result = append(result, &lexer.Token{
+				Type:  lexer.TokenType(match.Type),
+				Value: lexer_.fileContent[match.Start:match.End],
+				Pos: lexer.Position{
+					Filename: lexer_.filename,
+					Offset:   match.Start,
+
+					// TODO: Compute these fields' values
+					Line:   0,
+					Column: 0,
 				},
 			})
 		}
@@ -173,7 +202,7 @@ func (lexer *Lexer) Parse() []*Token {
 }
 
 /*
- * Before we tokenize the input, we replace indentation with indent and outde nt meta-tokens, which
+ * Before we tokenize the input, we replace indentation with indent and outdent meta-tokens, which
  * effectively act as opening and closing tags. Iterating through each line, we record the
  * difference in indentation between it and the previous one, adding indents or outdents to it as
  * appropriate.
@@ -196,7 +225,7 @@ func (lexer *Lexer) Parse() []*Token {
  * consistency. Additionally, added indent tokens always precede lines, while outdent tokens always
  * succeed them.
  */
-func (lexer *Lexer) parseIndentation() []*ExhaustiveMatch {
+func (lexer_ *Lexer) parseIndentation() []*ExhaustiveMatch {
 	result := make([]*ExhaustiveMatch, 0)
 
 	addMatchToResult := func(type_ MatcherCode, start int, end int) {
@@ -221,7 +250,7 @@ func (lexer *Lexer) parseIndentation() []*ExhaustiveMatch {
 	indentLength := 0
 	lastIndentCount := 0
 
-	for _, line := range strings.Split(lexer.FileContent, "\n") {
+	for _, line := range strings.Split(lexer_.fileContent, "\n") {
 		if !isLineBlank(line) {
 			currentIndentCharacter, indentCount := indentCharacterAndCount(line)
 
@@ -248,7 +277,7 @@ func (lexer *Lexer) parseIndentation() []*ExhaustiveMatch {
 						},
 					},
 
-					lexer.FileContent,
+					lexer_.fileContent,
 				)
 			}
 
@@ -256,21 +285,20 @@ func (lexer *Lexer) parseIndentation() []*ExhaustiveMatch {
 				indentCount /= indentLength
 			}
 
-			endOfLastUnrecognizedMatch := endOfLastMatch()
 			lineStart := fileOffset + indentCount*indentLength
 
 			if indentCount < lastIndentCount {
 				for i := 0; i < lastIndentCount-indentCount; i++ {
 					addMatchToResult(
 						MatcherCode(OutdentToken),
-						endOfLastUnrecognizedMatch,
-						endOfLastUnrecognizedMatch,
+						endOfLastMatch(),
+						endOfLastMatch(),
 					)
 				}
 			}
 
-			if endOfLastUnrecognizedMatch > 0 {
-				addMatchToResult(UnrecognizedMatcherCode, endOfLastUnrecognizedMatch, fileOffset)
+			if endOfLastMatch() > 0 {
+				addMatchToResult(UnrecognizedMatcherCode, endOfLastMatch(), fileOffset)
 			}
 
 			if indentCount > lastIndentCount {
@@ -287,9 +315,54 @@ func (lexer *Lexer) parseIndentation() []*ExhaustiveMatch {
 		fileOffset += len(line) + 1
 	}
 
-	if endOfLastMatch() < len(lexer.FileContent) {
-		addMatchToResult(UnrecognizedMatcherCode, endOfLastMatch(), len(lexer.FileContent))
+	for i := 0; i < lastIndentCount; i++ {
+		addMatchToResult(MatcherCode(OutdentToken), endOfLastMatch(), endOfLastMatch())
+	}
+
+	if endOfLastMatch() < len(lexer_.fileContent) {
+		addMatchToResult(UnrecognizedMatcherCode, endOfLastMatch(), len(lexer_.fileContent))
 	}
 
 	return result
+}
+
+type LexerDefinition struct{}
+
+func (definition *LexerDefinition) Lex(filename string, reader io.Reader) (lexer.Lexer, error) {
+	fileContent, err := io.ReadAll(reader)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return definition.LexString(filename, string(fileContent))
+}
+
+func (definition *LexerDefinition) LexString(filename string, fileContent string) (lexer.Lexer, error) {
+	return &Lexer{
+		cachedTokens: nil,
+		fileContent:  fileContent,
+		filename:     filename,
+		i:            0,
+	}, nil
+}
+
+func (definition *LexerDefinition) Symbols() map[string]lexer.TokenType {
+	return map[string]lexer.TokenType{
+		"AssignmentOperatorToken": lexer.TokenType(AssignmentOperatorToken),
+		"ColonToken":              lexer.TokenType(ColonToken),
+		"CommaToken":              lexer.TokenType(CommaToken),
+		"FloatToken":              lexer.TokenType(FloatToken),
+		"FunctionKeywordToken":    lexer.TokenType(FunctionKeywordToken),
+		"IdentifierToken":         lexer.TokenType(IdentifierToken),
+		"IndentToken":             lexer.TokenType(IndentToken),
+		"OutdentToken":            lexer.TokenType(OutdentToken),
+		"IntegerToken":            lexer.TokenType(IntegerToken),
+		"LeftParenthesisToken":    lexer.TokenType(LeftParenthesisToken),
+		"RightParenthesisToken":   lexer.TokenType(RightParenthesisToken),
+		"NewlineToken":            lexer.TokenType(NewlineToken),
+		"SelectOperatorToken":     lexer.TokenType(SelectOperatorToken),
+		"StringToken":             lexer.TokenType(StringToken),
+		"EOF":                     lexer.EOF,
+	}
 }

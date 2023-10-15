@@ -22,41 +22,32 @@
 package runtime
 
 import (
+	"project_umbrella/interpreter/bytecode_generator"
 	"project_umbrella/interpreter/common"
-	"project_umbrella/interpreter/parser"
 )
 
 type bytecodeFunctionBlock interface {
-	Visit(*bytecodeFunctionBlockVisitor)
+	bytecodeFunctionBlock()
 }
 
 type bytecodeFunctionBlockGraph struct {
 	graph *common.Graph[bytecodeFunctionBlock]
 }
 
-func (bytecodeFunctionBlockGraph_ *bytecodeFunctionBlockGraph) Visit(visitor *bytecodeFunctionBlockVisitor) {
-	visitor.VisitBytecodeFunctionBlockGraph(bytecodeFunctionBlockGraph_)
-}
-
-type bytecodeFunctionBlockVisitor struct {
-	VisitBytecodeFunctionBlockGraph func(*bytecodeFunctionBlockGraph)
-	VisitInstructionList            func(*instructionList)
-}
+func (*bytecodeFunctionBlockGraph) bytecodeFunctionBlock() {}
 
 type instructionList struct {
-	instructions []*parser.Instruction
+	instructions []*bytecode_generator.Instruction
 }
 
-func (instructionList_ *instructionList) Visit(visitor *bytecodeFunctionBlockVisitor) {
-	visitor.VisitInstructionList(instructionList_)
-}
+func (*instructionList) bytecodeFunctionBlock() {}
 
 type runtime struct {
 	constants      []value
 	rootBlockGraph *bytecodeFunctionBlockGraph
 }
 
-func newRuntime(bytecode *parser.Bytecode) *runtime {
+func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 	type runtimeConstructorScope struct {
 		firstValueID  int
 		blockGraph    *bytecodeFunctionBlockGraph
@@ -103,7 +94,7 @@ func newRuntime(bytecode *parser.Bytecode) *runtime {
 		return scopeStack[len(scopeStack)-1]
 	}
 
-	addInstructionListToCurrentFunction := func(instructions []*parser.Instruction) {
+	addInstructionListToCurrentFunction := func(instructions []*bytecode_generator.Instruction) {
 		currentScope().blockGraph.graph.Nodes = append(
 			currentScope().blockGraph.graph.Nodes,
 			&instructionList{instructions: instructions},
@@ -112,7 +103,7 @@ func newRuntime(bytecode *parser.Bytecode) *runtime {
 
 	// Hoist declared functions
 	for _, instruction := range bytecode.Instructions {
-		if instruction.Type == parser.PushFunctionInstruction {
+		if instruction.Type == bytecode_generator.PushFunctionInstruction {
 			newBlockGraph := &bytecodeFunctionBlockGraph{
 				graph: common.NewGraph[bytecodeFunctionBlock](),
 			}
@@ -123,19 +114,19 @@ func newRuntime(bytecode *parser.Bytecode) *runtime {
 			scopeStack = append(scopeStack, &runtimeConstructorScope{
 				blockGraph: newBlockGraph,
 			})
-		} else if instruction.Type == parser.PopFunctionInstruction {
+		} else if instruction.Type == bytecode_generator.PopFunctionInstruction {
 			scopeStack = scopeStack[:len(scopeStack)-1]
 		}
 	}
 
-	pushArgumentInstructions := make([]*parser.Instruction, 0)
+	pushArgumentInstructions := make([]*bytecode_generator.Instruction, 0)
 
 	for _, instruction := range bytecode.Instructions {
 		switch instruction.Type {
-		case parser.PushArgumentInstruction:
+		case bytecode_generator.PushArgumentInstruction:
 			pushArgumentInstructions = append(pushArgumentInstructions, instruction)
 
-		case parser.PushFunctionInstruction:
+		case bytecode_generator.PushFunctionInstruction:
 			scopeStack = append(scopeStack, &runtimeConstructorScope{
 				firstValueID: currentScope().firstValueID + currentScope().seenFunctions + 1,
 				blockGraph: currentScope().
@@ -148,14 +139,14 @@ func newRuntime(bytecode *parser.Bytecode) *runtime {
 
 			scopeStack[len(scopeStack)-2].seenFunctions++
 
-		case parser.PopFunctionInstruction:
+		case bytecode_generator.PopFunctionInstruction:
 			scopeStack = scopeStack[:len(scopeStack)-1]
 
-		case parser.ValueCopyInstruction:
-			addInstructionListToCurrentFunction([]*parser.Instruction{instruction})
+		case bytecode_generator.ValueCopyInstruction:
+			addInstructionListToCurrentFunction([]*bytecode_generator.Instruction{instruction})
 			addDependencyForLatestValue(instruction.Arguments[0])
 
-		case parser.ValueFromCallInstruction:
+		case bytecode_generator.ValueFromCallInstruction:
 			pushArgumentInstructions = append(pushArgumentInstructions, instruction)
 
 			addInstructionListToCurrentFunction(pushArgumentInstructions)
@@ -167,13 +158,13 @@ func newRuntime(bytecode *parser.Bytecode) *runtime {
 				}
 			}
 
-			pushArgumentInstructions = make([]*parser.Instruction, 0)
+			pushArgumentInstructions = make([]*bytecode_generator.Instruction, 0)
 
-		case parser.ValueFromConstantInstruction:
-			addInstructionListToCurrentFunction([]*parser.Instruction{instruction})
+		case bytecode_generator.ValueFromConstantInstruction:
+			addInstructionListToCurrentFunction([]*bytecode_generator.Instruction{instruction})
 
-		case parser.ValueFromStructValueInstruction:
-			addInstructionListToCurrentFunction([]*parser.Instruction{instruction})
+		case bytecode_generator.ValueFromStructValueInstruction:
+			addInstructionListToCurrentFunction([]*bytecode_generator.Instruction{instruction})
 			addDependencyForLatestValue(instruction.Arguments[0])
 		}
 	}
@@ -197,6 +188,6 @@ func (runtime *runtime) execute() {
 	}).evaluate(runtime)
 }
 
-func ExecuteBytecode(bytecode *parser.Bytecode) {
+func ExecuteBytecode(bytecode *bytecode_generator.Bytecode) {
 	newRuntime(bytecode).execute()
 }

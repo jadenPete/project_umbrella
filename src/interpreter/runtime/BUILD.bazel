@@ -6,9 +6,9 @@ go_library(
     importpath = "project_umbrella/interpreter/runtime",
     visibility = ["//src/interpreter:__subpackages__"],
     deps = [
+        "//src/interpreter/bytecode_generator",
         "//src/interpreter/common",
         "//src/interpreter/errors",
         "//src/interpreter/errors/runtime_errors",
-        "//src/interpreter/parser",
     ],
 )

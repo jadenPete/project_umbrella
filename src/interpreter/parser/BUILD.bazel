@@ -9,8 +9,8 @@ go_library(
         "//src/interpreter/common",
         "//src/interpreter/errors",
         "//src/interpreter/errors/lexer_errors",
-        "//src/interpreter/errors/parser_errors",
+        "@com_github_alecthomas_participle_v2//:go_default_library",
+        "@com_github_alecthomas_participle_v2//lexer",
         "@com_github_dlclark_regexp2//:go_default_library",
-        "@com_github_ugorji_go_codec//:go_default_library",
     ],
 )
