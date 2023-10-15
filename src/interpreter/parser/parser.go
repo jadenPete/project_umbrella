@@ -178,12 +178,12 @@ func (concrete *ConcreteIndentedStatementList) AbstractExpressionList() *Express
 }
 
 type ConcreteStatementList struct {
-	Children []ConcreteStatement `parser:"NewlineToken* (@@ (NewlineToken+ @@)* NewlineToken*)?"`
+	Children []ConcreteStatement
 }
 
 /*
  * This function is responsible for parsing statement lists into concrete syntax trees comprising
- * zero or more statements. Statement lists cannot be parsed with participle's tax syntax
+ * zero or more statements. Statement lists cannot be parsed with Participle's tax syntax
  * (https://github.com/alecthomas/participle#tag-syntax) because they aren't technically
  * context-free.
  *

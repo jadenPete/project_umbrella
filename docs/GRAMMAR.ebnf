@@ -1,11 +1,11 @@
 (* Union expressions *)
 
 Statement =
-	| Function
 	| Assignment
-	| Expression;
+	| Function
+	| InfixMiscellaneous;
 
-Expression = InfixAddition;
+Expression = InfixMiscellaneous;
 Primary =
 	| Float
 	| Identifier
@@ -19,6 +19,7 @@ Formatting =
 
 (* Statements *)
 
+Assignment = Identifier {Formatting} "=" {Formatting} (Expression | Assignment);
 Function = FunctionDeclaration ":" NewlineToken IndentedStatementList;
 FunctionDeclaration =
 	"fn"
@@ -31,18 +32,19 @@ FunctionDeclaration =
 	{Formatting}
 	")";
 
-FunctionParameters =
-	| Identifier {Formatting} "," {Formatting} FunctionParameters
-	| Identifier;
-
-IndentedStatementList = IndentToken StatementList (OutdentToken | EOF);
-StatementList =
-	| {NewlineToken} Statement NewlineToken StatementList
-	| {NewlineToken} Statement {NewlineToken};
-
-Assignment = Identifier {Formatting} "=" {Formatting} (Expression | Assignment);
+FunctionParameters = Identifier [{Formatting} "," {Formatting} FunctionParameters];
+IndentedStatementList = {NewlineToken} [IndentToken StatementList (OutdentToken | EOF)];
+StatementList;
 
 (* Multi-token expressions *)
+
+InfixMiscellaneous = InfixAddition {InfixMiscellaneousRight};
+InfixMiscellaneousRight =
+	(
+		| {IndentToken | OutdentToken} Identifier {Formatting}
+		| {Formatting} Identifier {IndentToken | OutdentToken}
+	)
+	InfixAddition;
 
 InfixAddition = InfixMultiplication {InfixAdditionRight};
 InfixAdditionRight =
@@ -52,28 +54,20 @@ InfixAdditionRight =
 	)
 	InfixMultiplication;
 
-InfixMultiplication = InfixMiscellaneous {InfixMultiplicationRight};
+InfixMultiplication = Call {InfixMultiplicationRight};
 InfixMultiplicationRight =
 	(
 		| {IndentToken | OutdentToken} ("*" | "/") {Formatting}
 		| {Formatting} ("*" | "/") {IndentToken | OutdentToken}
 	)
-	InfixMiscellaneous;
-
-InfixMiscellaneous = Call {InfixMiscellaneousRight};
-InfixMiscellaneousRight =
-	(
-		| {IndentToken | OutdentToken} Identifier {Formatting}
-		| {Formatting} Identifier {IndentToken | OutdentToken}
-	)
 	Call;
 
-Call = Select {CallRight | SelectRight};
-CallRight = {IndentToken | OutdentToken} "(" {Formatting} [CallArguments] {Formatting} ")";
-CallArguments =
-	| Expression [{Formatting} "," {Formatting} CallArguments]
-	| Expression;
+Call = Select {CallRight};
+CallRight =
+	| {IndentToken | OutdentToken} "(" {Formatting} [CallArguments] {Formatting} ")"
+	| SelectRight;
 
+CallArguments = Expression [{Formatting} "," {Formatting} CallArguments];
 Select = Primary {SelectRight};
 SelectRight = {Formatting} "." {Formatting} Identifier;
 
