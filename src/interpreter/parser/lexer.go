@@ -23,6 +23,7 @@ const (
 	LeftParenthesisToken
 	RightParenthesisToken
 	NewlineToken
+	OperatorToken
 	SelectOperatorToken
 	SpaceToken
 	StringToken
@@ -95,12 +96,28 @@ var matcher = ExhaustiveMatcher{
 		},
 
 		/*
-		 * Identifiers are parsed last because they shouldn't contain anything that would be
-		 * _identified_ (get it?) as another token.
+		 * Operators and identifiers are parsed last because they shouldn't contain anything that
+		 * would be _identified_ (get it?) as another token.
+		 *
+		 * Operators can contain any special (non-control, non-alphanumeric) ASCII character with
+		 * the following exceptions.
+		 *
+		 * Conflicts with other tokens:
+		 * "\"", "(", ")", ",", ".", ":", "_"
+		 *
+		 * Reserved for future use:
+		 * "#", "$", ",", "/", ";", "?", "@", "[", "]", "\\", "`", "{", "}"
+		 *
+		 * "=" is also not a valid operator.
 		 */
 		{
+			MatcherCode(OperatorToken),
+			CompileMatcher(`[!%&*+\-<=>^|~]+`),
+		},
+
+		{
 			MatcherCode(IdentifierToken),
-			CompileMatcher(`[^\t\n ="(),.]+`),
+			CompileMatcher(`[^\t\n !"%&()*+,\-.<=>]+`),
 		},
 	},
 }
@@ -369,6 +386,7 @@ func (definition *LexerDefinition) Symbols() map[string]lexer.TokenType {
 		"LeftParenthesisToken":    lexer.TokenType(LeftParenthesisToken),
 		"RightParenthesisToken":   lexer.TokenType(RightParenthesisToken),
 		"NewlineToken":            lexer.TokenType(NewlineToken),
+		"OperatorToken":           lexer.TokenType(OperatorToken),
 		"SelectOperatorToken":     lexer.TokenType(SelectOperatorToken),
 		"StringToken":             lexer.TokenType(StringToken),
 		"EOF":                     lexer.EOF,

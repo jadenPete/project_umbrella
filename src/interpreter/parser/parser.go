@@ -338,8 +338,8 @@ func (*ConcreteInfixMiscellaneous) concreteStatement()  {}
 func (*ConcreteInfixMiscellaneous) concreteExpression() {}
 
 type ConcreteInfixMiscellaneousRight struct {
-	OperatorOne *ConcreteIdentifier    `parser:"(((IndentToken | OutdentToken)* @@ (IndentToken | OutdentToken | NewlineToken)*)"`
-	OperatorTwo *ConcreteIdentifier    `parser:" | ((IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken)*))"`
+	OperatorOne *ConcreteOperator      `parser:"(((IndentToken | OutdentToken)* @@ (IndentToken | OutdentToken | NewlineToken)*)"`
+	OperatorTwo *ConcreteOperator      `parser:" | ((IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken)*))"`
 	Operand_    *ConcreteInfixAddition `parser:"@@"`
 }
 
@@ -553,7 +553,7 @@ func (concrete *ConcreteFloat) AbstractFloat() *Float {
 func (*ConcreteFloat) primary() {}
 
 type ConcreteIdentifier struct {
-	Value  string `parser:"@IdentifierToken"`
+	Value  string `parser:"@IdentifierToken | @OperatorToken"`
 	Tokens []lexer.Token
 }
 
@@ -587,6 +587,18 @@ func (concrete *ConcreteInteger) AbstractInteger() *Integer {
 }
 
 func (*ConcreteInteger) primary() {}
+
+type ConcreteOperator struct {
+	Value  string `parser:"@OperatorToken"`
+	Tokens []lexer.Token
+}
+
+func (concrete *ConcreteOperator) AbstractIdentifier() *Identifier {
+	return &Identifier{
+		Value:    concrete.Value,
+		position: tokenSyntaxTreePosition(&concrete.Tokens[0]),
+	}
+}
 
 type ConcreteString struct {
 	Value  string `parser:"@StringToken"`

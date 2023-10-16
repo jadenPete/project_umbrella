@@ -74,6 +74,10 @@ SelectRight = {Formatting} "." {Formatting} Identifier;
 (* Single-token expressions *)
 
 Float = FloatToken;
-Identifier = IdentifierToken;
+Identifier =
+	| IdentifierToken
+	| OperatorToken;
+
 Integer = IntegerToken;
+Operator = OperatorToken;
 String = StringToken;
