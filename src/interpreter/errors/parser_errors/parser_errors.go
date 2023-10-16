@@ -3,8 +3,18 @@ package parser_errors
 import (
 	"fmt"
 
+	"github.com/alecthomas/participle/v2"
+
 	"project_umbrella/interpreter/errors"
 )
+
+func ParserFailed(err participle.Error) *errors.Error {
+	return &errors.Error{
+		Section: "PARSER",
+		Code:    1,
+		Name:    fmt.Sprintf("The parser failed: %s", err.Message()),
+	}
+}
 
 var BytecodeEncodingFailed = &errors.Error{
 	Section: "PARSER",

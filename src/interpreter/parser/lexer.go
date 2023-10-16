@@ -154,7 +154,15 @@ func (lexer_ *Lexer) Next() (lexer.Token, error) {
 				Filename: lexer_.filename,
 				Offset:   len(lexer_.fileContent),
 
-				// TODO: Compute these fields' values
+				/*
+				 * These fields aren't populated because we don't use them.
+				 *
+				 * Generally, they're useful only for error handling, but we already reconstruct the
+				 * line and column when we raise errors (see
+				 * `src/interpreter/errors/code_highlighter.go` to understand how).
+				 *
+				 * See `src/interpreter/main.go`, where we use tokens' positions to raise errors.
+				 */
 				Line:   0,
 				Column: 0,
 			},
@@ -190,7 +198,7 @@ func (lexer_ *Lexer) tokens() []*lexer.Token {
 					Filename: lexer_.filename,
 					Offset:   match.Start,
 
-					// TODO: Compute these fields' values
+					// Similarly, these fields aren't populated because we don't use them either.
 					Line:   0,
 					Column: 0,
 				},
