@@ -1,6 +1,9 @@
 package parser
 
-import "project_umbrella/interpreter/errors"
+import (
+	"project_umbrella/interpreter/errors"
+	"project_umbrella/interpreter/parser/parser_types"
+)
 
 type Expression interface {
 	Position() *errors.Position
@@ -78,9 +81,9 @@ func (integer *Integer) Position() *errors.Position {
 }
 
 type Select struct {
-	Value   Expression
-	Field   *Identifier
-	IsInfix bool
+	Value Expression
+	Field *Identifier
+	Type  parser_types.SelectType
 }
 
 func (select_ *Select) Position() *errors.Position {

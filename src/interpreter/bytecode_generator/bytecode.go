@@ -78,16 +78,17 @@ import (
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/parser_errors"
 	"project_umbrella/interpreter/parser"
+	"project_umbrella/interpreter/parser/parser_types"
 )
 
 const checksumSize = 32
 
 var builtInFields = map[string]*builtInField{
-	"__to_str__": {-1, false},
-	"+":          {-2, true},
-	"-":          {-3, true},
-	"*":          {-4, true},
-	"/":          {-5, true},
+	"__to_str__": {-1, parser_types.NormalField},
+	"+":          {-2, parser_types.InfixField},
+	"-":          {-3, parser_types.InfixField},
+	"*":          {-4, parser_types.InfixField},
+	"/":          {-5, parser_types.InfixField},
 }
 
 var builtInValues = map[string]int{
@@ -103,8 +104,8 @@ func sourceChecksum(fileContent string) [checksumSize]byte {
 }
 
 type builtInField struct {
-	id            int
-	isInfixMethod bool
+	id        int
+	fieldType parser_types.FieldType
 }
 
 type Bytecode struct {
@@ -478,12 +479,14 @@ func (translator *BytecodeTranslator) valueIDForSelect(select_ *parser.Select) i
 		)
 	}
 
-	if select_.IsInfix && !field.isInfixMethod {
+	if !field.fieldType.CanSelectBy(select_.Type) {
 		errors.RaisePositionalError(
 			&errors.PositionalError{
-				Error: parser_errors.NonInfixMethodCalledImproperly(
+				Error: parser_errors.MethodCalledImproperly(
 					translator.fileContent[select_.Value.Position().Start:select_.Value.Position().End],
 					fieldName,
+					field.fieldType,
+					select_.Type,
 				),
 
 				Position: select_.Field.Position(),

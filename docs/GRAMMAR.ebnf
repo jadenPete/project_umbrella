@@ -62,6 +62,7 @@ InfixMultiplicationRight =
 	)
 	Call;
 
+PrefixOperation = {Operator {IndentToken | OutdentToken}} Call;
 Call = Select {CallRight};
 CallRight =
 	| {IndentToken | OutdentToken} "(" {Formatting} [CallArguments] {Formatting} ")"
