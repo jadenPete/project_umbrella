@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"reflect"
+	"strconv"
 	"strings"
 
 	"project_umbrella/interpreter/bytecode_generator"
@@ -72,14 +74,14 @@ func newValueFromConstant(constant bytecode_generator.Constant) value {
 
 var builtInValues = map[builtInValueID]value{
 	printFunctionID: &builtInFunction{
-		isVariadic: true,
+		argumentValidator: variadicBuiltInFunction("print", nil),
 		evaluator: func(runtime_ *runtime, arguments ...value) value {
 			return print(runtime_, "", arguments...)
 		},
 	},
 
 	printlnFunctionID: &builtInFunction{
-		isVariadic: true,
+		argumentValidator: variadicBuiltInFunction("println", nil),
 		evaluator: func(runtime_ *runtime, arguments ...value) value {
 			return print(runtime_, "\n", arguments...)
 		},
@@ -140,35 +142,38 @@ type function interface {
 }
 
 type builtInFunction struct {
-	argumentCount int
-	isVariadic    bool
-	evaluator     func(runtime_ *runtime, arguments ...value) value
+	argumentValidator *builtInFunctionArgumentValidator
+	evaluator         func(runtime_ *runtime, arguments ...value) value
 }
 
-func generateInfixMethod[T value](
-	operation func(rightHandSide T) T,
-	typeName string,
-	methodName string,
+func generateMinusMethod[Number value](
+	numberType reflect.Type,
+	negated func() Number,
+	subtracted func(Number) Number,
 ) *builtInFunction {
 	return &builtInFunction{
-		argumentCount: 1,
-		evaluator: func(runtime_ *runtime, arguments ...value) value {
-			argument, ok := arguments[0].(T)
+		argumentValidator: intersectionBuiltInFunction(
+			func(argumentTypes []reflect.Type) *errors.Error {
+				return runtime_errors.IncorrectCallArgumentCount("1-2", len(argumentTypes))
+			},
 
-			if !ok {
-				errors.RaiseError(
-					runtime_errors.IncorrectBuiltInInfixMethodArgumentType(typeName, methodName),
-				)
+			fixedBuiltInFunction("-", numberType),
+			fixedBuiltInFunction("-", numberType, numberType),
+		),
+
+		evaluator: func(_ *runtime, arguments ...value) value {
+			if len(arguments) == 0 {
+				return negated()
 			}
 
-			return operation(argument)
+			return subtracted(arguments[0].(Number))
 		},
 	}
 }
 
 func generateToStringMethod(result func() string) *builtInFunction {
 	return &builtInFunction{
-		argumentCount: 0,
+		argumentValidator: fixedBuiltInFunction("__to_str__"),
 		evaluator: func(runtime_ *runtime, arguments ...value) value {
 			return stringValue{result()}
 		},
@@ -186,13 +191,83 @@ func (function_ *builtInFunction) definition() *valueDefinition {
 }
 
 func (function *builtInFunction) evaluate(runtime_ *runtime, arguments ...value) value {
-	if !function.isVariadic && len(arguments) != function.argumentCount {
-		errors.RaiseError(
-			runtime_errors.IncorrectCallArgumentCount(function.argumentCount, len(arguments)),
-		)
+	argumentTypes := make([]reflect.Type, 0, len(arguments))
+
+	for _, argument := range arguments {
+		argumentTypes = append(argumentTypes, reflect.TypeOf(argument))
+	}
+
+	if err := function.argumentValidator.validArguments(argumentTypes); err != nil {
+		errors.RaiseError(err)
 	}
 
 	return function.evaluator(runtime_, arguments...)
+}
+
+type builtInFunctionArgumentValidator struct {
+	validArguments func(argumentTypes []reflect.Type) *errors.Error
+}
+
+func fixedBuiltInFunction(
+	name string,
+	parameterTypes ...reflect.Type,
+) *builtInFunctionArgumentValidator {
+	return &builtInFunctionArgumentValidator{
+		validArguments: func(argumentTypes []reflect.Type) *errors.Error {
+			if len(argumentTypes) != len(parameterTypes) {
+				return runtime_errors.IncorrectCallArgumentCount(
+					strconv.Itoa(len(parameterTypes)),
+					len(argumentTypes),
+				)
+			}
+
+			for i, parameterType := range parameterTypes {
+				if parameterType != nil && !argumentTypes[i].AssignableTo(parameterType) {
+					return runtime_errors.IncorrectBuiltInFunctionArgumentType(name, i)
+				}
+			}
+
+			return nil
+		},
+	}
+}
+
+func intersectionBuiltInFunction(
+	err func([]reflect.Type) *errors.Error,
+	validators ...*builtInFunctionArgumentValidator,
+) *builtInFunctionArgumentValidator {
+	return &builtInFunctionArgumentValidator{
+		validArguments: func(argumentTypes []reflect.Type) *errors.Error {
+			for _, validator := range validators {
+				if err := validator.validArguments(argumentTypes); err == nil {
+					return nil
+				}
+			}
+
+			return err(argumentTypes)
+		},
+	}
+}
+
+func variadicBuiltInFunction(
+	name string,
+	parameterType reflect.Type,
+) *builtInFunctionArgumentValidator {
+	return &builtInFunctionArgumentValidator{
+		validArguments: func(argumentTypes []reflect.Type) *errors.Error {
+			if parameterType == nil {
+				return nil
+			}
+
+			for i, argumentType := range argumentTypes {
+				if !argumentType.AssignableTo(parameterType) {
+					return runtime_errors.IncorrectBuiltInFunctionArgumentType(name, i)
+				}
+			}
+
+			return nil
+		},
+	}
 }
 
 type bytecodeFunction struct {
@@ -307,45 +382,43 @@ func (value_ floatValue) definition() *valueDefinition {
 				return fmt.Sprintf("%g", value_.value)
 			}),
 
-			plusMethodID: generateInfixMethod(
-				func(rightHandSide floatValue) floatValue {
-					return floatValue{value_.value + rightHandSide.value}
+			plusMethodID: &builtInFunction{
+				argumentValidator: fixedBuiltInFunction("+", reflect.TypeOf(floatValue{})),
+				evaluator: func(_ *runtime, arguments ...value) value {
+					return floatValue{value_.value + arguments[0].(floatValue).value}
+				},
+			},
+
+			minusMethodID: generateMinusMethod(
+				reflect.TypeOf(floatValue{}),
+				func() floatValue {
+					return floatValue{-value_.value}
 				},
 
-				"float",
-				"+",
-			),
-
-			minusMethodID: generateInfixMethod(
 				func(rightHandSide floatValue) floatValue {
 					return floatValue{value_.value - rightHandSide.value}
 				},
-
-				"float",
-				"-",
 			),
 
-			timesMethodID: generateInfixMethod(
-				func(rightHandSide floatValue) floatValue {
-					return floatValue{value_.value * rightHandSide.value}
+			timesMethodID: &builtInFunction{
+				argumentValidator: fixedBuiltInFunction("*", reflect.TypeOf(floatValue{})),
+				evaluator: func(_ *runtime, arguments ...value) value {
+					return floatValue{value_.value * arguments[0].(floatValue).value}
 				},
+			},
 
-				"float",
-				"*",
-			),
+			overMethodID: &builtInFunction{
+				argumentValidator: fixedBuiltInFunction("/", reflect.TypeOf(floatValue{})),
+				evaluator: func(_ *runtime, arguments ...value) value {
+					rightHandSide := arguments[0].(floatValue).value
 
-			overMethodID: generateInfixMethod(
-				func(rightHandSide floatValue) floatValue {
-					if rightHandSide.value == 0 {
+					if rightHandSide == 0 {
 						errors.RaiseError(runtime_errors.DivisionByZero("float"))
 					}
 
-					return floatValue{value_.value / rightHandSide.value}
+					return floatValue{value_.value / rightHandSide}
 				},
-
-				"float",
-				"/",
-			),
+			},
 		},
 	}
 }
@@ -361,45 +434,43 @@ func (value_ integerValue) definition() *valueDefinition {
 				return fmt.Sprintf("%d", value_.value)
 			}),
 
-			plusMethodID: generateInfixMethod(
-				func(rightHandSide integerValue) integerValue {
-					return integerValue{value_.value + rightHandSide.value}
+			plusMethodID: &builtInFunction{
+				argumentValidator: fixedBuiltInFunction("+", reflect.TypeOf(integerValue{})),
+				evaluator: func(_ *runtime, arguments ...value) value {
+					return integerValue{value_.value + arguments[0].(integerValue).value}
+				},
+			},
+
+			minusMethodID: generateMinusMethod(
+				reflect.TypeOf(integerValue{}),
+				func() integerValue {
+					return integerValue{-value_.value}
 				},
 
-				"int",
-				"+",
-			),
-
-			minusMethodID: generateInfixMethod(
 				func(rightHandSide integerValue) integerValue {
 					return integerValue{value_.value - rightHandSide.value}
 				},
-
-				"int",
-				"-",
 			),
 
-			timesMethodID: generateInfixMethod(
-				func(rightHandSide integerValue) integerValue {
-					return integerValue{value_.value * rightHandSide.value}
+			timesMethodID: &builtInFunction{
+				argumentValidator: fixedBuiltInFunction("*", reflect.TypeOf(integerValue{})),
+				evaluator: func(_ *runtime, arguments ...value) value {
+					return integerValue{value_.value * arguments[0].(integerValue).value}
 				},
+			},
 
-				"int",
-				"*",
-			),
+			overMethodID: &builtInFunction{
+				argumentValidator: fixedBuiltInFunction("/", reflect.TypeOf(integerValue{})),
+				evaluator: func(_ *runtime, arguments ...value) value {
+					rightHandSide := arguments[0].(integerValue).value
 
-			overMethodID: generateInfixMethod(
-				func(rightHandSide integerValue) integerValue {
-					if rightHandSide.value == 0 {
+					if rightHandSide == 0 {
 						errors.RaiseError(runtime_errors.DivisionByZero("int"))
 					}
 
-					return integerValue{value_.value / rightHandSide.value}
+					return integerValue{value_.value / rightHandSide}
 				},
-
-				"int",
-				"/",
-			),
+			},
 		},
 	}
 }
@@ -411,21 +482,18 @@ type stringValue struct {
 func (value_ stringValue) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[builtInFieldID]value{
-			toStringMethodID: &builtInFunction{
-				argumentCount: 0,
-				evaluator: func(runtime_ *runtime, arguments ...value) value {
-					return value_
+			toStringMethodID: generateToStringMethod(
+				func() string {
+					return value_.content
+				},
+			),
+
+			plusMethodID: &builtInFunction{
+				argumentValidator: fixedBuiltInFunction("+", reflect.TypeOf(stringValue{})),
+				evaluator: func(_ *runtime, arguments ...value) value {
+					return stringValue{value_.content + arguments[0].(stringValue).content}
 				},
 			},
-
-			plusMethodID: generateInfixMethod(
-				func(rightHandSide stringValue) stringValue {
-					return stringValue{value_.content + rightHandSide.content}
-				},
-
-				"str",
-				"+",
-			),
 		},
 	}
 }

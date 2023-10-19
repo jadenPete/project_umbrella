@@ -86,7 +86,7 @@ const checksumSize = 32
 var builtInFields = map[string]*builtInField{
 	"__to_str__": {-1, parser_types.NormalField},
 	"+":          {-2, parser_types.InfixField},
-	"-":          {-3, parser_types.InfixField},
+	"-":          {-3, parser_types.InfixPrefixField},
 	"*":          {-4, parser_types.InfixField},
 	"/":          {-5, parser_types.InfixField},
 }

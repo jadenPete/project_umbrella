@@ -6,27 +6,27 @@ import (
 	"project_umbrella/interpreter/errors"
 )
 
-func IncorrectCallArgumentCount(expectedArgumentCount int, actualArgumentCount int) *errors.Error {
+func IncorrectCallArgumentCount(arity string, argumentCount int) *errors.Error {
 	return &errors.Error{
 		Section: "RUNTIME",
 		Code:    1,
 		Name: fmt.Sprintf(
-			"A function accepting %d arguments was called with %d arguments",
-			expectedArgumentCount,
-			actualArgumentCount,
+			"A function accepting %s arguments was called with %d arguments",
+			arity,
+			argumentCount,
 		),
 	}
 }
 
-func IncorrectBuiltInInfixMethodArgumentType(typeName string, methodName string) *errors.Error {
+func IncorrectBuiltInFunctionArgumentType(functionName string, i int) *errors.Error {
 	return &errors.Error{
 		Section: "RUNTIME",
 		Code:    2,
-		Name:    "Incorrectly typed argument to a built-in infix method",
+		Name:    "A built-in function was called with an argument of incorrect type",
 		Description: fmt.Sprintf(
-			"Expected the right-hand side of %[1]s#%[2]s to be of type %[1]s.",
-			typeName,
-			methodName,
+			"%s expected argument #%d to be of a different type.",
+			functionName,
+			i,
 		),
 	}
 }
