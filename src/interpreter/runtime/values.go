@@ -38,6 +38,60 @@ type valueDefinition struct {
 	fields map[builtInFieldID]value
 }
 
+func newNumberDefinition[Value integerValue | floatValue](
+	value_ Value,
+	valueTypeName string,
+) *valueDefinition {
+	valueType := reflect.TypeOf(value_)
+
+	return &valueDefinition{
+		fields: map[builtInFieldID]value{
+			toStringMethodID: newToStringFunction(
+				func() string {
+					switch value_ := any(value_).(type) {
+					case integerValue:
+						return fmt.Sprintf("%d", value_)
+
+					case floatValue:
+						return fmt.Sprintf("%g", value_)
+
+					default:
+						return ""
+					}
+				},
+			),
+
+			plusMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator("+", valueType),
+				func(_ *runtime, arguments ...value) value {
+					return value(value_ + arguments[0].(Value))
+				},
+			),
+
+			minusMethodID: newMinusMethod(value_),
+			timesMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator("*", valueType),
+				func(_ *runtime, arguments ...value) value {
+					return value(value_ * arguments[0].(Value))
+				},
+			),
+
+			overMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator("/", valueType),
+				func(_ *runtime, arguments ...value) value {
+					rightHandSide := arguments[0].(Value)
+
+					if rightHandSide == 0 {
+						errors.RaiseError(runtime_errors.DivisionByZero(valueTypeName))
+					}
+
+					return value(value_ / rightHandSide)
+				},
+			),
+		},
+	}
+}
+
 type value interface {
 	definition() *valueDefinition
 }
@@ -53,7 +107,7 @@ func newValueFromConstant(constant bytecode_generator.Constant) value {
 			panic(err)
 		}
 
-		return floatValue{value}
+		return floatValue(value)
 
 	case bytecode_generator.IntegerConstant:
 		var value int64
@@ -64,7 +118,7 @@ func newValueFromConstant(constant bytecode_generator.Constant) value {
 			panic(err)
 		}
 
-		return integerValue{value}
+		return integerValue(value)
 
 	case bytecode_generator.StringConstant:
 		return stringValue{constant.Encoded}
@@ -369,11 +423,7 @@ func newBytecodeFunction(
 	}
 }
 
-func newMinusMethod[Number value](
-	numberType reflect.Type,
-	negated func() Number,
-	subtracted func(Number) Number,
-) *function {
+func newMinusMethod[Value integerValue | floatValue](value_ Value) *function {
 	return newBuiltInFunction(
 		newIntersectionFunctionArgumentValidator(
 			func(argumentTypes []reflect.Type) *errors.Error {
@@ -381,15 +431,15 @@ func newMinusMethod[Number value](
 			},
 
 			newFixedFunctionArgumentValidator("-"),
-			newFixedFunctionArgumentValidator("-", numberType),
+			newFixedFunctionArgumentValidator("-", reflect.TypeOf(value_)),
 		),
 
 		func(_ *runtime, arguments ...value) value {
 			if len(arguments) == 0 {
-				return negated()
+				return value(-value_)
 			}
 
-			return subtracted(arguments[0].(Number))
+			return value(value_ - arguments[0].(Value))
 		},
 	)
 }
@@ -403,108 +453,16 @@ func newToStringFunction(result func() string) *function {
 	)
 }
 
-type floatValue struct {
-	value float64
-}
+type floatValue float64
 
 func (value_ floatValue) definition() *valueDefinition {
-	return &valueDefinition{
-		fields: map[builtInFieldID]value{
-			toStringMethodID: newToStringFunction(func() string {
-				return fmt.Sprintf("%g", value_.value)
-			}),
-
-			plusMethodID: newBuiltInFunction(
-				newFixedFunctionArgumentValidator("+", reflect.TypeOf(floatValue{})),
-				func(_ *runtime, arguments ...value) value {
-					return floatValue{value_.value + arguments[0].(floatValue).value}
-				},
-			),
-
-			minusMethodID: newMinusMethod(
-				reflect.TypeOf(floatValue{}),
-				func() floatValue {
-					return floatValue{-value_.value}
-				},
-
-				func(rightHandSide floatValue) floatValue {
-					return floatValue{value_.value - rightHandSide.value}
-				},
-			),
-
-			timesMethodID: newBuiltInFunction(
-				newFixedFunctionArgumentValidator("*", reflect.TypeOf(floatValue{})),
-				func(_ *runtime, arguments ...value) value {
-					return floatValue{value_.value * arguments[0].(floatValue).value}
-				},
-			),
-
-			overMethodID: newBuiltInFunction(
-				newFixedFunctionArgumentValidator("/", reflect.TypeOf(floatValue{})),
-				func(_ *runtime, arguments ...value) value {
-					rightHandSide := arguments[0].(floatValue).value
-
-					if rightHandSide == 0 {
-						errors.RaiseError(runtime_errors.DivisionByZero("float"))
-					}
-
-					return floatValue{value_.value / rightHandSide}
-				},
-			),
-		},
-	}
+	return newNumberDefinition(value_, "float")
 }
 
-type integerValue struct {
-	value int64
-}
+type integerValue int64
 
 func (value_ integerValue) definition() *valueDefinition {
-	return &valueDefinition{
-		fields: map[builtInFieldID]value{
-			toStringMethodID: newToStringFunction(func() string {
-				return fmt.Sprintf("%d", value_.value)
-			}),
-
-			plusMethodID: newBuiltInFunction(
-				newFixedFunctionArgumentValidator("+", reflect.TypeOf(integerValue{})),
-				func(_ *runtime, arguments ...value) value {
-					return integerValue{value_.value + arguments[0].(integerValue).value}
-				},
-			),
-
-			minusMethodID: newMinusMethod(
-				reflect.TypeOf(integerValue{}),
-				func() integerValue {
-					return integerValue{-value_.value}
-				},
-
-				func(rightHandSide integerValue) integerValue {
-					return integerValue{value_.value - rightHandSide.value}
-				},
-			),
-
-			timesMethodID: newBuiltInFunction(
-				newFixedFunctionArgumentValidator("*", reflect.TypeOf(integerValue{})),
-				func(_ *runtime, arguments ...value) value {
-					return integerValue{value_.value * arguments[0].(integerValue).value}
-				},
-			),
-
-			overMethodID: newBuiltInFunction(
-				newFixedFunctionArgumentValidator("/", reflect.TypeOf(integerValue{})),
-				func(_ *runtime, arguments ...value) value {
-					rightHandSide := arguments[0].(integerValue).value
-
-					if rightHandSide == 0 {
-						errors.RaiseError(runtime_errors.DivisionByZero("int"))
-					}
-
-					return integerValue{value_.value / rightHandSide}
-				},
-			),
-		},
-	}
+	return newNumberDefinition(value_, "int")
 }
 
 type stringValue struct {
