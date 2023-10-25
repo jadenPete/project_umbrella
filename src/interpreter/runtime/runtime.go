@@ -33,7 +33,8 @@ type bytecodeFunctionBlock interface {
 type bytecodeFunctionBlockGraph struct {
 	*common.Graph[bytecodeFunctionBlock]
 
-	firstValueID int
+	firstValueID   int
+	parameterCount int
 }
 
 func (*bytecodeFunctionBlockGraph) bytecodeFunctionBlock() {}
@@ -68,6 +69,7 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 			functionsSeen:   0,
 			blockGraph: &bytecodeFunctionBlockGraph{
 				common.NewGraph[bytecodeFunctionBlock](),
+				0,
 				0,
 			},
 		},
@@ -138,6 +140,7 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 					return &bytecodeFunctionBlockGraph{
 						common.NewGraph[bytecodeFunctionBlock](),
 						valueID + 1,
+						instruction.Arguments[0],
 					}
 				},
 			).(*bytecodeFunctionBlockGraph)
@@ -239,7 +242,7 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 }
 
 func (runtime *runtime) execute() {
-	(&bytecodeFunction{
+	newBytecodeFunction(0, &bytecodeFunctionEvaluator{
 		containingScope: nil,
 		blockGraph:      runtime.rootBlockGraph,
 	}).evaluate(runtime)

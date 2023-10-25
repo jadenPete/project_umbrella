@@ -49,7 +49,7 @@ func executeSource(source string) {
 		)
 	}
 
-	abstractTree := concreteTree.Abstract()
+	abstractTree := concreteTree.AbstractExpressionList()
 
 	runtime.ExecuteBytecode(bytecode_generator.ExpressionToBytecodeFromCache(abstractTree, source))
 }

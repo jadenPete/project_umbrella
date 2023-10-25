@@ -43,6 +43,16 @@ func LinkedListToSlice[LinkedList any, Element any](
 	return result, current
 }
 
+func Repeat[T any](element T, size int) []T {
+	result := make([]T, 0, size)
+
+	for i := 0; i < size; i++ {
+		result = append(result, element)
+	}
+
+	return result
+}
+
 /*
  * Resize a slice to a given size.
  *
