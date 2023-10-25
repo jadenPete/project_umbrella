@@ -149,12 +149,12 @@ type BytecodeTranslator struct {
 
 func NewBytecodeTranslator(fileContent string) *BytecodeTranslator {
 	return &BytecodeTranslator{
-		constantIDMap: make(map[Constant]int),
-		instructions:  make([]*Instruction, 0),
+		constantIDMap: map[Constant]int{},
+		instructions:  []*Instruction{},
 		scopeStack: []*scope{
 			{
-				constantValueIDMap:   make(map[int]int),
-				identifierValueIDMap: make(map[string]int),
+				constantValueIDMap:   map[int]int{},
+				identifierValueIDMap: map[string]int{},
 				nextValueID:          0,
 			},
 		},
@@ -412,7 +412,7 @@ func (translator *BytecodeTranslator) valueIDForFunction(function *parser.Functi
 	})
 
 	scope := &scope{
-		constantValueIDMap:   make(map[int]int),
+		constantValueIDMap:   map[int]int{},
 		identifierValueIDMap: make(map[string]int, len(function.Parameters)),
 		nextValueID:          translator.currentScope().nextValueID,
 	}

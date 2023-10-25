@@ -114,7 +114,7 @@ func (context_ *context) String(lineDelimiterFromLineNumber func(int) string) st
 }
 
 func tabAdjustedCodeLines(lines []string) []string {
-	adjustedLines := make([]string, 0)
+	adjustedLines := make([]string, 0, len(lines))
 
 	for _, line := range lines {
 		adjustedLines = append(adjustedLines, strings.ReplaceAll(line, "\t", strings.Repeat(" ", tabSpaces)))

@@ -156,7 +156,7 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 		}
 	}
 
-	pushArgumentInstructions := make([]*bytecode_generator.Instruction, 0)
+	pushArgumentInstructions := []*bytecode_generator.Instruction{}
 
 	for _, instruction := range bytecode.Instructions {
 		switch instruction.Type {
@@ -215,7 +215,7 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 				addDependencyForLatestBlock(pushArgumentInstruction.Arguments[0])
 			}
 
-			pushArgumentInstructions = make([]*bytecode_generator.Instruction, 0)
+			pushArgumentInstructions = []*bytecode_generator.Instruction{}
 
 		case bytecode_generator.ValueFromConstantInstruction:
 			addValuedInstruction(instruction)
@@ -227,7 +227,7 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 	}
 
 	runtime := &runtime{
-		constants:      make([]value, 0),
+		constants:      make([]value, 0, len(bytecode.Constants)),
 		rootBlockGraph: scopeStack[0].blockGraph,
 	}
 

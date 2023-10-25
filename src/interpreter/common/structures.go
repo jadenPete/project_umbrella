@@ -64,8 +64,8 @@ type Graph[T any] struct {
 
 func NewGraph[T any]() *Graph[T] {
 	return &Graph[T]{
-		Nodes: make([]T, 0),
-		Edges: make(map[int][]int),
+		Nodes: []T{},
+		Edges: map[int][]int{},
 	}
 }
 
@@ -80,7 +80,7 @@ func NewGraph[T any]() *Graph[T] {
  * The function returns whether the graph is acyclic (i.e. whether every node was processed).
  */
 func (graph *Graph[T]) Evaluate(evaluator func(i int)) bool {
-	dependencyCount := make(map[int]int)
+	dependencyCount := make(map[int]int, len(graph.Nodes))
 
 	for _, dependents := range graph.Edges {
 		for _, dependent := range dependents {
@@ -94,7 +94,7 @@ func (graph *Graph[T]) Evaluate(evaluator func(i int)) bool {
 		}
 	}
 
-	stack := make([]int, 0)
+	stack := []int{}
 
 	for i, n := range dependencyCount {
 		if n == 0 {

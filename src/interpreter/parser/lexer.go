@@ -195,7 +195,7 @@ func (lexer_ *Lexer) Next() (lexer.Token, error) {
 
 func (lexer_ *Lexer) tokens() []*lexer.Token {
 	if len(lexer_.fileContent) == 0 {
-		return make([]*lexer.Token, 0)
+		return []*lexer.Token{}
 	}
 
 	matches := matcher.MatchWithInitial(MatcherInput(lexer_.fileContent), lexer_.parseIndentation())
@@ -204,7 +204,7 @@ func (lexer_ *Lexer) tokens() []*lexer.Token {
 		return nil
 	}
 
-	result := make([]*lexer.Token, 0)
+	result := []*lexer.Token{}
 
 	for _, match := range matches {
 		if match.Type != MatcherCode(SpaceToken) {
@@ -251,14 +251,13 @@ func (lexer_ *Lexer) tokens() []*lexer.Token {
  * succeed them.
  */
 func (lexer_ *Lexer) parseIndentation() []*ExhaustiveMatch {
-	result := make([]*ExhaustiveMatch, 0)
-
+	result := []*ExhaustiveMatch{}
 	addMatchToResult := func(type_ MatcherCode, start int, end int) {
 		result = append(result, &ExhaustiveMatch{
 			Type:      type_,
 			Start:     start,
 			End:       end,
-			Subgroups: make([][2]int, 0),
+			Subgroups: [][2]int{},
 		})
 	}
 

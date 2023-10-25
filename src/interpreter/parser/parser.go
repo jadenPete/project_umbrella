@@ -274,7 +274,7 @@ func (concrete *ConcreteStatementList) Parse(lexer_ *lexer.PeekingLexer) error {
 
 	consumeNewlines()
 
-	concrete.Children = make([]ConcreteStatement, 0)
+	concrete.Children = []ConcreteStatement{}
 
 	if consumeAndAppendStatement() {
 		for {
@@ -298,7 +298,7 @@ func (concrete *ConcreteStatementList) Abstract() Expression {
 }
 
 func (concrete *ConcreteStatementList) AbstractExpressionList() *ExpressionList {
-	children := make([]Expression, 0)
+	children := make([]Expression, 0, len(concrete.Children))
 
 	for _, child := range concrete.Children {
 		children = append(children, child.Abstract())

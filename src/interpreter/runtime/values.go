@@ -296,7 +296,7 @@ func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments
 	scope := &scope{
 		parent:       bytecodeFunction_.containingScope,
 		firstValueID: firstValueID,
-		values:       make(map[int]value),
+		values:       map[int]value{},
 	}
 
 	for i, argument := range arguments {
@@ -304,7 +304,7 @@ func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments
 	}
 
 	isAcyclic := bytecodeFunction_.blockGraph.Evaluate(func(i int) {
-		callArguments := make([]value, 0)
+		callArguments := []value{}
 
 		switch node := bytecodeFunction_.blockGraph.Nodes[i].(type) {
 		case *bytecodeFunctionBlockGraph:

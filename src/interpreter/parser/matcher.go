@@ -60,7 +60,7 @@ var codeSubstitionRegex = regexp2.MustCompile(`(?<!\{)\{(\d+)\}(?!\})`, 0)
  * This function's time complexity is `O(n + m)`, where `n = len(source)` and `m = len(ranges)`.
  */
 func replaceStringRanges(source string, ranges [][2]int, replacements []string) string {
-	rangeIndices := make(map[int]int)
+	rangeIndices := make(map[int]int, len(ranges))
 
 	for i, indices := range ranges {
 		rangeIndices[indices[0]] = i
@@ -108,8 +108,8 @@ func CompileInput(input []MatcherCode) MatcherInput {
  * See `parser.go` for an example of this method's usage.
  */
 func CompileMatcher(regex string, substitutions ...MatcherCode) *Matcher {
-	ranges := make([][2]int, 0)
-	replacements := make([]string, 0)
+	ranges := [][2]int{}
+	replacements := []string{}
 
 	match, _ := codeSubstitionRegex.FindStringMatch(regex)
 
@@ -174,7 +174,7 @@ type ExhaustiveMatcher struct {
 const UnrecognizedMatcherCode MatcherCode = 0
 
 func flattenedExhaustiveMatchTree(tree *common.BinaryTree[*ExhaustiveMatch]) []*ExhaustiveMatch {
-	result := make([]*ExhaustiveMatch, 0)
+	result := []*ExhaustiveMatch{}
 
 	if tree.DFS(func(node *common.BinaryTree[*ExhaustiveMatch]) bool {
 		if node.Value == nil {
@@ -215,7 +215,7 @@ func (matcher *ExhaustiveMatcher) MatchWithInitial(
 	initialMatches []*ExhaustiveMatch,
 ) []*ExhaustiveMatch {
 	tree := common.NewBalancedBinaryTreeFromSlice(initialMatches)
-	stack := make([]*common.BinaryTree[*ExhaustiveMatch], 0)
+	stack := []*common.BinaryTree[*ExhaustiveMatch]{}
 
 	appendUnrecognizedMatchesToStack := func(node *common.BinaryTree[*ExhaustiveMatch]) {
 		node.DFS(func(node *common.BinaryTree[*ExhaustiveMatch]) bool {
@@ -234,7 +234,7 @@ func (matcher *ExhaustiveMatcher) MatchWithInitial(
 
 		stack = stack[:len(stack)-1]
 
-		replacements := make([]*ExhaustiveMatch, 0)
+		replacements := []*ExhaustiveMatch{}
 		lastMatchEnd := 0
 
 		for _, pattern := range matcher.Patterns {
@@ -252,7 +252,7 @@ func (matcher *ExhaustiveMatcher) MatchWithInitial(
 					})
 				}
 
-				subgroups := make([][2]int, 0)
+				subgroups := [][2]int{}
 
 				for i := 2; i < len(match); i += 2 {
 					subgroups = append(subgroups, [2]int{match[i], match[i+1]})
