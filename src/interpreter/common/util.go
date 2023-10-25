@@ -21,7 +21,7 @@ func LinkedListToSlice[LinkedList any, Element any](
 	head func(*LinkedList) Element,
 	tail func(*LinkedList) *LinkedList,
 ) ([]Element, *LinkedList) {
-	result := make([]Element, 0)
+	result := []Element{}
 
 	if linkedList == nil {
 		return result, nil

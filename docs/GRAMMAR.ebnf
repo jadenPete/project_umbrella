@@ -62,6 +62,7 @@ InfixMultiplicationRight =
 	)
 	Call;
 
+PrefixOperation = {Operator {IndentToken | OutdentToken}} Call;
 Call = Select {CallRight};
 CallRight =
 	| {IndentToken | OutdentToken} "(" {Formatting} [CallArguments] {Formatting} ")"
@@ -74,6 +75,10 @@ SelectRight = {Formatting} "." {Formatting} Identifier;
 (* Single-token expressions *)
 
 Float = FloatToken;
-Identifier = IdentifierToken;
+Identifier =
+	| IdentifierToken
+	| OperatorToken;
+
 Integer = IntegerToken;
+Operator = OperatorToken;
 String = StringToken;

@@ -6,6 +6,7 @@ import (
 
 	"project_umbrella/interpreter/common"
 	"project_umbrella/interpreter/errors"
+	"project_umbrella/interpreter/parser/parser_types"
 )
 
 // Union expressions
@@ -40,19 +41,19 @@ func AbstractInfixOperation[
 	result := concrete.Left().Abstract()
 
 	for _, rightHandSide := range concrete.Right() {
-		rightHandSideAbstract := rightHandSide.Operand().Abstract()
+		abstractRightHandSide := rightHandSide.Operand().Abstract()
 
 		result = &Call{
 			Function: &Select{
-				Value:   result,
-				Field:   rightHandSide.Operator(),
-				IsInfix: true,
+				Value: result,
+				Field: rightHandSide.Operator(),
+				Type:  parser_types.InfixSelect,
 			},
 
-			Arguments: []Expression{rightHandSideAbstract},
+			Arguments: []Expression{abstractRightHandSide},
 			position: &errors.Position{
 				Start: result.Position().Start,
-				End:   rightHandSideAbstract.Position().End,
+				End:   abstractRightHandSide.Position().End,
 			},
 		}
 	}
@@ -273,7 +274,7 @@ func (concrete *ConcreteStatementList) Parse(lexer_ *lexer.PeekingLexer) error {
 
 	consumeNewlines()
 
-	concrete.Children = make([]ConcreteStatement, 0)
+	concrete.Children = []ConcreteStatement{}
 
 	if consumeAndAppendStatement() {
 		for {
@@ -297,7 +298,7 @@ func (concrete *ConcreteStatementList) Abstract() Expression {
 }
 
 func (concrete *ConcreteStatementList) AbstractExpressionList() *ExpressionList {
-	children := make([]Expression, 0)
+	children := make([]Expression, 0, len(concrete.Children))
 
 	for _, child := range concrete.Children {
 		children = append(children, child.Abstract())
@@ -338,8 +339,8 @@ func (*ConcreteInfixMiscellaneous) concreteStatement()  {}
 func (*ConcreteInfixMiscellaneous) concreteExpression() {}
 
 type ConcreteInfixMiscellaneousRight struct {
-	OperatorOne *ConcreteIdentifier    `parser:"(((IndentToken | OutdentToken)* @@ (IndentToken | OutdentToken | NewlineToken)*)"`
-	OperatorTwo *ConcreteIdentifier    `parser:" | ((IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken)*))"`
+	OperatorOne *ConcreteOperator      `parser:"(((IndentToken | OutdentToken)* @@ (IndentToken | OutdentToken | NewlineToken)*)"`
+	OperatorTwo *ConcreteOperator      `parser:" | ((IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken)*))"`
 	Operand_    *ConcreteInfixAddition `parser:"@@"`
 }
 
@@ -408,17 +409,17 @@ func (concrete *ConcreteInfixAdditionOperator) AbstractIdentifier() *Identifier 
 }
 
 type ConcreteInfixMultiplication struct {
-	Left_  *ConcreteCall                       `parser:"@@"`
+	Left_  *ConcretePrefixOperation            `parser:"@@"`
 	Right_ []*ConcreteInfixMultiplicationRight `parser:"@@*"`
 }
 
 func (concrete *ConcreteInfixMultiplication) Abstract() Expression {
 	return AbstractInfixOperation(
-		ConcreteInfixOperation[*ConcreteCall, *ConcreteInfixMultiplicationRight](concrete),
+		ConcreteInfixOperation[*ConcretePrefixOperation, *ConcreteInfixMultiplicationRight](concrete),
 	)
 }
 
-func (concrete *ConcreteInfixMultiplication) Left() *ConcreteCall {
+func (concrete *ConcreteInfixMultiplication) Left() *ConcretePrefixOperation {
 	return concrete.Left_
 }
 
@@ -431,7 +432,7 @@ func (*ConcreteInfixMultiplication) concreteInfixOperand() {}
 type ConcreteInfixMultiplicationRight struct {
 	OperatorOne *ConcreteInfixMultiplicationOperator `parser:"(((IndentToken | OutdentToken)* @@ (IndentToken | OutdentToken | NewlineToken)*)"`
 	OperatorTwo *ConcreteInfixMultiplicationOperator `parser:" | ((IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken)*))"`
-	Operand_    *ConcreteCall                        `parser:"@@"`
+	Operand_    *ConcretePrefixOperation             `parser:"@@"`
 }
 
 func (concrete *ConcreteInfixMultiplicationRight) Operator() *Identifier {
@@ -442,7 +443,7 @@ func (concrete *ConcreteInfixMultiplicationRight) Operator() *Identifier {
 	return concrete.OperatorOne.AbstractIdentifier()
 }
 
-func (concrete *ConcreteInfixMultiplicationRight) Operand() *ConcreteCall {
+func (concrete *ConcreteInfixMultiplicationRight) Operand() *ConcretePrefixOperation {
 	return concrete.Operand_
 }
 
@@ -457,6 +458,37 @@ func (concrete *ConcreteInfixMultiplicationOperator) AbstractIdentifier() *Ident
 		position: tokenSyntaxTreePosition(&concrete.Tokens[0]),
 	}
 }
+
+type ConcretePrefixOperation struct {
+	Operators []*ConcreteOperator `parser:"(@@ (IndentToken | OutdentToken)*)*"`
+	Operand   *ConcreteCall       `parser:"@@"`
+}
+
+func (concrete *ConcretePrefixOperation) Abstract() Expression {
+	result := concrete.Operand.Abstract()
+
+	for i := len(concrete.Operators) - 1; i >= 0; i-- {
+		abstractOperator := concrete.Operators[i].AbstractIdentifier()
+
+		result = &Call{
+			Function: &Select{
+				Value: result,
+				Field: abstractOperator,
+				Type:  parser_types.PrefixSelect,
+			},
+
+			Arguments: []Expression{},
+			position: &errors.Position{
+				Start: abstractOperator.Position().Start,
+				End:   result.Position().End,
+			},
+		}
+	}
+
+	return result
+}
+
+func (*ConcretePrefixOperation) concreteInfixOperand() {}
 
 type ConcreteCall struct {
 	Left  *ConcreteSelect      `parser:"@@"`
@@ -486,17 +518,15 @@ func (concrete *ConcreteCall) Abstract() Expression {
 			}
 		} else {
 			result = &Select{
-				Value:   result,
-				Field:   rightHandSide.Select.Field.AbstractIdentifier(),
-				IsInfix: false,
+				Value: result,
+				Field: rightHandSide.Select.Field.AbstractIdentifier(),
+				Type:  parser_types.NormalSelect,
 			}
 		}
 	}
 
 	return result
 }
-
-func (*ConcreteCall) concreteInfixOperand() {}
 
 type ConcreteCallRight struct {
 	Arguments *ConcreteCallArguments `parser:"(IndentToken | OutdentToken)* '(' (IndentToken | OutdentToken | NewlineToken)* @@? (IndentToken | OutdentToken | NewlineToken)* ')'"`
@@ -519,9 +549,9 @@ func (concrete *ConcreteSelect) Abstract() Expression {
 
 	for _, rightHandSide := range concrete.Right {
 		result = &Select{
-			Value:   result,
-			Field:   rightHandSide.Field.AbstractIdentifier(),
-			IsInfix: false,
+			Value: result,
+			Field: rightHandSide.Field.AbstractIdentifier(),
+			Type:  parser_types.NormalSelect,
 		}
 	}
 
@@ -553,7 +583,7 @@ func (concrete *ConcreteFloat) AbstractFloat() *Float {
 func (*ConcreteFloat) primary() {}
 
 type ConcreteIdentifier struct {
-	Value  string `parser:"@IdentifierToken"`
+	Value  string `parser:"@IdentifierToken | @OperatorToken"`
 	Tokens []lexer.Token
 }
 
@@ -587,6 +617,18 @@ func (concrete *ConcreteInteger) AbstractInteger() *Integer {
 }
 
 func (*ConcreteInteger) primary() {}
+
+type ConcreteOperator struct {
+	Value  string `parser:"@OperatorToken"`
+	Tokens []lexer.Token
+}
+
+func (concrete *ConcreteOperator) AbstractIdentifier() *Identifier {
+	return &Identifier{
+		Value:    concrete.Value,
+		position: tokenSyntaxTreePosition(&concrete.Tokens[0]),
+	}
+}
 
 type ConcreteString struct {
 	Value  string `parser:"@StringToken"`
