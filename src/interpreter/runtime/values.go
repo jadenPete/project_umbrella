@@ -116,7 +116,7 @@ func toString(runtime_ *runtime, value_ value) string {
 		evaluate(runtime_).(stringValue)
 
 	if !ok {
-		errors.RaiseError(runtime_errors.ToStrReturnedNonString)
+		errors.RaiseError(runtime_errors.ToStringMethodReturnedNonString)
 	}
 
 	return resultingValue.content
@@ -258,9 +258,14 @@ func (evaluator *bytecodeFunctionEvaluator) evaluator(runtime_ *runtime, argumen
 						scope.getValue(element.instruction.Arguments[0])
 
 				case bytecode_generator.ValueFromCallInstruction:
-					scope.values[element.instructionValueID] = scope.
-						getValue(element.instruction.Arguments[0]).(*function).
-						evaluate(runtime_, callArguments...)
+					function_, ok := scope.getValue(element.instruction.Arguments[0]).(*function)
+
+					if !ok {
+						errors.RaiseError(runtime_errors.NonFunctionCalled)
+					}
+
+					scope.values[element.instructionValueID] =
+						function_.evaluate(runtime_, callArguments...)
 
 				case bytecode_generator.ValueFromConstantInstruction:
 					scope.values[element.instructionValueID] =
@@ -269,10 +274,9 @@ func (evaluator *bytecodeFunctionEvaluator) evaluator(runtime_ *runtime, argumen
 				case bytecode_generator.ValueFromStructValueInstruction:
 					structValue := scope.getValue(element.instruction.Arguments[0])
 					fieldID := builtInFieldID(element.instruction.Arguments[1])
+					field, ok := structValue.definition().fields[fieldID]
 
-					if field, ok := structValue.definition().fields[fieldID]; ok {
-						scope.values[element.instructionValueID] = field
-					} else {
+					if !ok {
 						errors.RaiseError(
 							runtime_errors.UnrecognizedFieldID(
 								toString(runtime_, structValue),
@@ -280,6 +284,8 @@ func (evaluator *bytecodeFunctionEvaluator) evaluator(runtime_ *runtime, argumen
 							),
 						)
 					}
+
+					scope.values[element.instructionValueID] = field
 				}
 			}
 		}

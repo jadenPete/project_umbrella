@@ -31,7 +31,7 @@ func IncorrectBuiltInFunctionArgumentType(functionName string, i int) *errors.Er
 	}
 }
 
-var ToStrReturnedNonString = &errors.Error{
+var ToStringMethodReturnedNonString = &errors.Error{
 	Section: "RUNTIME",
 	Code:    3,
 	Name:    "A __to_str__ method returned a non-string",
@@ -69,4 +69,10 @@ func DivisionByZero(typeName string) *errors.Error {
 		Name:        "Cannot divide by zero",
 		Description: fmt.Sprintf("Expected the right-hand side of %s#/ to be nonzero.", typeName),
 	}
+}
+
+var NonFunctionCalled = &errors.Error{
+	Section: "RUNTIME",
+	Code:    8,
+	Name:    "A non-function was called",
 }
