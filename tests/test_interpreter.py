@@ -20,6 +20,7 @@ def test_calls() -> None:
 		output_from_filename("call_nested.krait") == \
 		output_from_filename("call_return_value.krait") == "Hello, world!\n(unit)\n"
 
+	assert has_expected_lines(output_from_filename("call_prefix.krait"), ["-2", "2", "-0.5", "0.5"])
 	assert set(output_from_filename("call_with_multiple_arguments.krait").split("\n")) == {
 		"Hello, world!",
 		""

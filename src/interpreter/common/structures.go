@@ -72,14 +72,14 @@ func NewGraph[T any]() *Graph[T] {
 /*
  * For lack of a better name, `Evaluate` processes the directed graph using a depth-first search.
  * Given a callback function, the function is called with the index of each graph's leaves. Then,
- * those nodes are pruned from the graph (although the graph is not modified) and function is
+ * those nodes are pruned from the graph (although the graph is not modified) and the function is
  * called with the new leaves. This process is repeated until no leaves remain.
  *
- * If the graph is acyclic, the number of leaves processed should equal the graph's order.
- *
  * Note that this function assumes that an edge from A to B indicates that A is a dependency of B.
+ *
+ * The function returns whether the graph is acyclic (i.e. whether every node was processed).
  */
-func (graph *Graph[T]) Evaluate(evaluator func(i int)) {
+func (graph *Graph[T]) Evaluate(evaluator func(i int)) bool {
 	dependencyCount := make(map[int]int)
 
 	for _, dependents := range graph.Edges {
@@ -102,6 +102,8 @@ func (graph *Graph[T]) Evaluate(evaluator func(i int)) {
 		}
 	}
 
+	processed := 0
+
 	for len(stack) > 0 {
 		i := stack[len(stack)-1]
 
@@ -116,7 +118,11 @@ func (graph *Graph[T]) Evaluate(evaluator func(i int)) {
 				stack = append(stack, j)
 			}
 		}
+
+		processed++
 	}
+
+	return processed == len(graph.Nodes)
 }
 
 type Tree[T any] struct {

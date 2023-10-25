@@ -36,27 +36,27 @@
  * The following instructions (listed alongside their IDs and parameters) are available.
  *
  * PUSH_ARG (1) (VAL_ID):
- * 	Push VAL_ID to the argument stack to be passed to the next called function. Sequentially, the
+ * 	Push `VAL_ID` to the argument stack to be passed to the next called function. Sequentially, the
  * 	argument stack can be thought of as being cleared on every function call.
  *
  * VAL_FROM_CALL (2) (VAL_ID):
- * 	Call the function referred to by VAL_ID with the arguments in the argument stack and push the
+ * 	Call the function referred to by `VAL_ID` with the arguments in the argument stack and push the
  * 	returned value to the value list.
  *
- * 	If VAL_ID doesn't refer to a function, the runtime will panic.
+ * 	If `VAL_ID` doesn't refer to a function, the runtime will panic.
  *
  * VAL_FROM_CONST (3) (CONST_ID):
  * 	Retrieve the constant referred to by `CONST_ID` from the constant list and push it to the
  *  value list.
  *
  * VAL_FROM_STRUCT_VAL (4) (VAL_ID, FIELD_ID):
- * 	Retrieve the field identified by FIELD_ID from the struct instance referred to by VAL_ID,
+ * 	Retrieve the field identified by `FIELD_ID` from the struct instance referred to by `VAL_ID`,
  * 	pushing it to the value list.
  *
- * 	If VAL_ID doesn't refer to a struct instance, the runtime will panic.
+ * 	If `VAL_ID` doesn't refer to a struct instance, the runtime will panic.
  *
- * PUSH_FN (5):
- *  Push a function to the function stack.
+ * PUSH_FN (5) (ARG_COUNT):
+ *  Push a function accepting `ARG_COUNT` arguments to the function stack.
  *
  * POP_FN (6):
  *  Pop the current function from the function stack.
@@ -359,36 +359,27 @@ func (translator *BytecodeTranslator) valueIDForExpressionList(
 		}
 	}
 
-	isEmpty := true
-
-	var returnValueID int
-
-	addValueCopyInstruction := func() {
-		translator.instructions = append(translator.instructions, &Instruction{
-			Type:      ValueCopyInstruction,
-			Arguments: []int{returnValueID},
-		})
-	}
+	returnValueID := builtInValues["unit"]
 
 	for _, subexpression := range expressionList.Children {
-		isEmpty = false
 		returnValueID = translator.valueIDForExpression(subexpression)
-
-		/*
-		 * Parsing an identifier doesn't append a value to the value list, but we need only do that
-		 * if the identifier is an standalone expression
-		 * (in which case it's possible that it refers to a value other than the last one).
-		 */
-		if _, ok := subexpression.(*parser.Identifier); ok {
-			addValueCopyInstruction()
-		}
 	}
 
-	if isEmpty {
-		returnValueID = builtInValues["unit"]
-
-		addValueCopyInstruction()
-	}
+	/*
+	 * The specification requires that functions return the value of their last statement. In
+	 * implementation, they actually return the last value ID in their value list. In most cases,
+	 * these are equivalent; however, the evaluation of some statements doesn't append a new value
+	 * to the value list.
+	 *
+	 * For example, because identifiers are really lookups to the values to which they refer, their
+	 * values are never unique and therefore never the last on the value list. To ensure functions
+	 * return the value of their last statement, we end every function with a
+	 * `VAL_COPY` instruction, which appends a copy of the value provided to it to the value list.
+	 */
+	translator.instructions = append(translator.instructions, &Instruction{
+		Type:      ValueCopyInstruction,
+		Arguments: []int{returnValueID},
+	})
 
 	return returnValueID
 }
@@ -416,7 +407,8 @@ func (translator *BytecodeTranslator) valueIDForIdentifier(identifier *parser.Id
 
 func (translator *BytecodeTranslator) valueIDForFunction(function *parser.Function) int {
 	translator.instructions = append(translator.instructions, &Instruction{
-		Type: PushFunctionInstruction,
+		Type:      PushFunctionInstruction,
+		Arguments: []int{len(function.Parameters)},
 	})
 
 	scope := &scope{

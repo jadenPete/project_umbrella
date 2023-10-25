@@ -154,11 +154,11 @@ func generateMinusMethod[Number value](
 	return &builtInFunction{
 		argumentValidator: intersectionBuiltInFunction(
 			func(argumentTypes []reflect.Type) *errors.Error {
-				return runtime_errors.IncorrectCallArgumentCount("1-2", len(argumentTypes))
+				return runtime_errors.IncorrectCallArgumentCount("0-1", len(argumentTypes))
 			},
 
+			fixedBuiltInFunction("-"),
 			fixedBuiltInFunction("-", numberType),
-			fixedBuiltInFunction("-", numberType, numberType),
 		),
 
 		evaluator: func(_ *runtime, arguments ...value) value {
@@ -271,9 +271,8 @@ func variadicBuiltInFunction(
 }
 
 type bytecodeFunction struct {
-	scope      *scope
-	valueID    int
-	blockGraph *bytecodeFunctionBlockGraph
+	containingScope *scope
+	blockGraph      *bytecodeFunctionBlockGraph
 }
 
 func (function_ *bytecodeFunction) definition() *valueDefinition {
@@ -290,12 +289,12 @@ func (function_ *bytecodeFunction) definition() *valueDefinition {
 func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments ...value) value {
 	firstValueID := 0
 
-	if bytecodeFunction_.scope != nil {
-		firstValueID = bytecodeFunction_.valueID + 1
+	if bytecodeFunction_.containingScope != nil {
+		firstValueID = bytecodeFunction_.blockGraph.firstValueID
 	}
 
 	scope := &scope{
-		parent:       bytecodeFunction_.scope,
+		parent:       bytecodeFunction_.containingScope,
 		firstValueID: firstValueID,
 		values:       make(map[int]value),
 	}
@@ -304,63 +303,56 @@ func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments
 		scope.values[scope.firstValueID+i] = argument
 	}
 
-	nodes := bytecodeFunction_.blockGraph.graph.Nodes
-
-	bytecodeFunction_.blockGraph.graph.Evaluate(func(i int) {
+	isAcyclic := bytecodeFunction_.blockGraph.Evaluate(func(i int) {
 		callArguments := make([]value, 0)
 
-		switch node := nodes[i].(type) {
+		switch node := bytecodeFunction_.blockGraph.Nodes[i].(type) {
 		case *bytecodeFunctionBlockGraph:
-			scope.values[scope.firstValueID+i] = &bytecodeFunction{
-				scope:      scope,
-				valueID:    scope.firstValueID + i,
-				blockGraph: node,
+			scope.values[node.firstValueID-1] = &bytecodeFunction{
+				containingScope: scope,
+				blockGraph:      node,
 			}
 
-		case *instructionList:
-			for _, instruction := range node.instructions {
-				switch instruction.Type {
+		case instructionList:
+			for _, element := range node {
+				switch element.instruction.Type {
 				case bytecode_generator.PushArgumentInstruction:
 					callArguments =
-						append(callArguments, scope.getValue(instruction.Arguments[0]))
+						append(callArguments, scope.getValue(element.instruction.Arguments[0]))
 
 				case bytecode_generator.ValueCopyInstruction:
-					scope.values[scope.firstValueID+i] =
-						scope.getValue(instruction.Arguments[0])
+					scope.values[element.instructionValueID] =
+						scope.getValue(element.instruction.Arguments[0])
 
 				case bytecode_generator.ValueFromCallInstruction:
-					scope.values[scope.firstValueID+i] = scope.
-						getValue(instruction.Arguments[0]).(function).
+					scope.values[element.instructionValueID] = scope.
+						getValue(element.instruction.Arguments[0]).(function).
 						evaluate(runtime_, callArguments...)
 
 				case bytecode_generator.ValueFromConstantInstruction:
-					scope.values[scope.firstValueID+i] =
-						runtime_.constants[instruction.Arguments[0]]
-
-					return
+					scope.values[element.instructionValueID] =
+						runtime_.constants[element.instruction.Arguments[0]]
 
 				case bytecode_generator.ValueFromStructValueInstruction:
-					structValue := scope.getValue(instruction.Arguments[0])
-					fieldID := builtInFieldID(instruction.Arguments[1])
+					structValue := scope.getValue(element.instruction.Arguments[0])
+					fieldID := builtInFieldID(element.instruction.Arguments[1])
 
 					if field, ok := structValue.definition().fields[fieldID]; ok {
-						scope.values[scope.firstValueID+i] = field
-
-						return
+						scope.values[element.instructionValueID] = field
+					} else {
+						errors.RaiseError(
+							runtime_errors.UnrecognizedFieldID(
+								toString(runtime_, structValue),
+								int(fieldID),
+							),
+						)
 					}
-
-					errors.RaiseError(
-						runtime_errors.UnrecognizedFieldID(
-							toString(runtime_, structValue),
-							int(fieldID),
-						),
-					)
 				}
 			}
 		}
 	})
 
-	if len(scope.values) != len(nodes) {
+	if !isAcyclic {
 		errors.RaiseError(runtime_errors.ValueCycle)
 	}
 
@@ -368,7 +360,15 @@ func (bytecodeFunction_ *bytecodeFunction) evaluate(runtime_ *runtime, arguments
 		errors.RaiseError(runtime_errors.EmptyFunctionBlockGraph)
 	}
 
-	return scope.values[len(scope.values)-1]
+	lastValueID := 0
+
+	for valueID := range scope.values {
+		if valueID > lastValueID {
+			lastValueID = valueID
+		}
+	}
+
+	return scope.values[lastValueID]
 }
 
 type floatValue struct {

@@ -1,0 +1,7 @@
+fn negate(number):
+	-number
+
+println(negate(2))
+println(negate(-2))
+println(negate(0.5))
+println(negate(-0.5))
