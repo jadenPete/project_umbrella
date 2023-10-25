@@ -17,11 +17,19 @@ import (
 type builtInFieldID int
 
 const (
+	// Implemented on every type
 	toStringMethodID builtInFieldID = -1
-	plusMethodID     builtInFieldID = -2
-	minusMethodID    builtInFieldID = -3
-	timesMethodID    builtInFieldID = -4
-	overMethodID     builtInFieldID = -5
+
+	// Implemented on int and float
+	plusMethodID  builtInFieldID = -2
+	minusMethodID builtInFieldID = -3
+	timesMethodID builtInFieldID = -4
+	overMethodID  builtInFieldID = -5
+
+	// Implemented on bool
+	notMethodID builtInFieldID = -6
+	andMethodID builtInFieldID = -7
+	orMethodID  builtInFieldID = -8
 )
 
 type builtInValueID int
@@ -142,14 +150,9 @@ var builtInValues = map[builtInValueID]value{
 		},
 	),
 
-	unitValueID: unitValue{},
-	falseValueID: booleanValue{
-		value: false,
-	},
-
-	trueValueID: booleanValue{
-		value: true,
-	},
+	unitValueID:  unitValue{},
+	falseValueID: booleanValue(false),
+	trueValueID:  booleanValue(true),
 }
 
 func print(runtime_ *runtime, suffix string, arguments ...value) unitValue {
@@ -176,16 +179,35 @@ func toString(runtime_ *runtime, value_ value) string {
 	return resultingValue.content
 }
 
-type booleanValue struct {
-	value bool
-}
+type booleanValue bool
 
 func (value_ booleanValue) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[builtInFieldID]value{
 			toStringMethodID: newToStringFunction(func() string {
-				return fmt.Sprintf("%t", value_.value)
+				return fmt.Sprintf("%t", value_)
 			}),
+
+			notMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator("!"),
+				func(runtime_ *runtime, arguments ...value) value {
+					return !value_
+				},
+			),
+
+			andMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator("&&", reflect.TypeOf(value_)),
+				func(runtime_ *runtime, arguments ...value) value {
+					return value_ && arguments[0].(booleanValue)
+				},
+			),
+
+			orMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator("||", reflect.TypeOf(value_)),
+				func(runtime_ *runtime, arguments ...value) value {
+					return value_ || arguments[0].(booleanValue)
+				},
+			),
 		},
 	}
 }

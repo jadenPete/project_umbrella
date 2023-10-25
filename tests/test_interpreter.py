@@ -12,7 +12,20 @@ def test_arithmetic() -> None:
 	assert output_from_filename("arithmetic_precedence.krait") == "3.5\n"
 
 def test_booleans() -> None:
-	assert has_expected_lines(output_from_filename("boolean.krait"), ["true", "false"])
+	assert has_expected_lines(output_from_filename("boolean.krait"), [
+		"true",
+		"false",
+		"false",
+		"true",
+		"true",
+		"false",
+		"false",
+		"false",
+		"true",
+		"true",
+		"true",
+		"false"
+	])
 
 def test_calls() -> None:
 	assert output_from_filename("call.krait") == "Hello, world!\n"

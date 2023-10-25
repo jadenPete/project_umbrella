@@ -23,6 +23,9 @@
  * - - (-3) (int, float)
  * - * (-4) (int, float)
  * - / (-5) (int, float)
+ * - ! (-6) (bool)
+ * - && (-7) (bool)
+ * - || (-8) (bool)
  *
  * Functions are declared by pushing to a function stack, executing a series of instructions that
  * constitute the function, and popping from the function stack. Because each function's scope is
@@ -89,6 +92,9 @@ var builtInFields = map[string]*builtInField{
 	"-":          {-3, parser_types.InfixPrefixField},
 	"*":          {-4, parser_types.InfixField},
 	"/":          {-5, parser_types.InfixField},
+	"!":          {-6, parser_types.PrefixField},
+	"&&":         {-7, parser_types.InfixField},
+	"||":         {-8, parser_types.InfixField},
 }
 
 var builtInValues = map[string]int{
@@ -149,6 +155,7 @@ type BytecodeTranslator struct {
 
 func NewBytecodeTranslator(fileContent string) *BytecodeTranslator {
 	return &BytecodeTranslator{
+		fileContent:   fileContent,
 		constantIDMap: map[Constant]int{},
 		instructions:  []*Instruction{},
 		scopeStack: []*scope{
