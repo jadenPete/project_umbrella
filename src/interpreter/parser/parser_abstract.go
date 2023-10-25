@@ -26,6 +26,10 @@ type ExpressionList struct {
 }
 
 func (expressionList *ExpressionList) Position() *errors.Position {
+	if len(expressionList.Children) == 0 {
+		return nil
+	}
+
 	return &errors.Position{
 		Start: expressionList.Children[0].Position().Start,
 		End:   expressionList.Children[len(expressionList.Children)-1].Position().End,

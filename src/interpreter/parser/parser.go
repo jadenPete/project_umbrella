@@ -110,7 +110,7 @@ func (*ConcreteAssignment) concreteStatement() {}
 
 type ConcreteFunction struct {
 	Declaration   *ConcreteFunctionDeclaration   `parser:"@@ ':' NewlineToken"`
-	StatementList *ConcreteIndentedStatementList `parser:"@@"`
+	StatementList *ConcreteIndentedStatementList `parser:"@@?"`
 	Tokens        []lexer.Token
 }
 
@@ -130,7 +130,21 @@ func (concrete *ConcreteFunction) AbstractFunction() *Function {
 		},
 	)
 
-	value := concrete.StatementList.AbstractExpressionList()
+	var value *ExpressionList
+
+	if concrete.StatementList == nil {
+		value = &ExpressionList{
+			Children: []Expression{},
+		}
+	} else {
+		value = concrete.StatementList.AbstractExpressionList()
+	}
+
+	valuePosition := value.Position()
+
+	if valuePosition == nil {
+		valuePosition = tokenSyntaxTreePosition(&concrete.Tokens[len(concrete.Tokens)-1])
+	}
 
 	return &Function{
 		Name:       concrete.Declaration.Name.AbstractIdentifier(),
@@ -138,7 +152,7 @@ func (concrete *ConcreteFunction) AbstractFunction() *Function {
 		Value:      value,
 		position: &errors.Position{
 			Start: concrete.Declaration.Pos.Offset,
-			End:   value.Position().End,
+			End:   valuePosition.End,
 		},
 	}
 }
@@ -161,20 +175,10 @@ type ConcreteFunctionParameters struct {
 }
 
 type ConcreteIndentedStatementList struct {
-	Value *ConcreteStatementList `parser:"NewlineToken* (IndentToken @@ (OutdentToken | EOF))?"`
-}
-
-func (concrete *ConcreteIndentedStatementList) Abstract() Expression {
-	return concrete.AbstractExpressionList()
+	Value *ConcreteStatementList `parser:"NewlineToken* IndentToken @@ (OutdentToken | EOF)"`
 }
 
 func (concrete *ConcreteIndentedStatementList) AbstractExpressionList() *ExpressionList {
-	if concrete.Value == nil {
-		return &ExpressionList{
-			Children: []Expression{},
-		}
-	}
-
 	return concrete.Value.AbstractExpressionList()
 }
 
@@ -291,10 +295,6 @@ func (concrete *ConcreteStatementList) Parse(lexer_ *lexer.PeekingLexer) error {
 	}
 
 	return nil
-}
-
-func (concrete *ConcreteStatementList) Abstract() Expression {
-	return concrete.AbstractExpressionList()
 }
 
 func (concrete *ConcreteStatementList) AbstractExpressionList() *ExpressionList {
