@@ -14,6 +14,9 @@ const (
 	AssignmentOperatorToken lexer.TokenType = iota + 1
 	ColonToken
 	CommaToken
+	ElseToken
+	ElseIfToken
+	IfToken
 	FloatToken
 	FunctionKeywordToken
 	IdentifierToken
@@ -53,6 +56,25 @@ var matcher = ExhaustiveMatcher{
 		{
 			MatcherCode(CommaToken),
 			CompileMatcher(`,`),
+		},
+
+		/*
+		 * The "else if" token is parsed before the "else", "if", and space tokens because it
+		 * contains both.
+		 */
+		{
+			MatcherCode(ElseIfToken),
+			CompileMatcher("else if"),
+		},
+
+		{
+			MatcherCode(ElseToken),
+			CompileMatcher("else"),
+		},
+
+		{
+			MatcherCode(IfToken),
+			CompileMatcher("if"),
 		},
 
 		{

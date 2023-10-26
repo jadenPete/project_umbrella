@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+if [ "$#" -eq 0 ]; then
+    bazel run --enable_bzlmod //src/interpreter
+fi
+
+bazel run --enable_bzlmod //src/interpreter -- "$(realpath "$1")" "${@:2}"

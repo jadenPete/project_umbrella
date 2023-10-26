@@ -77,6 +77,7 @@ import (
 
 	"github.com/ugorji/go/codec"
 
+	"project_umbrella/interpreter/bytecode_generator/built_ins"
 	"project_umbrella/interpreter/common"
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/parser_errors"
@@ -87,22 +88,23 @@ import (
 const checksumSize = 32
 
 var builtInFields = map[string]*builtInField{
-	"__to_str__": {-1, parser_types.NormalField},
-	"+":          {-2, parser_types.InfixField},
-	"-":          {-3, parser_types.InfixPrefixField},
-	"*":          {-4, parser_types.InfixField},
-	"/":          {-5, parser_types.InfixField},
-	"!":          {-6, parser_types.PrefixField},
-	"&&":         {-7, parser_types.InfixField},
-	"||":         {-8, parser_types.InfixField},
+	"__to_str__": {built_ins.ToStringMethodID, parser_types.NormalField},
+	"+":          {built_ins.PlusMethodID, parser_types.InfixField},
+	"-":          {built_ins.MinusMethodID, parser_types.InfixPrefixField},
+	"*":          {built_ins.TimesMethodID, parser_types.InfixField},
+	"/":          {built_ins.OverMethodID, parser_types.InfixField},
+	"!":          {built_ins.NotMethodID, parser_types.PrefixField},
+	"&&":         {built_ins.AndMethodID, parser_types.InfixField},
+	"||":         {built_ins.OrMethodID, parser_types.InfixField},
 }
 
-var builtInValues = map[string]int{
-	"print":   -1,
-	"println": -2,
-	"unit":    -3,
-	"false":   -4,
-	"true":    -5,
+var builtInValues = map[string]built_ins.BuiltInValueID{
+	"print":       built_ins.PrintFunctionID,
+	"println":     built_ins.PrintlnFunctionID,
+	"unit":        built_ins.UnitValueID,
+	"false":       built_ins.FalseValueID,
+	"true":        built_ins.TrueValueID,
+	"__if_else__": built_ins.IfElseFunctionID,
 }
 
 func sourceChecksum(fileContent string) [checksumSize]byte {
@@ -110,7 +112,7 @@ func sourceChecksum(fileContent string) [checksumSize]byte {
 }
 
 type builtInField struct {
-	id        int
+	id        built_ins.BuiltInFieldID
 	fieldType parser_types.FieldType
 }
 
@@ -366,7 +368,7 @@ func (translator *BytecodeTranslator) valueIDForExpressionList(
 		}
 	}
 
-	returnValueID := builtInValues["unit"]
+	returnValueID := int(builtInValues["unit"])
 
 	for _, subexpression := range expressionList.Children {
 		returnValueID = translator.valueIDForExpression(subexpression)
@@ -391,32 +393,35 @@ func (translator *BytecodeTranslator) valueIDForExpressionList(
 	return returnValueID
 }
 
-func (translator *BytecodeTranslator) valueIDForIdentifier(identifier *parser.Identifier) int {
-	if valueID, ok := translator.valueIDForNonBuiltInIdentifierInScope(identifier); ok {
-		return valueID
-	}
-
-	valueID, ok := builtInValues[identifier.Value]
-
-	if !ok {
-		errors.RaisePositionalError(
-			&errors.PositionalError{
-				Error:    parser_errors.UnknownValue(identifier.Value),
-				Position: identifier.Position(),
-			},
-
-			translator.fileContent,
-		)
-	}
-
-	return valueID
-}
-
 func (translator *BytecodeTranslator) valueIDForFunction(function *parser.Function) int {
 	translator.instructions = append(translator.instructions, &Instruction{
 		Type:      PushFunctionInstruction,
 		Arguments: []int{len(function.Parameters)},
 	})
+
+	/*
+	 * If the function is generated during the bytecode translation phase (as is the case in
+	 * `valueIDForIf`, whose generated functions are nameless), it won't have been hoisted.
+	 *
+	 * In that case, a value ID should be generated for it, as one won't be stored in the
+	 * identifier-value ID map.
+	 */
+	var result int
+
+	hoisted := false
+
+	if function.Name != nil {
+		if functionValueID, ok := translator.currentScope().identifierValueIDMap[function.Name.Value]; ok {
+			result = functionValueID
+			hoisted = true
+		}
+	}
+
+	if !hoisted {
+		result = translator.currentScope().nextValueID
+
+		translator.currentScope().nextValueID++
+	}
 
 	scope := &scope{
 		constantValueIDMap:   map[int]int{},
@@ -436,7 +441,28 @@ func (translator *BytecodeTranslator) valueIDForFunction(function *parser.Functi
 		Type: PopFunctionInstruction,
 	})
 
-	return translator.currentScope().identifierValueIDMap[function.Name.Value]
+	return result
+}
+
+func (translator *BytecodeTranslator) valueIDForIdentifier(identifier *parser.Identifier) int {
+	if valueID, ok := translator.valueIDForNonBuiltInIdentifierInScope(identifier); ok {
+		return valueID
+	}
+
+	valueID, ok := builtInValues[identifier.Value]
+
+	if !ok {
+		errors.RaisePositionalError(
+			&errors.PositionalError{
+				Error:    parser_errors.UnknownValue(identifier.Value),
+				Position: identifier.Position(),
+			},
+
+			translator.fileContent,
+		)
+	}
+
+	return int(valueID)
 }
 
 func (translator *BytecodeTranslator) valueIDForNonBuiltInConstantInScope(constantID int) (int, bool) {
@@ -499,7 +525,7 @@ func (translator *BytecodeTranslator) valueIDForSelect(select_ *parser.Select) i
 		translator.instructions,
 		&Instruction{
 			Type:      ValueFromStructValueInstruction,
-			Arguments: []int{valueID, field.id},
+			Arguments: []int{valueID, int(field.id)},
 		},
 	)
 

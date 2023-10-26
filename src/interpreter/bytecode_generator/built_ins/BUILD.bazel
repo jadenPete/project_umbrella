@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "built_ins",
+    srcs = glob(["*.go"]),
+    importpath = "project_umbrella/interpreter/bytecode_generator/built_ins",
+    visibility = ["//src/interpreter:__subpackages__"],
+    deps = ["//src/interpreter/parser/parser_types"],
+)

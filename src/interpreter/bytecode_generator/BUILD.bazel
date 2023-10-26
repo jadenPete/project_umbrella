@@ -9,6 +9,7 @@ go_library(
         "//src/interpreter/runtime:__pkg__",
     ],
     deps = [
+        "//src/interpreter/bytecode_generator/built_ins",
         "//src/interpreter/common",
         "//src/interpreter/errors",
         "//src/interpreter/errors/parser_errors",
