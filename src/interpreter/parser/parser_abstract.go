@@ -58,7 +58,7 @@ func (float *Float) Position() *errors.Position {
 type Function struct {
 	Name       *Identifier
 	Parameters []*Identifier
-	Value      *ExpressionList
+	Body       *ExpressionList
 	position   *errors.Position
 }
 

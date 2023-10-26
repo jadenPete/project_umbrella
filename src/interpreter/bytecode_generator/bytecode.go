@@ -430,7 +430,7 @@ func (translator *BytecodeTranslator) valueIDForFunction(function *parser.Functi
 	}
 
 	translator.scopeStack = append(translator.scopeStack, scope)
-	translator.valueIDForExpression(function.Value)
+	translator.valueIDForExpression(function.Body)
 	translator.scopeStack = translator.scopeStack[:len(translator.scopeStack)-1]
 	translator.instructions = append(translator.instructions, &Instruction{
 		Type: PopFunctionInstruction,

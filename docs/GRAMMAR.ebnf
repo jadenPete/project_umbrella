@@ -20,7 +20,12 @@ Formatting =
 (* Statements *)
 
 Assignment = Identifier {Formatting} "=" {Formatting} (Expression | Assignment);
-Function = FunctionDeclaration ":" NewlineToken IndentedStatementList;
+Function =
+	FunctionDeclaration
+	{IndentToken | OutdentToken}
+	":"
+	(NewlineToken IndentedStatementList)?;
+
 FunctionDeclaration =
 	"fn"
 	{Formatting}
