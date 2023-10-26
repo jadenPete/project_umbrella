@@ -4,7 +4,7 @@ go_library(
     name = "runtime",
     srcs = glob(["*.go"]),
     importpath = "project_umbrella/interpreter/runtime",
-    visibility = ["//src/interpreter:__subpackages__"],
+    visibility = ["//src/interpreter:__pkg__"],
     deps = [
         "//src/interpreter/bytecode_generator",
         "//src/interpreter/common",
