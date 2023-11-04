@@ -43,6 +43,12 @@ def test_empty() -> None:
 	assert output_from_code("") == ""
 	assert output_from_code("\n") == ""
 
+def test_ifs() -> None:
+	assert output_from_filename("if.krait") == "Bar\n"
+	assert has_expected_lines(output_from_filename("if_else.krait"), ["Bar", "Bizz"])
+	assert output_from_filename("if_else_if.krait") == "4\n"
+	assert has_expected_lines(output_from_filename("if_else_if_else.krait"), ["3", "5"])
+
 def test_functions() -> None:
 	assert \
 		output_from_filename("function_basic.krait") == \
