@@ -20,7 +20,12 @@ Formatting =
 (* Statements *)
 
 Assignment = Identifier {Formatting} "=" {Formatting} (Expression | Assignment);
-Function = FunctionDeclaration ":" NewlineToken IndentedStatementList;
+Function =
+	FunctionDeclaration
+	{IndentToken | OutdentToken}
+	":"
+	(NewlineToken IndentedStatementList)?;
+
 FunctionDeclaration =
 	"fn"
 	{Formatting}
@@ -60,9 +65,25 @@ InfixMultiplicationRight =
 		| {IndentToken | OutdentToken} ("*" | "/") {Formatting}
 		| {Formatting} ("*" | "/") {IndentToken | OutdentToken}
 	)
-	Call;
+	PrefixOperation;
 
-PrefixOperation = {Operator {IndentToken | OutdentToken}} Call;
+PrefixOperation = {Operator {IndentToken | OutdentToken}} If;
+If =
+	| (
+		"if"
+		{Formatting}
+		Expression
+		{Formatting}
+		":"
+		(NewlineToken IndentedStatementList)?
+		{{NewlineToken}- ElseIf}
+		[{NewlineToken}- Else]
+	)
+
+	| Call;
+
+ElseIf = "else if" {Formatting} Expression {Formatting} ":" (NewlineToken IndentedStatementList)?;
+Else = "else" {Formatting} ":" (NewlineToken IndentedStatementList)?;
 Call = Select {CallRight};
 CallRight =
 	| {IndentToken | OutdentToken} "(" {Formatting} [CallArguments] {Formatting} ")"

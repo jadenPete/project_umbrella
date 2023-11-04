@@ -109,9 +109,9 @@ func (concrete *ConcreteAssignment) Tokens_() []lexer.Token {
 func (*ConcreteAssignment) concreteStatement() {}
 
 type ConcreteFunction struct {
-	Declaration   *ConcreteFunctionDeclaration   `parser:"@@ ':' NewlineToken"`
-	StatementList *ConcreteIndentedStatementList `parser:"@@?"`
-	Tokens        []lexer.Token
+	Declaration *ConcreteFunctionDeclaration   `parser:"@@ (IndentToken | OutdentToken)* ':'"`
+	Body        *ConcreteIndentedStatementList `parser:"(NewlineToken @@)?"`
+	Tokens      []lexer.Token
 }
 
 func (concrete *ConcreteFunction) Abstract() Expression {
@@ -130,30 +130,21 @@ func (concrete *ConcreteFunction) AbstractFunction() *Function {
 		},
 	)
 
-	var value *ExpressionList
+	var body *ExpressionList
 
-	if concrete.StatementList == nil {
-		value = &ExpressionList{
-			Children: []Expression{},
+	if concrete.Body == nil {
+		body = &ExpressionList{
+			Children_: []Expression{},
 		}
 	} else {
-		value = concrete.StatementList.AbstractExpressionList()
-	}
-
-	valuePosition := value.Position()
-
-	if valuePosition == nil {
-		valuePosition = tokenSyntaxTreePosition(&concrete.Tokens[len(concrete.Tokens)-1])
+		body = concrete.Body.AbstractExpressionList()
 	}
 
 	return &Function{
 		Name:       concrete.Declaration.Name.AbstractIdentifier(),
 		Parameters: parameters,
-		Value:      value,
-		position: &errors.Position{
-			Start: concrete.Declaration.Pos.Offset,
-			End:   valuePosition.End,
-		},
+		Body:       body,
+		position:   tokenListSyntaxTreePosition(concrete.Tokens),
 	}
 }
 
@@ -166,7 +157,6 @@ func (*ConcreteFunction) concreteStatement() {}
 type ConcreteFunctionDeclaration struct {
 	Name       *ConcreteIdentifier         `parser:"'fn' (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* '(' (IndentToken | OutdentToken | NewlineToken)*"`
 	Parameters *ConcreteFunctionParameters `parser:"@@? (IndentToken | OutdentToken | NewlineToken)* ')'"`
-	Pos        lexer.Position
 }
 
 type ConcreteFunctionParameters struct {
@@ -305,7 +295,7 @@ func (concrete *ConcreteStatementList) AbstractExpressionList() *ExpressionList 
 	}
 
 	return &ExpressionList{
-		Children: children,
+		Children_: children,
 	}
 }
 
@@ -461,7 +451,7 @@ func (concrete *ConcreteInfixMultiplicationOperator) AbstractIdentifier() *Ident
 
 type ConcretePrefixOperation struct {
 	Operators []*ConcreteOperator `parser:"(@@ (IndentToken | OutdentToken)*)*"`
-	Operand   *ConcreteCall       `parser:"@@"`
+	Operand   *ConcreteIf         `parser:"@@"`
 }
 
 func (concrete *ConcretePrefixOperation) Abstract() Expression {
@@ -490,6 +480,126 @@ func (concrete *ConcretePrefixOperation) Abstract() Expression {
 
 func (*ConcretePrefixOperation) concreteInfixOperand() {}
 
+type ConcreteIf struct {
+	Condition ConcreteExpression             `parser:"('if' (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* ':'"`
+	Body      *ConcreteIndentedStatementList `parser:" (NewlineToken @@)?"`
+	ElseIf    []*ConcreteElseIf              `parser:" (NewlineToken+ @@)*"`
+	Else      *ConcreteElse                  `parser:" (NewlineToken+ @@)?)"`
+	Call      *ConcreteCall                  `parser:"| @@"`
+	Tokens    []lexer.Token
+}
+
+func (concrete *ConcreteIf) Abstract() Expression {
+	if concrete.Call != nil {
+		return concrete.Call.Abstract()
+	}
+
+	abstractFunctionFromBody := func(concrete *ConcreteIndentedStatementList) *Function {
+		var abstractBody *ExpressionList
+
+		if concrete == nil {
+			abstractBody = &ExpressionList{
+				Children_: []Expression{
+					&Identifier{
+						Value:    "unit",
+						position: nil,
+					},
+				},
+			}
+		} else {
+			abstractBody = concrete.AbstractExpressionList()
+		}
+
+		return &Function{
+			Name:       nil,
+			Parameters: []*Identifier{},
+			Body:       abstractBody,
+		}
+	}
+
+	abstractIfFromIfOrElseIf := func(
+		condition ConcreteExpression,
+		thenBody *ConcreteIndentedStatementList,
+		elseFunction *Function,
+		elsePosition *errors.Position,
+		tokens []lexer.Token,
+	) *Call {
+		position := tokenListSyntaxTreePosition(tokens)
+
+		if elsePosition != nil {
+			position.End = elsePosition.End
+		}
+
+		return &Call{
+			Function: &Identifier{
+				Value:    "__if_else__",
+				position: nil,
+			},
+
+			Arguments: []Expression{
+				condition.Abstract(),
+				abstractFunctionFromBody(thenBody),
+				elseFunction,
+			},
+
+			position: position,
+		}
+	}
+
+	var elseBody *ConcreteIndentedStatementList = nil
+
+	if concrete.Else != nil {
+		elseBody = concrete.Else.Body
+	}
+
+	current := abstractFunctionFromBody(elseBody)
+
+	var currentPosition *errors.Position = nil
+
+	if concrete.Else != nil {
+		currentPosition = tokenListSyntaxTreePosition(concrete.Else.Tokens)
+	}
+
+	for i := len(concrete.ElseIf) - 1; i >= 0; i-- {
+		nextIf := abstractIfFromIfOrElseIf(
+			concrete.ElseIf[i].Condition,
+			concrete.ElseIf[i].Body,
+			current,
+			currentPosition,
+			concrete.ElseIf[i].Tokens,
+		)
+
+		current = &Function{
+			Name:       nil,
+			Parameters: []*Identifier{},
+			Body: &ExpressionList{
+				Children_: []Expression{nextIf},
+			},
+		}
+
+		currentPosition = nextIf.Position()
+	}
+
+	return abstractIfFromIfOrElseIf(
+		concrete.Condition,
+		concrete.Body,
+		current,
+		currentPosition,
+		concrete.Tokens,
+	)
+}
+
+type ConcreteElseIf struct {
+	Condition ConcreteExpression             `parser:"'else if' (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* ':'"`
+	Body      *ConcreteIndentedStatementList `parser:"(NewlineToken @@)?"`
+	Tokens    []lexer.Token
+}
+
+type ConcreteElse struct {
+	Body   *ConcreteIndentedStatementList `parser:"'else' (IndentToken | OutdentToken | NewlineToken)* ':' (NewlineToken @@)?"`
+	Tokens []lexer.Token
+}
+
 type ConcreteCall struct {
 	Left  *ConcreteSelect      `parser:"@@"`
 	Right []*ConcreteCallRight `parser:"@@*"`
@@ -506,14 +616,14 @@ func (concrete *ConcreteCall) Abstract() Expression {
 				func(child *ConcreteCallArguments) *ConcreteCallArguments { return child.Tail },
 			)
 
-			lastToken := rightHandSide.Tokens[len(rightHandSide.Tokens)-1]
-
 			result = &Call{
 				Function:  result,
 				Arguments: arguments,
 				position: &errors.Position{
 					Start: result.Position().Start,
-					End:   lastToken.Pos.Offset + len(lastToken.Value),
+					End: tokenSyntaxTreePosition(
+						&rightHandSide.Tokens[len(rightHandSide.Tokens)-1],
+					).End,
 				},
 			}
 		} else {
@@ -670,6 +780,15 @@ var parser = participle.MustBuild[ConcreteStatementList](
 
 func ParseString(source string) (*ConcreteStatementList, error) {
 	return parser.ParseString("", source)
+}
+
+func tokenListSyntaxTreePosition(tokens []lexer.Token) *errors.Position {
+	lastToken := tokens[len(tokens)-1]
+
+	return &errors.Position{
+		Start: tokens[0].Pos.Offset,
+		End:   lastToken.Pos.Offset + len(lastToken.Value),
+	}
 }
 
 func tokenSyntaxTreePosition(token *lexer.Token) *errors.Position {

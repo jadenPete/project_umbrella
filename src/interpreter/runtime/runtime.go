@@ -23,6 +23,7 @@ package runtime
 
 import (
 	"project_umbrella/interpreter/bytecode_generator"
+	"project_umbrella/interpreter/bytecode_generator/built_ins"
 	"project_umbrella/interpreter/common"
 )
 
@@ -33,6 +34,7 @@ type bytecodeFunctionBlock interface {
 type bytecodeFunctionBlockGraph struct {
 	*common.Graph[bytecodeFunctionBlock]
 
+	valueID        int // Should be -1 if this is the root block graph
 	firstValueID   int
 	parameterCount int
 }
@@ -54,11 +56,12 @@ type runtime struct {
 
 func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 	type runtimeConstructorScope struct {
-		nextValueID     int
-		valueIDBlockMap map[int]int
-		functionCount   int
-		functionsSeen   int
-		blockGraph      *bytecodeFunctionBlockGraph
+		nextValueID              int
+		valueIDBlockMap          map[int]int
+		functionCount            int
+		functionsSeen            int
+		pushArgumentInstructions []*bytecode_generator.Instruction
+		blockGraph               *bytecodeFunctionBlockGraph
 	}
 
 	scopeStack := []*runtimeConstructorScope{
@@ -69,6 +72,7 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 			functionsSeen:   0,
 			blockGraph: &bytecodeFunctionBlockGraph{
 				common.NewGraph[bytecodeFunctionBlock](),
+				-1,
 				0,
 				0,
 			},
@@ -76,7 +80,7 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 	}
 
 	addDependencyForLatestBlock := func(dependencyValueID int) {
-		if _, ok := builtInValues[builtInValueID(dependencyValueID)]; ok {
+		if _, ok := builtInValues[built_ins.BuiltInValueID(dependencyValueID)]; ok {
 			return
 		}
 
@@ -135,54 +139,62 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 	// Hoist declared functions
 	for _, instruction := range bytecode.Instructions {
 		if instruction.Type == bytecode_generator.PushFunctionInstruction {
-			newBlockGraph := addSingleValuedBlock(
-				func(valueID int) bytecodeFunctionBlock {
-					return &bytecodeFunctionBlockGraph{
-						common.NewGraph[bytecodeFunctionBlock](),
-						valueID + 1,
-						instruction.Arguments[0],
-					}
-				},
-			).(*bytecodeFunctionBlockGraph)
+			currentScope().nextValueID++
 
+			newBlockGraph := &bytecodeFunctionBlockGraph{
+				common.NewGraph[bytecodeFunctionBlock](),
+				0,
+				0,
+				instruction.Arguments[0],
+			}
+
+			currentScope().blockGraph.Nodes = append(currentScope().blockGraph.Nodes, newBlockGraph)
 			currentScope().functionCount++
 
 			scopeStack = append(scopeStack, &runtimeConstructorScope{
-				nextValueID:     newBlockGraph.firstValueID,
-				valueIDBlockMap: map[int]int{},
-				functionCount:   0,
-				functionsSeen:   0,
-				blockGraph:      newBlockGraph,
+				nextValueID:              0,
+				valueIDBlockMap:          map[int]int{},
+				functionCount:            0,
+				functionsSeen:            0,
+				pushArgumentInstructions: []*bytecode_generator.Instruction{},
+				blockGraph:               newBlockGraph,
 			})
 		} else if instruction.Type == bytecode_generator.PopFunctionInstruction {
 			scopeStack = scopeStack[:len(scopeStack)-1]
 		}
 	}
 
-	pushArgumentInstructions := []*bytecode_generator.Instruction{}
-
 	for _, instruction := range bytecode.Instructions {
 		switch instruction.Type {
 		case bytecode_generator.PushArgumentInstruction:
-			pushArgumentInstructions = append(pushArgumentInstructions, instruction)
+			currentScope().pushArgumentInstructions =
+				append(currentScope().pushArgumentInstructions, instruction)
 
 		case bytecode_generator.PushFunctionInstruction:
-			scopeFirstValueID :=
-				currentScope().blockGraph.firstValueID + len(currentScope().blockGraph.Nodes)
-
 			scopeBlockGraph := currentScope().
 				blockGraph.
 				Nodes[currentScope().functionsSeen].(*bytecodeFunctionBlockGraph)
 
-			scopeStack = append(scopeStack, &runtimeConstructorScope{
-				nextValueID:     scopeFirstValueID + instruction.Arguments[0],
-				valueIDBlockMap: map[int]int{},
-				functionCount:   len(scopeBlockGraph.Nodes),
-				functionsSeen:   0,
-				blockGraph:      scopeBlockGraph,
-			})
+			scopeBlockGraph.valueID = currentScope().blockGraph.firstValueID +
+				currentScope().blockGraph.parameterCount +
+				currentScope().functionsSeen
 
-			scopeStack[len(scopeStack)-2].functionsSeen++
+			scopeBlockGraph.firstValueID = currentScope().nextValueID
+			scopeFunctionCount := len(scopeBlockGraph.Nodes)
+			scopeNextValueID :=
+				scopeBlockGraph.firstValueID + scopeBlockGraph.parameterCount + scopeFunctionCount
+
+			currentScope().valueIDBlockMap[scopeBlockGraph.valueID] = currentScope().functionsSeen
+			currentScope().functionsSeen++
+
+			scopeStack = append(scopeStack, &runtimeConstructorScope{
+				nextValueID:              scopeNextValueID,
+				valueIDBlockMap:          map[int]int{},
+				functionCount:            scopeFunctionCount,
+				functionsSeen:            0,
+				pushArgumentInstructions: []*bytecode_generator.Instruction{},
+				blockGraph:               scopeBlockGraph,
+			})
 
 		case bytecode_generator.PopFunctionInstruction:
 			scopeStack = scopeStack[:len(scopeStack)-1]
@@ -192,9 +204,10 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 			addDependencyForLatestBlock(instruction.Arguments[0])
 
 		case bytecode_generator.ValueFromCallInstruction:
-			instructionList := make(instructionList, 0, len(pushArgumentInstructions)+1)
+			instructionList :=
+				make(instructionList, 0, len(currentScope().pushArgumentInstructions)+1)
 
-			for _, instruction := range pushArgumentInstructions {
+			for _, instruction := range currentScope().pushArgumentInstructions {
 				instructionList = append(instructionList, &instructionListElement{
 					instruction:        instruction,
 					instructionValueID: -1,
@@ -214,11 +227,11 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 
 			addDependencyForLatestBlock(instruction.Arguments[0])
 
-			for _, pushArgumentInstruction := range pushArgumentInstructions {
+			for _, pushArgumentInstruction := range currentScope().pushArgumentInstructions {
 				addDependencyForLatestBlock(pushArgumentInstruction.Arguments[0])
 			}
 
-			pushArgumentInstructions = []*bytecode_generator.Instruction{}
+			currentScope().pushArgumentInstructions = []*bytecode_generator.Instruction{}
 
 		case bytecode_generator.ValueFromConstantInstruction:
 			addValuedInstruction(instruction)

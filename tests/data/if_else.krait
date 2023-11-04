@@ -1,0 +1,9 @@
+if false:
+	println("Foo")
+else:
+	println("Bar")
+
+if true:
+	println("Bizz")
+else:
+	println("Buzz")

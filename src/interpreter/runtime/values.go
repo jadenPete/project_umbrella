@@ -9,41 +9,14 @@ import (
 	"strings"
 
 	"project_umbrella/interpreter/bytecode_generator"
+	"project_umbrella/interpreter/bytecode_generator/built_ins"
 	"project_umbrella/interpreter/common"
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/runtime_errors"
 )
 
-type builtInFieldID int
-
-const (
-	// Implemented on every type
-	toStringMethodID builtInFieldID = -1
-
-	// Implemented on int and float
-	plusMethodID  builtInFieldID = -2
-	minusMethodID builtInFieldID = -3
-	timesMethodID builtInFieldID = -4
-	overMethodID  builtInFieldID = -5
-
-	// Implemented on bool
-	notMethodID builtInFieldID = -6
-	andMethodID builtInFieldID = -7
-	orMethodID  builtInFieldID = -8
-)
-
-type builtInValueID int
-
-const (
-	printFunctionID   builtInValueID = -1
-	printlnFunctionID builtInValueID = -2
-	unitValueID       builtInValueID = -3
-	falseValueID      builtInValueID = -4
-	trueValueID       builtInValueID = -5
-)
-
 type valueDefinition struct {
-	fields map[builtInFieldID]value
+	fields map[built_ins.BuiltInFieldID]value
 }
 
 func newNumberDefinition[Value integerValue | floatValue](
@@ -53,8 +26,8 @@ func newNumberDefinition[Value integerValue | floatValue](
 	valueType := reflect.TypeOf(value_)
 
 	return &valueDefinition{
-		fields: map[builtInFieldID]value{
-			toStringMethodID: newToStringFunction(
+		fields: map[built_ins.BuiltInFieldID]value{
+			built_ins.ToStringMethodID: newToStringFunction(
 				func() string {
 					switch value_ := any(value_).(type) {
 					case integerValue:
@@ -69,22 +42,22 @@ func newNumberDefinition[Value integerValue | floatValue](
 				},
 			),
 
-			plusMethodID: newBuiltInFunction(
+			built_ins.PlusMethodID: newBuiltInFunction(
 				newFixedFunctionArgumentValidator("+", valueType),
 				func(_ *runtime, arguments ...value) value {
 					return value(value_ + arguments[0].(Value))
 				},
 			),
 
-			minusMethodID: newMinusMethod(value_),
-			timesMethodID: newBuiltInFunction(
+			built_ins.MinusMethodID: newMinusMethod(value_),
+			built_ins.TimesMethodID: newBuiltInFunction(
 				newFixedFunctionArgumentValidator("*", valueType),
 				func(_ *runtime, arguments ...value) value {
 					return value(value_ * arguments[0].(Value))
 				},
 			),
 
-			overMethodID: newBuiltInFunction(
+			built_ins.OverMethodID: newBuiltInFunction(
 				newFixedFunctionArgumentValidator("/", valueType),
 				func(_ *runtime, arguments ...value) value {
 					rightHandSide := arguments[0].(Value)
@@ -135,24 +108,46 @@ func newValueFromConstant(constant bytecode_generator.Constant) value {
 	return nil
 }
 
-var builtInValues = map[builtInValueID]value{
-	printFunctionID: newBuiltInFunction(
+var builtInValues = map[built_ins.BuiltInValueID]value{
+	built_ins.PrintFunctionID: newBuiltInFunction(
 		newVariadicFunctionArgumentValidator("print", nil),
 		func(runtime_ *runtime, arguments ...value) value {
 			return print(runtime_, "", arguments...)
 		},
 	),
 
-	printlnFunctionID: newBuiltInFunction(
+	built_ins.PrintlnFunctionID: newBuiltInFunction(
 		newVariadicFunctionArgumentValidator("println", nil),
 		func(runtime_ *runtime, arguments ...value) value {
 			return print(runtime_, "\n", arguments...)
 		},
 	),
 
-	unitValueID:  unitValue{},
-	falseValueID: booleanValue(false),
-	trueValueID:  booleanValue(true),
+	built_ins.UnitValueID:  unitValue{},
+	built_ins.FalseValueID: booleanValue(false),
+	built_ins.TrueValueID:  booleanValue(true),
+	built_ins.IfElseFunctionID: newBuiltInFunction(
+		newFixedFunctionArgumentValidator(
+			"if_else",
+			reflect.TypeOf(*new(booleanValue)),
+			reflect.TypeOf(&function{}),
+			reflect.TypeOf(&function{}),
+		),
+
+		ifElse,
+	),
+}
+
+func ifElse(runtime_ *runtime, arguments ...value) value {
+	var branchIndex int
+
+	if arguments[0].(booleanValue) {
+		branchIndex = 1
+	} else {
+		branchIndex = 2
+	}
+
+	return arguments[branchIndex].(*function).evaluate(runtime_)
 }
 
 func print(runtime_ *runtime, suffix string, arguments ...value) unitValue {
@@ -169,7 +164,7 @@ func print(runtime_ *runtime, suffix string, arguments ...value) unitValue {
 
 func toString(runtime_ *runtime, value_ value) string {
 	resultingValue, ok := value_.
-		definition().fields[toStringMethodID].(*function).
+		definition().fields[built_ins.ToStringMethodID].(*function).
 		evaluate(runtime_).(stringValue)
 
 	if !ok {
@@ -183,26 +178,26 @@ type booleanValue bool
 
 func (value_ booleanValue) definition() *valueDefinition {
 	return &valueDefinition{
-		fields: map[builtInFieldID]value{
-			toStringMethodID: newToStringFunction(func() string {
+		fields: map[built_ins.BuiltInFieldID]value{
+			built_ins.ToStringMethodID: newToStringFunction(func() string {
 				return fmt.Sprintf("%t", value_)
 			}),
 
-			notMethodID: newBuiltInFunction(
+			built_ins.NotMethodID: newBuiltInFunction(
 				newFixedFunctionArgumentValidator("!"),
 				func(runtime_ *runtime, arguments ...value) value {
 					return !value_
 				},
 			),
 
-			andMethodID: newBuiltInFunction(
+			built_ins.AndMethodID: newBuiltInFunction(
 				newFixedFunctionArgumentValidator("&&", reflect.TypeOf(value_)),
 				func(runtime_ *runtime, arguments ...value) value {
 					return value_ && arguments[0].(booleanValue)
 				},
 			),
 
-			orMethodID: newBuiltInFunction(
+			built_ins.OrMethodID: newBuiltInFunction(
 				newFixedFunctionArgumentValidator("||", reflect.TypeOf(value_)),
 				func(runtime_ *runtime, arguments ...value) value {
 					return value_ || arguments[0].(booleanValue)
@@ -314,7 +309,7 @@ func (evaluator *bytecodeFunctionEvaluator) evaluator(runtime_ *runtime, argumen
 
 		switch node := evaluator.blockGraph.Nodes[i].(type) {
 		case *bytecodeFunctionBlockGraph:
-			scope.values[node.firstValueID-1] = newBytecodeFunction(
+			scope.values[node.valueID] = newBytecodeFunction(
 				node.parameterCount,
 				&bytecodeFunctionEvaluator{
 					containingScope: scope,
@@ -349,7 +344,7 @@ func (evaluator *bytecodeFunctionEvaluator) evaluator(runtime_ *runtime, argumen
 
 				case bytecode_generator.ValueFromStructValueInstruction:
 					structValue := scope.getValue(element.instruction.Arguments[0])
-					fieldID := builtInFieldID(element.instruction.Arguments[1])
+					fieldID := built_ins.BuiltInFieldID(element.instruction.Arguments[1])
 					field, ok := structValue.definition().fields[fieldID]
 
 					if !ok {
@@ -395,8 +390,8 @@ type function struct {
 
 func (function_ *function) definition() *valueDefinition {
 	return &valueDefinition{
-		fields: map[builtInFieldID]value{
-			toStringMethodID: newToStringFunction(func() string {
+		fields: map[built_ins.BuiltInFieldID]value{
+			built_ins.ToStringMethodID: newToStringFunction(func() string {
 				return function_.name
 			}),
 		},
@@ -493,14 +488,14 @@ type stringValue struct {
 
 func (value_ stringValue) definition() *valueDefinition {
 	return &valueDefinition{
-		fields: map[builtInFieldID]value{
-			toStringMethodID: newToStringFunction(
+		fields: map[built_ins.BuiltInFieldID]value{
+			built_ins.ToStringMethodID: newToStringFunction(
 				func() string {
 					return value_.content
 				},
 			),
 
-			plusMethodID: newBuiltInFunction(
+			built_ins.PlusMethodID: newBuiltInFunction(
 				newFixedFunctionArgumentValidator("+", reflect.TypeOf(stringValue{})),
 				func(_ *runtime, arguments ...value) value {
 					return stringValue{value_.content + arguments[0].(stringValue).content}
@@ -517,7 +512,7 @@ type scope struct {
 }
 
 func (scope_ *scope) getValue(valueID int) value {
-	if builtInValue, ok := builtInValues[builtInValueID(valueID)]; ok {
+	if builtInValue, ok := builtInValues[built_ins.BuiltInValueID(valueID)]; ok {
 		return builtInValue
 	}
 
@@ -534,8 +529,8 @@ type unitValue struct{}
 
 func (value_ unitValue) definition() *valueDefinition {
 	return &valueDefinition{
-		fields: map[builtInFieldID]value{
-			toStringMethodID: newToStringFunction(func() string {
+		fields: map[built_ins.BuiltInFieldID]value{
+			built_ins.ToStringMethodID: newToStringFunction(func() string {
 				return "(unit)"
 			}),
 		},

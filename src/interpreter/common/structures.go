@@ -124,8 +124,3 @@ func (graph *Graph[T]) Evaluate(evaluator func(i int)) bool {
 
 	return processed == len(graph.Nodes)
 }
-
-type Tree[T any] struct {
-	Children []*Tree[T]
-	Value    T
-}
