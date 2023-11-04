@@ -9,11 +9,15 @@ const (
 	NotEqualsMethodID
 
 	// Implemented on int and float
-	PlusMethodID
+	PlusMethodID // Implemented on str
 	MinusMethodID
 	TimesMethodID
 	OverMethodID
 	ModuloMethodID
+	LessThanMethodID
+	LessThanOrEqualToMethodID
+	GreaterThanMethodID
+	GreaterThanOrEqualToMethodID
 
 	// Implemented on bool
 	NotMethodID

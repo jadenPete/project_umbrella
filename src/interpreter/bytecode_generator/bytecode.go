@@ -70,14 +70,20 @@
  * - __to_str__ (-1) (every type)
  * - == (-2) (every type)
  * - != (-3) (every type)
+ *
  * - + (-4) (str, int, float)
  * - - (-5) (int, float)
  * - * (-6) (int, float)
  * - / (-7) (int, float)
  * - % (-8) (int, float)
- * - ! (-9) (bool)
- * - && (-10) (bool)
- * - || (-11) (bool)
+ * - < (-9) (int, float)
+ * - <= (-10) (int, float)
+ * - > (-11) (int, float)
+ * - >= (-12) (int, float)
+ *
+ * - ! (-13) (bool)
+ * - && (-14) (bool)
+ * - || (-15) (bool)
  *
  * Instructions:
  *
@@ -136,14 +142,20 @@ var builtInFields = map[string]*builtInField{
 	"__to_str__": {built_ins.ToStringMethodID, parser_types.NormalField},
 	"==":         {built_ins.EqualsMethodID, parser_types.InfixField},
 	"!=":         {built_ins.NotEqualsMethodID, parser_types.InfixField},
-	"+":          {built_ins.PlusMethodID, parser_types.InfixField},
-	"-":          {built_ins.MinusMethodID, parser_types.InfixPrefixField},
-	"*":          {built_ins.TimesMethodID, parser_types.InfixField},
-	"/":          {built_ins.OverMethodID, parser_types.InfixField},
-	"%":          {built_ins.ModuloMethodID, parser_types.InfixField},
-	"!":          {built_ins.NotMethodID, parser_types.PrefixField},
-	"&&":         {built_ins.AndMethodID, parser_types.InfixField},
-	"||":         {built_ins.OrMethodID, parser_types.InfixField},
+
+	"+":  {built_ins.PlusMethodID, parser_types.InfixField},
+	"-":  {built_ins.MinusMethodID, parser_types.InfixPrefixField},
+	"*":  {built_ins.TimesMethodID, parser_types.InfixField},
+	"/":  {built_ins.OverMethodID, parser_types.InfixField},
+	"%":  {built_ins.ModuloMethodID, parser_types.InfixField},
+	"<":  {built_ins.LessThanMethodID, parser_types.InfixField},
+	"<=": {built_ins.LessThanOrEqualToMethodID, parser_types.InfixField},
+	">":  {built_ins.GreaterThanMethodID, parser_types.InfixField},
+	">=": {built_ins.GreaterThanOrEqualToMethodID, parser_types.InfixField},
+
+	"!":  {built_ins.NotMethodID, parser_types.PrefixField},
+	"&&": {built_ins.AndMethodID, parser_types.InfixField},
+	"||": {built_ins.OrMethodID, parser_types.InfixField},
 }
 
 var builtInValues = map[string]built_ins.BuiltInValueID{

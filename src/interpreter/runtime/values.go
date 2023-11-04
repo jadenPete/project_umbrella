@@ -92,6 +92,34 @@ func newNumberDefinition[Value integerValue | floatValue](
 					}
 				},
 			),
+
+			built_ins.LessThanMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator("<", valueType),
+				func(_ *runtime, arguments ...value) value {
+					return booleanValue(value_ < arguments[0].(Value))
+				},
+			),
+
+			built_ins.LessThanOrEqualToMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator("<=", valueType),
+				func(_ *runtime, arguments ...value) value {
+					return booleanValue(value_ <= arguments[0].(Value))
+				},
+			),
+
+			built_ins.GreaterThanMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator(">", valueType),
+				func(_ *runtime, arguments ...value) value {
+					return booleanValue(value_ > arguments[0].(Value))
+				},
+			),
+
+			built_ins.GreaterThanOrEqualToMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator(">=", valueType),
+				func(_ *runtime, arguments ...value) value {
+					return booleanValue(value_ >= arguments[0].(Value))
+				},
+			),
 		},
 	}
 }

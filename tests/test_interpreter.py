@@ -10,6 +10,11 @@ def test_arithmetic() -> None:
 		["1", "0.7999999999999998"]
 	)
 
+	assert has_expected_lines(
+		output_from_filename("arithmetic_comparison.krait"),
+		["true"] * 5 + ["false"] * 5
+	)
+
 	assert output_from_filename("arithmetic_precedence.krait") == "3.5\n"
 
 def test_booleans() -> None:
