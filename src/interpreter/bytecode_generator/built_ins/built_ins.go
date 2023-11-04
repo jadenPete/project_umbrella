@@ -13,6 +13,7 @@ const (
 	MinusMethodID
 	TimesMethodID
 	OverMethodID
+	ModuloMethodID
 
 	// Implemented on bool
 	NotMethodID

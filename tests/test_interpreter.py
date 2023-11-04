@@ -6,7 +6,8 @@ def test_arithmetic() -> None:
 		["4", "10", "4.5", "5"] +
 		["1", "1"] +
 		["6", "8.75"] +
-		["0", "3.2857142857142856"]
+		["0", "3.2857142857142856"] +
+		["1", "0.7999999999999998"]
 	)
 
 	assert output_from_filename("arithmetic_precedence.krait") == "3.5\n"

@@ -62,12 +62,16 @@ var EmptyFunctionBlockGraph = &errors.Error{
 	Name:    "Encountered an empty function block graph",
 }
 
-func DivisionByZero(typeName string) *errors.Error {
+func DivisionByZero(typeName string, methodName string) *errors.Error {
 	return &errors.Error{
-		Section:     "RUNTIME",
-		Code:        7,
-		Name:        "Cannot divide by zero",
-		Description: fmt.Sprintf("Expected the right-hand side of %s#/ to be nonzero.", typeName),
+		Section: "RUNTIME",
+		Code:    7,
+		Name:    "Cannot divide by zero",
+		Description: fmt.Sprintf(
+			"Expected the right-hand side of %s#%s to be nonzero.",
+			typeName,
+			methodName,
+		),
 	}
 }
 

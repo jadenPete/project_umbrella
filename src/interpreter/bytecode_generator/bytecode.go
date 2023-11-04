@@ -74,9 +74,10 @@
  * - - (-5) (int, float)
  * - * (-6) (int, float)
  * - / (-7) (int, float)
- * - ! (-8) (bool)
- * - && (-9) (bool)
- * - || (-10) (bool)
+ * - % (-8) (int, float)
+ * - ! (-9) (bool)
+ * - && (-10) (bool)
+ * - || (-11) (bool)
  *
  * Instructions:
  *
@@ -139,6 +140,7 @@ var builtInFields = map[string]*builtInField{
 	"-":          {built_ins.MinusMethodID, parser_types.InfixPrefixField},
 	"*":          {built_ins.TimesMethodID, parser_types.InfixField},
 	"/":          {built_ins.OverMethodID, parser_types.InfixField},
+	"%":          {built_ins.ModuloMethodID, parser_types.InfixField},
 	"!":          {built_ins.NotMethodID, parser_types.PrefixField},
 	"&&":         {built_ins.AndMethodID, parser_types.InfixField},
 	"||":         {built_ins.OrMethodID, parser_types.InfixField},

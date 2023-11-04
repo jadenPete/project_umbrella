@@ -11,3 +11,6 @@ println(2.5 * 3.5)
 
 println(2 / 5)
 println(11.5 / 3.5)
+
+println(5 % 2)
+println(5.0 % 2.1)

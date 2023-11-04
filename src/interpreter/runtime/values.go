@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -63,10 +64,32 @@ func newNumberDefinition[Value integerValue | floatValue](
 					rightHandSide := arguments[0].(Value)
 
 					if rightHandSide == 0 {
-						errors.RaiseError(runtime_errors.DivisionByZero(valueTypeName))
+						errors.RaiseError(runtime_errors.DivisionByZero(valueTypeName, "/"))
 					}
 
 					return value(value_ / rightHandSide)
+				},
+			),
+
+			built_ins.ModuloMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator("%", valueType),
+				func(_ *runtime, arguments ...value) value {
+					modulus := arguments[0].(Value)
+
+					if modulus == 0 {
+						errors.RaiseError(runtime_errors.DivisionByZero(valueTypeName, "%"))
+					}
+
+					switch value_ := any(value_).(type) {
+					case integerValue:
+						return value_ % integerValue(modulus)
+
+					case floatValue:
+						return floatValue(math.Mod(float64(value_), float64(modulus)))
+
+					default:
+						return nil
+					}
 				},
 			),
 		},
