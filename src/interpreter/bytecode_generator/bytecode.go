@@ -164,6 +164,7 @@ func NewBytecodeTranslator(fileContent string) *BytecodeTranslator {
 			{
 				constantValueIDMap:   map[int]int{},
 				identifierValueIDMap: map[string]int{},
+				functionValueIDMap:   map[*parser.Function]int{},
 				nextValueID:          0,
 			},
 		},
@@ -359,18 +360,36 @@ func (translator *BytecodeTranslator) valueIDForExpressionList(
 	expressionList *parser.ExpressionList,
 ) int {
 	// Hoist declared functions
-	for _, subexpression := range expressionList.Children {
-		if function, ok := subexpression.(*parser.Function); ok {
-			translator.currentScope().identifierValueIDMap[function.Name.Value] =
-				translator.currentScope().nextValueID
+	stack := []parser.Expression{expressionList}
 
+	for len(stack) > 0 {
+		expression := stack[len(stack)-1]
+
+		stack = stack[:len(stack)-1]
+
+		if function, ok := expression.(*parser.Function); ok {
+			functionValueID := translator.currentScope().nextValueID
+
+			if function.Name != nil {
+				translator.currentScope().identifierValueIDMap[function.Name.Value] =
+					functionValueID
+			}
+
+			translator.currentScope().functionValueIDMap[function] = functionValueID
 			translator.currentScope().nextValueID++
+		} else {
+			children := expression.Children()
+
+			for i := len(children) - 1; i >= 0; i-- {
+				stack = append(stack, children[i])
+			}
 		}
+
 	}
 
 	returnValueID := int(builtInValues["unit"])
 
-	for _, subexpression := range expressionList.Children {
+	for _, subexpression := range expressionList.Children_ {
 		returnValueID = translator.valueIDForExpression(subexpression)
 	}
 
@@ -399,33 +418,10 @@ func (translator *BytecodeTranslator) valueIDForFunction(function *parser.Functi
 		Arguments: []int{len(function.Parameters)},
 	})
 
-	/*
-	 * If the function is generated during the bytecode translation phase (as is the case in
-	 * `valueIDForIf`, whose generated functions are nameless), it won't have been hoisted.
-	 *
-	 * In that case, a value ID should be generated for it, as one won't be stored in the
-	 * identifier-value ID map.
-	 */
-	var result int
-
-	hoisted := false
-
-	if function.Name != nil {
-		if functionValueID, ok := translator.currentScope().identifierValueIDMap[function.Name.Value]; ok {
-			result = functionValueID
-			hoisted = true
-		}
-	}
-
-	if !hoisted {
-		result = translator.currentScope().nextValueID
-
-		translator.currentScope().nextValueID++
-	}
-
 	scope := &scope{
 		constantValueIDMap:   map[int]int{},
 		identifierValueIDMap: make(map[string]int, len(function.Parameters)),
+		functionValueIDMap:   map[*parser.Function]int{},
 		nextValueID:          translator.currentScope().nextValueID,
 	}
 
@@ -441,7 +437,16 @@ func (translator *BytecodeTranslator) valueIDForFunction(function *parser.Functi
 		Type: PopFunctionInstruction,
 	})
 
-	return result
+	/*
+	 * If the function is generated during the bytecode translation phase (as is the case in
+	 * `valueIDForIf`), it will be anonymous and we can't look up its value ID in
+	 * `translator.identifierValueIDMap`.
+	 *
+	 * Nonetheless, all functions, including those, are hoisted, requiring their value IDs to be
+	 * recorded before they're evaluated by the bytecode translator. We do so in
+	 * `translator.functionValueIDMap`.
+	 */
+	return translator.currentScope().functionValueIDMap[function]
 }
 
 func (translator *BytecodeTranslator) valueIDForIdentifier(identifier *parser.Identifier) int {
@@ -569,5 +574,6 @@ const (
 type scope struct {
 	constantValueIDMap   map[int]int
 	identifierValueIDMap map[string]int
+	functionValueIDMap   map[*parser.Function]int
 	nextValueID          int
 }

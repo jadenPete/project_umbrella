@@ -134,7 +134,7 @@ func (concrete *ConcreteFunction) AbstractFunction() *Function {
 
 	if concrete.Body == nil {
 		body = &ExpressionList{
-			Children: []Expression{},
+			Children_: []Expression{},
 		}
 	} else {
 		body = concrete.Body.AbstractExpressionList()
@@ -295,7 +295,7 @@ func (concrete *ConcreteStatementList) AbstractExpressionList() *ExpressionList 
 	}
 
 	return &ExpressionList{
-		Children: children,
+		Children_: children,
 	}
 }
 
@@ -499,7 +499,7 @@ func (concrete *ConcreteIf) Abstract() Expression {
 
 		if concrete == nil {
 			abstractBody = &ExpressionList{
-				Children: []Expression{
+				Children_: []Expression{
 					&Identifier{
 						Value:    "unit",
 						position: nil,
@@ -573,7 +573,7 @@ func (concrete *ConcreteIf) Abstract() Expression {
 			Name:       nil,
 			Parameters: []*Identifier{},
 			Body: &ExpressionList{
-				Children: []Expression{nextIf},
+				Children_: []Expression{nextIf},
 			},
 		}
 
