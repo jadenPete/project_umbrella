@@ -26,7 +26,7 @@ func IncorrectBuiltInFunctionArgumentType(functionName string, i int) *errors.Er
 		Description: fmt.Sprintf(
 			"%s expected argument #%d to be of a different type.",
 			functionName,
-			i,
+			i+1,
 		),
 	}
 }

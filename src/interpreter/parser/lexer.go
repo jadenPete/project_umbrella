@@ -44,11 +44,6 @@ var matcher = ExhaustiveMatcher{
 		},
 
 		{
-			MatcherCode(AssignmentOperatorToken),
-			CompileMatcher(`=`),
-		},
-
-		{
 			MatcherCode(ColonToken),
 			CompileMatcher(`:`),
 		},
@@ -134,7 +129,17 @@ var matcher = ExhaustiveMatcher{
 		 */
 		{
 			MatcherCode(OperatorToken),
-			CompileMatcher(`[!%&*+\-<=>^|~]+`),
+			CompileMatcher(`[!%&*+\-<=>^|~]*=[!%&*+\-<=>^|~]+|[!%&*+\-<=>^|~]+=[!%&*+\-<=>^|~]*|[!%&*+\-<>^|~]+`),
+		},
+
+		/*
+		 * The assignment operator token is parsed after the operator token so an operator
+		 * containing multiple adjacent equals symbols isn't parsed as multiple assignment operator
+		 * tokens.
+		 */
+		{
+			MatcherCode(AssignmentOperatorToken),
+			CompileMatcher(`=`),
 		},
 
 		{

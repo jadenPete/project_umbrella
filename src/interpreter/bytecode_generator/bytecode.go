@@ -68,13 +68,15 @@
  *
  * Likewise, built-in fields are negative; the following are accessible on the following types.
  * - __to_str__ (-1) (every type)
- * - + (-2) (str, int, float)
- * - - (-3) (int, float)
- * - * (-4) (int, float)
- * - / (-5) (int, float)
- * - ! (-6) (bool)
- * - && (-7) (bool)
- * - || (-8) (bool)
+ * - == (-2) (every type)
+ * - != (-3) (every type)
+ * - + (-4) (str, int, float)
+ * - - (-5) (int, float)
+ * - * (-6) (int, float)
+ * - / (-7) (int, float)
+ * - ! (-8) (bool)
+ * - && (-9) (bool)
+ * - || (-10) (bool)
  *
  * Instructions:
  *
@@ -131,6 +133,8 @@ const checksumSize = 32
 
 var builtInFields = map[string]*builtInField{
 	"__to_str__": {built_ins.ToStringMethodID, parser_types.NormalField},
+	"==":         {built_ins.EqualsMethodID, parser_types.InfixField},
+	"!=":         {built_ins.NotEqualsMethodID, parser_types.InfixField},
 	"+":          {built_ins.PlusMethodID, parser_types.InfixField},
 	"-":          {built_ins.MinusMethodID, parser_types.InfixPrefixField},
 	"*":          {built_ins.TimesMethodID, parser_types.InfixField},
