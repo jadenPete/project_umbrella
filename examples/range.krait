@@ -1,0 +1,16 @@
+fn range_slow(lower, upper):
+	if lower + 1 == upper:
+		lower.__to_str__()
+	else:
+		lower.__to_str__() + ", " + range_slow(lower + 1, upper)
+
+fn range_fast(lower, upper):
+	if lower + 1 == upper:
+		lower.__to_str__()
+	else:
+		middle = (lower + upper) / 2
+
+		range_fast(lower, middle) + ", " + range_fast(middle, upper)
+
+println(range_slow(0, 100))
+println(range_fast(0, 100))

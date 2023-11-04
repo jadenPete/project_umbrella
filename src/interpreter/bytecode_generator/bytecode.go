@@ -310,14 +310,21 @@ func (translator *BytecodeTranslator) valueIDForAssignment(
 
 func (translator *BytecodeTranslator) valueIDForCall(call *parser.Call) int {
 	functionValueID := translator.valueIDForExpression(call.Function)
+	pushArgumentInstructions := make([]*Instruction, 0, len(call.Arguments))
 
 	for _, argument := range call.Arguments {
-		translator.instructions = append(translator.instructions, &Instruction{
+		pushArgumentInstructions = append(pushArgumentInstructions, &Instruction{
 			Type:      PushArgumentInstruction,
 			Arguments: []int{translator.valueIDForExpression(argument)},
 		})
 	}
 
+	/*
+	 * We don't append the `PUSH_ARG` instructions until after translating each argument because
+	 * that translation could entail more calls, clearing the argument stack before we're able to
+	 * call the function.
+	 */
+	translator.instructions = append(translator.instructions, pushArgumentInstructions...)
 	translator.instructions = append(translator.instructions, &Instruction{
 		Type:      ValueFromCallInstruction,
 		Arguments: []int{functionValueID},

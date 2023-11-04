@@ -1,0 +1,7 @@
+fn factorial(number):
+	if number == 0:
+		1
+	else:
+		number * factorial(number - 1)
+
+println(factorial(6))
