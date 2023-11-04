@@ -7,6 +7,7 @@ Statement =
 
 Expression = InfixMiscellaneous;
 Primary =
+	| Parenthesized
 	| Float
 	| Identifier
 	| Integer
@@ -93,8 +94,9 @@ CallArguments = Expression [{Formatting} "," {Formatting} CallArguments];
 Select = Primary {SelectRight};
 SelectRight = {Formatting} "." {Formatting} Identifier;
 
-(* Single-token expressions *)
+(* Single-token expressions and primaries *)
 
+Parenthesized = "(" Expression ")";
 Float = FloatToken;
 Identifier =
 	| IdentifierToken

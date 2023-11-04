@@ -672,7 +672,17 @@ type ConcreteSelectRight struct {
 	Field *ConcreteIdentifier `parser:"(IndentToken | OutdentToken | NewlineToken)* '.' (IndentToken | OutdentToken | NewlineToken)* @@"`
 }
 
-// Single-token expressions
+// Single-token expressions and primaries
+
+type ConcreteParenthesized struct {
+	Value ConcreteExpression `parser:"'(' @@ ')'"`
+}
+
+func (concrete *ConcreteParenthesized) Abstract() Expression {
+	return concrete.Value.Abstract()
+}
+
+func (*ConcreteParenthesized) primary() {}
 
 type ConcreteFloat struct {
 	Value  float64 `parser:"@FloatToken"`
@@ -768,6 +778,7 @@ var parser = participle.MustBuild[ConcreteStatementList](
 
 	participle.Union[ConcreteExpression](&ConcreteInfixMiscellaneous{}),
 	participle.Union[ConcretePrimary](
+		&ConcreteParenthesized{},
 		&ConcreteFloat{},
 		&ConcreteIdentifier{},
 		&ConcreteInteger{},

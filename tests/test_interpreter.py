@@ -54,6 +54,9 @@ def test_functions() -> None:
 		output_from_filename("function_basic.krait") == \
 		output_from_filename("function_nested.krait") == "Hello, world!\n"
 
+def test_parentheses() -> None:
+	assert has_expected_lines(output_from_filename("parentheses.krait"), ["16", "true"])
+
 def test_select() -> None:
 	assert has_expected_lines(output_from_filename("select.krait"), [
 		"Hello, world!",
