@@ -309,7 +309,7 @@ func (evaluator *bytecodeFunctionEvaluator) evaluator(runtime_ *runtime, argumen
 
 		switch node := evaluator.blockGraph.Nodes[i].(type) {
 		case *bytecodeFunctionBlockGraph:
-			scope.values[node.firstValueID-1] = newBytecodeFunction(
+			scope.values[node.valueID] = newBytecodeFunction(
 				node.parameterCount,
 				&bytecodeFunctionEvaluator{
 					containingScope: scope,

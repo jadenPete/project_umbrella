@@ -34,6 +34,7 @@ type bytecodeFunctionBlock interface {
 type bytecodeFunctionBlockGraph struct {
 	*common.Graph[bytecodeFunctionBlock]
 
+	valueID        int // Should be -1 if this is the root block graph
 	firstValueID   int
 	parameterCount int
 }
@@ -71,6 +72,7 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 			functionsSeen:   0,
 			blockGraph: &bytecodeFunctionBlockGraph{
 				common.NewGraph[bytecodeFunctionBlock](),
+				-1,
 				0,
 				0,
 			},
@@ -137,16 +139,16 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 	// Hoist declared functions
 	for _, instruction := range bytecode.Instructions {
 		if instruction.Type == bytecode_generator.PushFunctionInstruction {
-			newBlockGraph := addSingleValuedBlock(
-				func(valueID int) bytecodeFunctionBlock {
-					return &bytecodeFunctionBlockGraph{
-						common.NewGraph[bytecodeFunctionBlock](),
-						0,
-						instruction.Arguments[0],
-					}
-				},
-			).(*bytecodeFunctionBlockGraph)
+			currentScope().nextValueID++
 
+			newBlockGraph := &bytecodeFunctionBlockGraph{
+				common.NewGraph[bytecodeFunctionBlock](),
+				0,
+				0,
+				instruction.Arguments[0],
+			}
+
+			currentScope().blockGraph.Nodes = append(currentScope().blockGraph.Nodes, newBlockGraph)
 			currentScope().functionCount++
 
 			scopeStack = append(scopeStack, &runtimeConstructorScope{
@@ -173,17 +175,26 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime {
 				blockGraph.
 				Nodes[currentScope().functionsSeen].(*bytecodeFunctionBlockGraph)
 
+			scopeBlockGraph.valueID = currentScope().blockGraph.firstValueID +
+				currentScope().blockGraph.parameterCount +
+				currentScope().functionsSeen
+
 			scopeBlockGraph.firstValueID = currentScope().nextValueID
+			scopeFunctionCount := len(scopeBlockGraph.Nodes)
+			scopeNextValueID :=
+				scopeBlockGraph.firstValueID + scopeBlockGraph.parameterCount + scopeFunctionCount
+
+			currentScope().valueIDBlockMap[scopeBlockGraph.valueID] = currentScope().functionsSeen
+			currentScope().functionsSeen++
+
 			scopeStack = append(scopeStack, &runtimeConstructorScope{
-				nextValueID:              scopeBlockGraph.firstValueID,
+				nextValueID:              scopeNextValueID,
 				valueIDBlockMap:          map[int]int{},
-				functionCount:            len(scopeBlockGraph.Nodes),
+				functionCount:            scopeFunctionCount,
 				functionsSeen:            0,
 				pushArgumentInstructions: []*bytecode_generator.Instruction{},
 				blockGraph:               scopeBlockGraph,
 			})
-
-			scopeStack[len(scopeStack)-2].functionsSeen++
 
 		case bytecode_generator.PopFunctionInstruction:
 			scopeStack = scopeStack[:len(scopeStack)-1]
