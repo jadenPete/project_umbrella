@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -27,7 +28,7 @@ func newNumberDefinition[Value integerValue | floatValue](
 
 	return &valueDefinition{
 		fields: map[built_ins.BuiltInFieldID]value{
-			built_ins.ToStringMethodID: newToStringFunction(
+			built_ins.ToStringMethodID: newToStringMethod(
 				func() string {
 					switch value_ := any(value_).(type) {
 					case integerValue:
@@ -63,10 +64,60 @@ func newNumberDefinition[Value integerValue | floatValue](
 					rightHandSide := arguments[0].(Value)
 
 					if rightHandSide == 0 {
-						errors.RaiseError(runtime_errors.DivisionByZero(valueTypeName))
+						errors.RaiseError(runtime_errors.DivisionByZero(valueTypeName, "/"))
 					}
 
 					return value(value_ / rightHandSide)
+				},
+			),
+
+			built_ins.ModuloMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator("%", valueType),
+				func(_ *runtime, arguments ...value) value {
+					modulus := arguments[0].(Value)
+
+					if modulus == 0 {
+						errors.RaiseError(runtime_errors.DivisionByZero(valueTypeName, "%"))
+					}
+
+					switch value_ := any(value_).(type) {
+					case integerValue:
+						return value_ % integerValue(modulus)
+
+					case floatValue:
+						return floatValue(math.Mod(float64(value_), float64(modulus)))
+
+					default:
+						return nil
+					}
+				},
+			),
+
+			built_ins.LessThanMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator("<", valueType),
+				func(_ *runtime, arguments ...value) value {
+					return booleanValue(value_ < arguments[0].(Value))
+				},
+			),
+
+			built_ins.LessThanOrEqualToMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator("<=", valueType),
+				func(_ *runtime, arguments ...value) value {
+					return booleanValue(value_ <= arguments[0].(Value))
+				},
+			),
+
+			built_ins.GreaterThanMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator(">", valueType),
+				func(_ *runtime, arguments ...value) value {
+					return booleanValue(value_ > arguments[0].(Value))
+				},
+			),
+
+			built_ins.GreaterThanOrEqualToMethodID: newBuiltInFunction(
+				newFixedFunctionArgumentValidator(">=", valueType),
+				func(_ *runtime, arguments ...value) value {
+					return booleanValue(value_ >= arguments[0].(Value))
 				},
 			),
 		},
@@ -179,7 +230,7 @@ type booleanValue bool
 func (value_ booleanValue) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[built_ins.BuiltInFieldID]value{
-			built_ins.ToStringMethodID: newToStringFunction(func() string {
+			built_ins.ToStringMethodID: newToStringMethod(func() string {
 				return fmt.Sprintf("%t", value_)
 			}),
 
@@ -345,9 +396,12 @@ func (evaluator *bytecodeFunctionEvaluator) evaluator(runtime_ *runtime, argumen
 				case bytecode_generator.ValueFromStructValueInstruction:
 					structValue := scope.getValue(element.instruction.Arguments[0])
 					fieldID := built_ins.BuiltInFieldID(element.instruction.Arguments[1])
-					field, ok := structValue.definition().fields[fieldID]
 
-					if !ok {
+					if field, ok := structValue.definition().fields[fieldID]; ok {
+						scope.values[element.instructionValueID] = field
+					} else if methodConstructor, ok := universalMethodConstructors[fieldID]; ok {
+						scope.values[element.instructionValueID] = methodConstructor(structValue)
+					} else {
 						errors.RaiseError(
 							runtime_errors.UnrecognizedFieldID(
 								toString(runtime_, structValue),
@@ -355,8 +409,6 @@ func (evaluator *bytecodeFunctionEvaluator) evaluator(runtime_ *runtime, argumen
 							),
 						)
 					}
-
-					scope.values[element.instructionValueID] = field
 				}
 			}
 		}
@@ -391,7 +443,7 @@ type function struct {
 func (function_ *function) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[built_ins.BuiltInFieldID]value{
-			built_ins.ToStringMethodID: newToStringFunction(func() string {
+			built_ins.ToStringMethodID: newToStringMethod(func() string {
 				return function_.name
 			}),
 		},
@@ -440,6 +492,24 @@ func newBytecodeFunction(
 	}
 }
 
+func newEqualsMethod(value_ value) *function {
+	return newBuiltInFunction(
+		newFixedFunctionArgumentValidator("==", nil),
+		func(runtime_ *runtime, arguments ...value) value {
+			return booleanValue(value_ == arguments[0])
+		},
+	)
+}
+
+func newNotEqualsMethod(value_ value) *function {
+	return newBuiltInFunction(
+		newFixedFunctionArgumentValidator("!=", nil),
+		func(runtime_ *runtime, arguments ...value) value {
+			return booleanValue(value_ != arguments[0])
+		},
+	)
+}
+
 func newMinusMethod[Value integerValue | floatValue](value_ Value) *function {
 	return newBuiltInFunction(
 		newIntersectionFunctionArgumentValidator(
@@ -461,13 +531,18 @@ func newMinusMethod[Value integerValue | floatValue](value_ Value) *function {
 	)
 }
 
-func newToStringFunction(result func() string) *function {
+func newToStringMethod(result func() string) *function {
 	return newBuiltInFunction(
 		newFixedFunctionArgumentValidator("__to_str__"),
 		func(runtime_ *runtime, arguments ...value) value {
 			return stringValue{result()}
 		},
 	)
+}
+
+var universalMethodConstructors = map[built_ins.BuiltInFieldID]func(value) *function{
+	built_ins.EqualsMethodID:    newEqualsMethod,
+	built_ins.NotEqualsMethodID: newNotEqualsMethod,
 }
 
 type floatValue float64
@@ -489,7 +564,7 @@ type stringValue struct {
 func (value_ stringValue) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[built_ins.BuiltInFieldID]value{
-			built_ins.ToStringMethodID: newToStringFunction(
+			built_ins.ToStringMethodID: newToStringMethod(
 				func() string {
 					return value_.content
 				},
@@ -530,7 +605,7 @@ type unitValue struct{}
 func (value_ unitValue) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[built_ins.BuiltInFieldID]value{
-			built_ins.ToStringMethodID: newToStringFunction(func() string {
+			built_ins.ToStringMethodID: newToStringMethod(func() string {
 				return "(unit)"
 			}),
 		},

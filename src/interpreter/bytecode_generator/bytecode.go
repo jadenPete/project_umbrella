@@ -68,13 +68,22 @@
  *
  * Likewise, built-in fields are negative; the following are accessible on the following types.
  * - __to_str__ (-1) (every type)
- * - + (-2) (str, int, float)
- * - - (-3) (int, float)
- * - * (-4) (int, float)
- * - / (-5) (int, float)
- * - ! (-6) (bool)
- * - && (-7) (bool)
- * - || (-8) (bool)
+ * - == (-2) (every type)
+ * - != (-3) (every type)
+ *
+ * - + (-4) (str, int, float)
+ * - - (-5) (int, float)
+ * - * (-6) (int, float)
+ * - / (-7) (int, float)
+ * - % (-8) (int, float)
+ * - < (-9) (int, float)
+ * - <= (-10) (int, float)
+ * - > (-11) (int, float)
+ * - >= (-12) (int, float)
+ *
+ * - ! (-13) (bool)
+ * - && (-14) (bool)
+ * - || (-15) (bool)
  *
  * Instructions:
  *
@@ -131,13 +140,22 @@ const checksumSize = 32
 
 var builtInFields = map[string]*builtInField{
 	"__to_str__": {built_ins.ToStringMethodID, parser_types.NormalField},
-	"+":          {built_ins.PlusMethodID, parser_types.InfixField},
-	"-":          {built_ins.MinusMethodID, parser_types.InfixPrefixField},
-	"*":          {built_ins.TimesMethodID, parser_types.InfixField},
-	"/":          {built_ins.OverMethodID, parser_types.InfixField},
-	"!":          {built_ins.NotMethodID, parser_types.PrefixField},
-	"&&":         {built_ins.AndMethodID, parser_types.InfixField},
-	"||":         {built_ins.OrMethodID, parser_types.InfixField},
+	"==":         {built_ins.EqualsMethodID, parser_types.InfixField},
+	"!=":         {built_ins.NotEqualsMethodID, parser_types.InfixField},
+
+	"+":  {built_ins.PlusMethodID, parser_types.InfixField},
+	"-":  {built_ins.MinusMethodID, parser_types.InfixPrefixField},
+	"*":  {built_ins.TimesMethodID, parser_types.InfixField},
+	"/":  {built_ins.OverMethodID, parser_types.InfixField},
+	"%":  {built_ins.ModuloMethodID, parser_types.InfixField},
+	"<":  {built_ins.LessThanMethodID, parser_types.InfixField},
+	"<=": {built_ins.LessThanOrEqualToMethodID, parser_types.InfixField},
+	">":  {built_ins.GreaterThanMethodID, parser_types.InfixField},
+	">=": {built_ins.GreaterThanOrEqualToMethodID, parser_types.InfixField},
+
+	"!":  {built_ins.NotMethodID, parser_types.PrefixField},
+	"&&": {built_ins.AndMethodID, parser_types.InfixField},
+	"||": {built_ins.OrMethodID, parser_types.InfixField},
 }
 
 var builtInValues = map[string]built_ins.BuiltInValueID{
@@ -292,14 +310,21 @@ func (translator *BytecodeTranslator) valueIDForAssignment(
 
 func (translator *BytecodeTranslator) valueIDForCall(call *parser.Call) int {
 	functionValueID := translator.valueIDForExpression(call.Function)
+	pushArgumentInstructions := make([]*Instruction, 0, len(call.Arguments))
 
 	for _, argument := range call.Arguments {
-		translator.instructions = append(translator.instructions, &Instruction{
+		pushArgumentInstructions = append(pushArgumentInstructions, &Instruction{
 			Type:      PushArgumentInstruction,
 			Arguments: []int{translator.valueIDForExpression(argument)},
 		})
 	}
 
+	/*
+	 * We don't append the `PUSH_ARG` instructions until after translating each argument because
+	 * that translation could entail more calls, clearing the argument stack before we're able to
+	 * call the function.
+	 */
+	translator.instructions = append(translator.instructions, pushArgumentInstructions...)
 	translator.instructions = append(translator.instructions, &Instruction{
 		Type:      ValueFromCallInstruction,
 		Arguments: []int{functionValueID},

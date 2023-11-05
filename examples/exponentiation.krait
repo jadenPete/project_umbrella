@@ -1,0 +1,7 @@
+fn exponentiate(base, exponent):
+	if exponent == 1:
+		base
+	else:
+		base * exponentiate(base, exponent - 1)
+
+println(exponentiate(2, 16))

@@ -6,7 +6,13 @@ def test_arithmetic() -> None:
 		["4", "10", "4.5", "5"] +
 		["1", "1"] +
 		["6", "8.75"] +
-		["0", "3.2857142857142856"]
+		["0", "3.2857142857142856"] +
+		["1", "0.7999999999999998"]
+	)
+
+	assert has_expected_lines(
+		output_from_filename("arithmetic_comparison.krait"),
+		["true"] * 5 + ["false"] * 5
 	)
 
 	assert output_from_filename("arithmetic_precedence.krait") == "3.5\n"
@@ -53,6 +59,9 @@ def test_functions() -> None:
 	assert \
 		output_from_filename("function_basic.krait") == \
 		output_from_filename("function_nested.krait") == "Hello, world!\n"
+
+def test_parentheses() -> None:
+	assert has_expected_lines(output_from_filename("parentheses.krait"), ["16", "true"])
 
 def test_select() -> None:
 	assert has_expected_lines(output_from_filename("select.krait"), [

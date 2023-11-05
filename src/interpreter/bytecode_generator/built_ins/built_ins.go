@@ -5,12 +5,19 @@ type BuiltInFieldID int
 const (
 	// Implemented on every type
 	ToStringMethodID BuiltInFieldID = -iota - 1
+	EqualsMethodID
+	NotEqualsMethodID
 
 	// Implemented on int and float
-	PlusMethodID
+	PlusMethodID // Implemented on str
 	MinusMethodID
 	TimesMethodID
 	OverMethodID
+	ModuloMethodID
+	LessThanMethodID
+	LessThanOrEqualToMethodID
+	GreaterThanMethodID
+	GreaterThanOrEqualToMethodID
 
 	// Implemented on bool
 	NotMethodID

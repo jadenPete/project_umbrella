@@ -1,0 +1,20 @@
+fn is_prime(number):
+	fn check_factors(number, upper):
+		if upper <= 1:
+			true
+		else:
+			number % upper != 0 && check_factors(number, upper - 1)
+
+	number >= 2 && check_factors(number, number - 1)
+
+fn primes(upper):
+	if upper < 2:
+		""
+	else if upper == 2:
+		"2"
+	else if is_prime(upper):
+		primes(upper - 1) + ", " + upper.__to_str__()
+	else:
+		primes(upper - 1)
+
+println(primes(100))
