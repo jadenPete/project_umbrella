@@ -15,7 +15,6 @@ const (
 	ColonToken
 	CommaToken
 	ElseToken
-	ElseIfToken
 	IfToken
 	FloatToken
 	FunctionKeywordToken
@@ -53,23 +52,14 @@ var matcher = ExhaustiveMatcher{
 			CompileMatcher(`,`),
 		},
 
-		/*
-		 * The "else if" token is parsed before the "else", "if", and space tokens because it
-		 * contains both.
-		 */
-		{
-			MatcherCode(ElseIfToken),
-			CompileMatcher("else if"),
-		},
-
 		{
 			MatcherCode(ElseToken),
-			CompileMatcher("else"),
+			CompileMatcher("^else$"),
 		},
 
 		{
 			MatcherCode(IfToken),
-			CompileMatcher("if"),
+			CompileMatcher("^if$"),
 		},
 
 		{
@@ -403,6 +393,8 @@ func (definition *LexerDefinition) Symbols() map[string]lexer.TokenType {
 		"AssignmentOperatorToken": lexer.TokenType(AssignmentOperatorToken),
 		"ColonToken":              lexer.TokenType(ColonToken),
 		"CommaToken":              lexer.TokenType(CommaToken),
+		"ElseToken":               lexer.TokenType(ElseToken),
+		"IfToken":                 lexer.TokenType(IfToken),
 		"FloatToken":              lexer.TokenType(FloatToken),
 		"FunctionKeywordToken":    lexer.TokenType(FunctionKeywordToken),
 		"IdentifierToken":         lexer.TokenType(IdentifierToken),

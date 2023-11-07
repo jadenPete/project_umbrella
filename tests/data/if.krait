@@ -1,5 +1,0 @@
-if false:
-	println("Foo")
-
-if true:
-	println("Bar")

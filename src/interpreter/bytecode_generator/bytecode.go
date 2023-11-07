@@ -438,6 +438,17 @@ func (translator *BytecodeTranslator) valueIDForExpressionList(
 			functionValueID := translator.currentScope().nextValueID
 
 			if function.Name != nil {
+				if _, ok := translator.valueIDForNonBuiltInIdentifierInScope(function.Name); ok {
+					errors.RaisePositionalError(
+						&errors.PositionalError{
+							Error:    parser_errors.ValueReassigned,
+							Position: function.Name.Position(),
+						},
+
+						translator.fileContent,
+					)
+				}
+
 				translator.currentScope().identifierValueIDMap[function.Name.Value] =
 					functionValueID
 			}
@@ -451,7 +462,6 @@ func (translator *BytecodeTranslator) valueIDForExpressionList(
 				stack = append(stack, children[i])
 			}
 		}
-
 	}
 
 	returnValueID := int(builtInValues["unit"])
