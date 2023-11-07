@@ -179,7 +179,7 @@ var builtInValues = map[built_ins.BuiltInValueID]value{
 	built_ins.TrueValueID:  booleanValue(true),
 	built_ins.IfElseFunctionID: newBuiltInFunction(
 		newFixedFunctionArgumentValidator(
-			"if_else",
+			"__if_else__",
 			reflect.TypeOf(*new(booleanValue)),
 			reflect.TypeOf(&function{}),
 			reflect.TypeOf(&function{}),
@@ -269,6 +269,7 @@ func newFixedFunctionArgumentValidator(
 			if len(argumentTypes) != len(parameterTypes) {
 				return runtime_errors.IncorrectCallArgumentCount(
 					strconv.Itoa(len(parameterTypes)),
+					len(parameterTypes) != 1,
 					len(argumentTypes),
 				)
 			}
@@ -514,7 +515,11 @@ func newMinusMethod[Value integerValue | floatValue](value_ Value) *function {
 	return newBuiltInFunction(
 		newIntersectionFunctionArgumentValidator(
 			func(argumentTypes []reflect.Type) *errors.Error {
-				return runtime_errors.IncorrectCallArgumentCount("0-1", len(argumentTypes))
+				if len(argumentTypes) == 1 {
+					return runtime_errors.IncorrectBuiltInFunctionArgumentType("-", 0)
+				}
+
+				return runtime_errors.IncorrectCallArgumentCount("0-1", true, len(argumentTypes))
 			},
 
 			newFixedFunctionArgumentValidator("-"),

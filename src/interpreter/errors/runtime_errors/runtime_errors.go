@@ -6,13 +6,22 @@ import (
 	"project_umbrella/interpreter/errors"
 )
 
-func IncorrectCallArgumentCount(arity string, argumentCount int) *errors.Error {
+func IncorrectCallArgumentCount(arity string, arityPlural bool, argumentCount int) *errors.Error {
+	var argumentWord string
+
+	if arityPlural {
+		argumentWord = "arguments"
+	} else {
+		argumentWord = "argument"
+	}
+
 	return &errors.Error{
 		Section: "RUNTIME",
 		Code:    1,
 		Name: fmt.Sprintf(
-			"A function accepting %s arguments was called with %d arguments",
+			"A function accepting %s %s was called with %d arguments",
 			arity,
+			argumentWord,
 			argumentCount,
 		),
 	}

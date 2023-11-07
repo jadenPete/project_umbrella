@@ -438,7 +438,7 @@ func (concrete *ConcreteInfixMultiplicationRight) Operand() *ConcretePrefixOpera
 }
 
 type ConcreteInfixMultiplicationOperator struct {
-	Identifier string `parser:"@('*' | '/')"`
+	Identifier string `parser:"@('*' | '/' | '%')"`
 	Tokens     []lexer.Token
 }
 
@@ -590,7 +590,7 @@ func (concrete *ConcreteIf) Abstract() Expression {
 }
 
 type ConcreteElseIf struct {
-	Condition ConcreteExpression             `parser:"'else if' (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* ':'"`
+	Condition ConcreteExpression             `parser:"'else' (IndentToken | OutdentToken | NewlineToken)* 'if' (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* ':'"`
 	Body      *ConcreteIndentedStatementList `parser:"(NewlineToken @@)?"`
 	Tokens    []lexer.Token
 }
@@ -675,7 +675,7 @@ type ConcreteSelectRight struct {
 // Single-token expressions and primaries
 
 type ConcreteParenthesized struct {
-	Value ConcreteExpression `parser:"'(' @@ ')'"`
+	Value ConcreteExpression `parser:"'(' (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* ')'"`
 }
 
 func (concrete *ConcreteParenthesized) Abstract() Expression {
@@ -760,9 +760,18 @@ func (concrete *ConcreteString) Abstract() Expression {
 }
 
 func (concrete *ConcreteString) AbstractString() *String {
+	/*
+	 * A string's token value length isn't equal to that token's length, since we've configured
+	 * Participle to automatically remove the quotes.
+	 */
+	unadjustedPosition := tokenSyntaxTreePosition(&concrete.Tokens[0])
+
 	return &String{
-		Value:    concrete.Value,
-		position: tokenSyntaxTreePosition(&concrete.Tokens[0]),
+		Value: concrete.Value,
+		position: &errors.Position{
+			Start: unadjustedPosition.Start,
+			End:   unadjustedPosition.End + 2,
+		},
 	}
 }
 

@@ -83,7 +83,16 @@ If =
 
 	| Call;
 
-ElseIf = "else if" {Formatting} Expression {Formatting} ":" (NewlineToken IndentedStatementList)?;
+ElseIf =
+	"else"
+	{Formatting}
+	"if"
+	{Formatting}
+	Expression
+	{Formatting}
+	":"
+	(NewlineToken IndentedStatementList)?;
+
 Else = "else" {Formatting} ":" (NewlineToken IndentedStatementList)?;
 Call = Select {CallRight};
 CallRight =
@@ -96,7 +105,7 @@ SelectRight = {Formatting} "." {Formatting} Identifier;
 
 (* Single-token expressions and primaries *)
 
-Parenthesized = "(" Expression ")";
+Parenthesized = "(" {Formatting} Expression {Formatting} ")";
 Float = FloatToken;
 Identifier =
 	| IdentifierToken
