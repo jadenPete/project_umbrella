@@ -1,8 +1,0 @@
-hello_world =
-	"Hello, world!"
-
-message
-	= "It's nice to see you."
-
-println(hello_world)
-println(message)

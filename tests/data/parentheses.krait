@@ -1,2 +1,0 @@
-println((2 + 2) * 4)
-println((true && false) || (true && !false))

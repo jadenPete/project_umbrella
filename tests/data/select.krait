@@ -1,8 +1,0 @@
-println("Hello, " + "world!")
-println(
-	"Hello, "
-		.
-		+("world!")
-)
-
-println("Hello, world!".__to_str__.__to_str__())
