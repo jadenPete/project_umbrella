@@ -684,6 +684,31 @@ func (concrete *ConcreteParenthesized) Abstract() Expression {
 
 func (*ConcreteParenthesized) primary() {}
 
+type ConcreteTuple struct {
+	Elements []ConcreteExpression `parser:"'(' (IndentToken | OutdentToken | NewlineToken)* (@@ ((IndentToken | OutdentToken | NewlineToken)* ',' (IndentToken | OutdentToken | NewlineToken)* @@)+ | @@? (IndentToken | OutdentToken | NewlineToken)* ',') (IndentToken | OutdentToken | NewlineToken)* ')'"`
+	Tokens   []lexer.Token
+}
+
+func (concrete *ConcreteTuple) Abstract() Expression {
+	abstractElements := make([]Expression, 0, len(concrete.Elements))
+
+	for _, element := range concrete.Elements {
+		abstractElements = append(abstractElements, element.Abstract())
+	}
+
+	return &Call{
+		Function: &Identifier{
+			Value:    "__tuple__",
+			position: nil,
+		},
+
+		Arguments: abstractElements,
+		position:  tokenListSyntaxTreePosition(concrete.Tokens),
+	}
+}
+
+func (*ConcreteTuple) primary() {}
+
 type ConcreteFloat struct {
 	Value  float64 `parser:"@FloatToken"`
 	Tokens []lexer.Token
@@ -788,6 +813,7 @@ var parser = participle.MustBuild[ConcreteStatementList](
 	participle.Union[ConcreteExpression](&ConcreteInfixMiscellaneous{}),
 	participle.Union[ConcretePrimary](
 		&ConcreteParenthesized{},
+		&ConcreteTuple{},
 		&ConcreteFloat{},
 		&ConcreteIdentifier{},
 		&ConcreteInteger{},

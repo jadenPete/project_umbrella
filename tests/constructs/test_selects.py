@@ -82,6 +82,8 @@ println(do_nothing1 == do_nothing2)
 
 	_test_equals_case("1", "2")
 	_test_equals_case('"foo"', '"bar"')
+	_test_equals_case('("foo", "bar")', '("bar", "foo")')
+	_test_equals_case('("foo", "bar")', '("foo",)')
 
 	assert output_from_code("println(unit == unit)") == "true\n"
 	assert output_from_code("println(unit != unit)") == "false\n"

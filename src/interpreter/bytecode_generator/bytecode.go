@@ -65,6 +65,8 @@
  * - unit (-3)
  * - false (-4)
  * - true (-5)
+ * - __if_else__ (-6)
+ * - __tuple__ (-7)
  *
  * Likewise, built-in fields are negative; the following are accessible on the following types.
  * - __to_str__ (-1) (every type)
@@ -165,6 +167,7 @@ var builtInValues = map[string]built_ins.BuiltInValueID{
 	"false":       built_ins.FalseValueID,
 	"true":        built_ins.TrueValueID,
 	"__if_else__": built_ins.IfElseFunctionID,
+	"__tuple__":   built_ins.TupleFunctionID,
 }
 
 func sourceChecksum(fileContent string) [checksumSize]byte {

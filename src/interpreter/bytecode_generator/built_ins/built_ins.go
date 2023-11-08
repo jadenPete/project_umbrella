@@ -34,4 +34,5 @@ const (
 	FalseValueID
 	TrueValueID
 	IfElseFunctionID
+	TupleFunctionID
 )
