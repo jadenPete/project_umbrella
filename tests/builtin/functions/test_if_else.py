@@ -68,7 +68,7 @@ def _test_invalid_branch_arity_case(code: str) -> None:
 
 def test_invalid_branch_arity() -> None:
 	_test_invalid_branch_arity_case(
-		"""
+		"""\
 fn do_nothing():
 fn identity(value):
 	value
@@ -78,7 +78,7 @@ println(__if_else__(true, identity, do_nothing))
 	)
 
 	_test_invalid_branch_arity_case(
-		"""
+		"""\
 fn do_nothing():
 fn identity(value):
 	value

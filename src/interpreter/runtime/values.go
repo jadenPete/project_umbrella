@@ -192,6 +192,11 @@ var builtInValues = map[built_ins.BuiltInValueID]value{
 		newVariadicFunctionArgumentValidator("__tuple__", nil),
 		tuple,
 	),
+
+	built_ins.StructFunctionID: newBuiltInFunction(
+		newFixedFunctionArgumentValidator("__struct__", reflect.TypeOf(&function{})),
+		struct_,
+	),
 }
 
 func equals(value1 value, value2 value) booleanValue {
@@ -239,6 +244,53 @@ func print(runtime_ *runtime, suffix string, arguments ...value) unitValue {
 	return unitValue{}
 }
 
+func struct_(runtime_ *runtime, arguments ...value) value {
+	fieldFactory := arguments[0].(*function)
+	fields := make(map[stringValue]value, len(arguments))
+
+	result := newBuiltInFunction(
+		newFixedFunctionArgumentValidator(builtInFunctionName, reflect.TypeOf(stringValue{})),
+		func(_ *runtime, resultArguments ...value) value {
+			fieldName := resultArguments[0].(stringValue)
+			fieldValue, ok := fields[fieldName]
+
+			if !ok {
+				errors.RaiseError(runtime_errors.UnknownField(fieldName.content))
+			}
+
+			return fieldValue
+		},
+	)
+
+	raiseError := func() {
+		errors.RaiseError(runtime_errors.IncorrectBuiltInFunctionArgumentType("__struct__", 0))
+	}
+
+	fieldEntries, ok := fieldFactory.evaluate(runtime_, result).(tupleValue)
+
+	if !ok {
+		raiseError()
+	}
+
+	for _, element := range fieldEntries.elements {
+		entry, ok := element.(tupleValue)
+
+		if !ok || len(entry.elements) != 2 {
+			raiseError()
+		}
+
+		name, ok := entry.elements[0].(stringValue)
+
+		if !ok {
+			raiseError()
+		}
+
+		fields[name] = entry.elements[1]
+	}
+
+	return result
+}
+
 func toString(runtime_ *runtime, value_ value) string {
 	resultingValue, ok := value_.
 		definition().fields[built_ins.ToStringMethodID].(*function).
@@ -252,7 +304,7 @@ func toString(runtime_ *runtime, value_ value) string {
 }
 
 func tuple(runtime_ *runtime, arguments ...value) value {
-	return &tupleValue{
+	return tupleValue{
 		elements: arguments,
 	}
 }
@@ -501,6 +553,8 @@ func (function_ *function) evaluate(runtime_ *runtime, arguments ...value) value
 	return function_.evaluator(runtime_, arguments...)
 }
 
+const builtInFunctionName = "(built-in function)"
+
 func newBuiltInFunction(
 	argumentValidator functionArgumentValidator,
 	evaluator func(*runtime, ...value) value,
@@ -508,7 +562,7 @@ func newBuiltInFunction(
 	return &function{
 		functionEvaluator: builtInFunctionEvaluator(evaluator),
 		argumentValidator: argumentValidator,
-		name:              "(built-in function)",
+		name:              builtInFunctionName,
 	}
 }
 

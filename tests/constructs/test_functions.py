@@ -76,7 +76,7 @@ Error (PARSER-1): The parser failed: unexpected token "fn"
 
 def test_call_validation() -> None:
 	assert output_from_code(
-		"""
+		"""\
 fn do_nothing(dummy):
 
 do_nothing()
@@ -85,7 +85,7 @@ do_nothing()
 	) == "Error (RUNTIME-1): A function accepting 1 argument was called with 0 arguments\n"
 
 	assert output_from_code(
-		"""
+		"""\
 fn do_nothing():
 
 do_nothing(unit)

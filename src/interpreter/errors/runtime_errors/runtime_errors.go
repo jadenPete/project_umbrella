@@ -89,3 +89,11 @@ var NonFunctionCalled = &errors.Error{
 	Code:    8,
 	Name:    "A non-function was called",
 }
+
+func UnknownField(fieldName string) *errors.Error {
+	return &errors.Error{
+		Section: "RUNTIME",
+		Code:    9,
+		Name:    fmt.Sprintf("Unknown field: `%s`", fieldName),
+	}
+}

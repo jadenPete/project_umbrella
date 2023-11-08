@@ -30,9 +30,12 @@ type BuiltInValueID int
 const (
 	PrintFunctionID BuiltInValueID = -iota - 1
 	PrintlnFunctionID
+
 	UnitValueID
 	FalseValueID
 	TrueValueID
+
 	IfElseFunctionID
 	TupleFunctionID
+	StructFunctionID
 )
