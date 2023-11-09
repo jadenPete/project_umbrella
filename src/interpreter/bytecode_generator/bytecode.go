@@ -293,7 +293,7 @@ func (translator *BytecodeTranslator) valueIDForAssignment(
 	 * We check for value overloading in a separate pass because we don't want to leave
 	 * `translator.identifierValueIDMap` in a bad state, in case the caller decides to recover.
 	 */
-	for _, nameExpression := range assignment.Names {
+	for _, nameExpression := range assignment.Names_ {
 		if _, ok := translator.valueIDForNonBuiltInIdentifierInScope(nameExpression); ok {
 			errors.RaisePositionalError(
 				&errors.PositionalError{
@@ -306,7 +306,7 @@ func (translator *BytecodeTranslator) valueIDForAssignment(
 		}
 	}
 
-	for _, nameExpression := range assignment.Names {
+	for _, nameExpression := range assignment.Names_ {
 		translator.currentScope().identifierValueIDMap[nameExpression.Value] = valueID
 	}
 

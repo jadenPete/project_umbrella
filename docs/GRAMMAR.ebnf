@@ -22,25 +22,34 @@ Formatting =
 
 Assignment = Identifier {Formatting} "=" {Formatting} (Expression | Assignment);
 Function =
-	FunctionDeclaration
-	{IndentToken | OutdentToken}
-	":"
-	(NewlineToken IndentedStatementList)?;
-
-FunctionDeclaration =
 	"fn"
 	{Formatting}
 	Identifier
 	{Formatting}
 	"("
 	{Formatting}
-	[FunctionParameters]
+	[FunctionOrStructParameters]
 	{Formatting}
-	")";
+	")"
+	{NewlineToken}
+	FunctionOrStructBody;
 
-FunctionParameters = Identifier [{Formatting} "," {Formatting} FunctionParameters];
+FunctionOrStructBody = ":" (NewlineToken IndentedStatementList)?;
+FunctionOrStructParameters = Identifier [{Formatting} "," {Formatting} FunctionParameters];
 IndentedStatementList = {NewlineToken} [IndentToken StatementList (OutdentToken | EOF)];
 StatementList;
+Struct =
+	"struct"
+	{Formatting}
+	Identifier
+	{Formatting}
+	"("
+	{Formatting}
+	FunctionParameters
+	{Formatting}
+	")"
+	{NewlineToken}
+	FunctionOrStructBody;
 
 (* Multi-token expressions *)
 

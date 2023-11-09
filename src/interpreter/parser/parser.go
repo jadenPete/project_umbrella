@@ -79,7 +79,7 @@ type ConcretePrimary interface {
 // Statements
 
 type ConcreteAssignment struct {
-	Name   *ConcreteIdentifier `parser:"@@ (IndentToken | OutdentToken | NewlineToken)* '=' (IndentToken | OutdentToken | NewlineToken)*"`
+	Name   *ConcreteIdentifier `parser:"@@ (IndentToken | OutdentToken | NewlineToken)* '=':AssignmentOperatorToken (IndentToken | OutdentToken | NewlineToken)*"`
 	Tail   *ConcreteAssignment `parser:"  (@@"`
 	Value  ConcreteExpression  `parser:" | @@)"`
 	Tokens []lexer.Token
@@ -97,8 +97,8 @@ func (concrete *ConcreteAssignment) AbstractAssignment() *Assignment {
 	)
 
 	return &Assignment{
-		Names: names,
-		Value: last.Value.Abstract(),
+		Names_: names,
+		Value:  last.Value.Abstract(),
 	}
 }
 
@@ -109,9 +109,10 @@ func (concrete *ConcreteAssignment) Tokens_() []lexer.Token {
 func (*ConcreteAssignment) concreteStatement() {}
 
 type ConcreteFunction struct {
-	Declaration *ConcreteFunctionDeclaration   `parser:"@@ (IndentToken | OutdentToken)* ':'"`
-	Body        *ConcreteIndentedStatementList `parser:"(NewlineToken @@)?"`
-	Tokens      []lexer.Token
+	Name       *ConcreteIdentifier                 `parser:"'fn':FunctionKeywordToken (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* '(':LeftParenthesisToken (IndentToken | OutdentToken | NewlineToken)*"`
+	Parameters *ConcreteFunctionOrStructParameters `parser:"@@? (IndentToken | OutdentToken | NewlineToken)* ')':RightParenthesisToken NewlineToken*"`
+	Body       *ConcreteFunctionOrStructBody       `parser:"@@"`
+	Tokens     []lexer.Token
 }
 
 func (concrete *ConcreteFunction) Abstract() Expression {
@@ -119,31 +120,10 @@ func (concrete *ConcreteFunction) Abstract() Expression {
 }
 
 func (concrete *ConcreteFunction) AbstractFunction() *Function {
-	parameters, _ := common.LinkedListToSlice[ConcreteFunctionParameters, *Identifier](
-		concrete.Declaration.Parameters,
-		func(child *ConcreteFunctionParameters) *Identifier {
-			return child.Head.AbstractIdentifier()
-		},
-
-		func(child *ConcreteFunctionParameters) *ConcreteFunctionParameters {
-			return child.Tail
-		},
-	)
-
-	var body *ExpressionList
-
-	if concrete.Body == nil {
-		body = &ExpressionList{
-			Children_: []Expression{},
-		}
-	} else {
-		body = concrete.Body.AbstractExpressionList()
-	}
-
 	return &Function{
-		Name:       concrete.Declaration.Name.AbstractIdentifier(),
-		Parameters: parameters,
-		Body:       body,
+		Name:       concrete.Name.AbstractIdentifier(),
+		Parameters: AbstractFunctionOrStructParameters(concrete.Parameters),
+		Body:       concrete.Body.AbstractExpressionList(),
 		position:   tokenListSyntaxTreePosition(concrete.Tokens),
 	}
 }
@@ -154,14 +134,38 @@ func (concrete *ConcreteFunction) Tokens_() []lexer.Token {
 
 func (*ConcreteFunction) concreteStatement() {}
 
-type ConcreteFunctionDeclaration struct {
-	Name       *ConcreteIdentifier         `parser:"'fn' (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* '(' (IndentToken | OutdentToken | NewlineToken)*"`
-	Parameters *ConcreteFunctionParameters `parser:"@@? (IndentToken | OutdentToken | NewlineToken)* ')'"`
+type ConcreteFunctionOrStructBody struct {
+	Body *ConcreteIndentedStatementList `parser:"':':ColonToken (NewlineToken @@)?"`
 }
 
-type ConcreteFunctionParameters struct {
-	Head *ConcreteIdentifier         `parser:"@@"`
-	Tail *ConcreteFunctionParameters `parser:"((IndentToken | OutdentToken | NewlineToken)* ',' (IndentToken | OutdentToken | NewlineToken)* @@)?"`
+func (concrete *ConcreteFunctionOrStructBody) AbstractExpressionList() *ExpressionList {
+	if concrete.Body == nil {
+		return &ExpressionList{
+			Children_: []Expression{},
+		}
+	}
+
+	return concrete.Body.AbstractExpressionList()
+}
+
+type ConcreteFunctionOrStructParameters struct {
+	Head *ConcreteIdentifier                 `parser:"@@"`
+	Tail *ConcreteFunctionOrStructParameters `parser:"((IndentToken | OutdentToken | NewlineToken)* ',':CommaToken (IndentToken | OutdentToken | NewlineToken)* @@)?"`
+}
+
+func AbstractFunctionOrStructParameters(concrete *ConcreteFunctionOrStructParameters) []*Identifier {
+	result, _ := common.LinkedListToSlice[ConcreteFunctionOrStructParameters, *Identifier](
+		concrete,
+		func(child *ConcreteFunctionOrStructParameters) *Identifier {
+			return child.Head.AbstractIdentifier()
+		},
+
+		func(child *ConcreteFunctionOrStructParameters) *ConcreteFunctionOrStructParameters {
+			return child.Tail
+		},
+	)
+
+	return result
 }
 
 type ConcreteIndentedStatementList struct {
@@ -299,6 +303,93 @@ func (concrete *ConcreteStatementList) AbstractExpressionList() *ExpressionList 
 	}
 }
 
+type ConcreteStruct struct {
+	Name       *ConcreteIdentifier                 `parser:"'struct':StructKeywordToken (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* '(':LeftParenthesisToken (IndentToken | OutdentToken | NewlineToken)*"`
+	Parameters *ConcreteFunctionOrStructParameters `parser:"@@ (IndentToken | OutdentToken | NewlineToken)* ')':RightParenthesisToken NewlineToken*"`
+	Body       *ConcreteFunctionOrStructBody       `parser:"@@"`
+	Tokens     []lexer.Token
+}
+
+func (concrete *ConcreteStruct) Abstract() Expression {
+	abstractBody := concrete.Body.AbstractExpressionList()
+	abstractParameters := AbstractFunctionOrStructParameters(concrete.Parameters.Tail)
+	fields := make([]Expression, 0, len(abstractParameters))
+
+	addField := func(identifier *Identifier) {
+		fields = append(
+			fields,
+			AbstractTuple(
+				[]Expression{
+					&String{
+						Value:    identifier.Value,
+						position: nil,
+					},
+
+					identifier,
+				},
+
+				nil,
+			),
+		)
+	}
+
+	for _, parameter := range abstractParameters {
+		addField(parameter)
+	}
+
+	for _, statement := range abstractBody.Children() {
+		if declaration, ok := statement.(Declaration); ok {
+			for _, name := range declaration.Names() {
+				addField(name)
+			}
+		}
+	}
+
+	fieldFactory := &Function{
+		Name: nil,
+		Parameters: []*Identifier{
+			{
+				Value:    "self",
+				position: concrete.Parameters.Head.Abstract().Position(),
+			},
+		},
+
+		Body: &ExpressionList{
+			Children_: append(abstractBody.Children(), []Expression{
+				AbstractTuple(fields, nil),
+			}...),
+		},
+
+		position: nil,
+	}
+
+	return &Function{
+		Name:       concrete.Name.AbstractIdentifier(),
+		Parameters: abstractParameters,
+		Body: &ExpressionList{
+			Children_: []Expression{
+				&Call{
+					Function: &Identifier{
+						Value:    "__struct__",
+						position: nil,
+					},
+
+					Arguments: []Expression{fieldFactory},
+					position:  nil,
+				},
+			},
+		},
+
+		position: tokenListSyntaxTreePosition(concrete.Tokens),
+	}
+}
+
+func (concrete *ConcreteStruct) Tokens_() []lexer.Token {
+	return concrete.Tokens
+}
+
+func (*ConcreteStruct) concreteStatement() {}
+
 // Multi-token expressions
 
 type ConcreteInfixMiscellaneous struct {
@@ -387,7 +478,7 @@ func (concrete *ConcreteInfixAdditionRight) Operand() *ConcreteInfixMultiplicati
 }
 
 type ConcreteInfixAdditionOperator struct {
-	Identifier string `parser:"@('+' | '-')"`
+	Identifier string `parser:"@('+':OperatorToken | '-':OperatorToken)"`
 	Tokens     []lexer.Token
 }
 
@@ -438,7 +529,7 @@ func (concrete *ConcreteInfixMultiplicationRight) Operand() *ConcretePrefixOpera
 }
 
 type ConcreteInfixMultiplicationOperator struct {
-	Identifier string `parser:"@('*' | '/' | '%')"`
+	Identifier string `parser:"@('*':OperatorToken | '/':OperatorToken | '%':OperatorToken)"`
 	Tokens     []lexer.Token
 }
 
@@ -481,7 +572,7 @@ func (concrete *ConcretePrefixOperation) Abstract() Expression {
 func (*ConcretePrefixOperation) concreteInfixOperand() {}
 
 type ConcreteIf struct {
-	Condition ConcreteExpression             `parser:"('if' (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* ':'"`
+	Condition ConcreteExpression             `parser:"('if':IfKeywordToken (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* ':':ColonToken"`
 	Body      *ConcreteIndentedStatementList `parser:" (NewlineToken @@)?"`
 	ElseIf    []*ConcreteElseIf              `parser:" (NewlineToken+ @@)*"`
 	Else      *ConcreteElse                  `parser:" (NewlineToken+ @@)?)"`
@@ -590,13 +681,13 @@ func (concrete *ConcreteIf) Abstract() Expression {
 }
 
 type ConcreteElseIf struct {
-	Condition ConcreteExpression             `parser:"'else' (IndentToken | OutdentToken | NewlineToken)* 'if' (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* ':'"`
+	Condition ConcreteExpression             `parser:"'else':ElseKeywordToken (IndentToken | OutdentToken | NewlineToken)* 'if':IfKeywordToken (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* ':':ColonToken"`
 	Body      *ConcreteIndentedStatementList `parser:"(NewlineToken @@)?"`
 	Tokens    []lexer.Token
 }
 
 type ConcreteElse struct {
-	Body   *ConcreteIndentedStatementList `parser:"'else' (IndentToken | OutdentToken | NewlineToken)* ':' (NewlineToken @@)?"`
+	Body   *ConcreteIndentedStatementList `parser:"'else':ElseKeywordToken (IndentToken | OutdentToken | NewlineToken)* ':':ColonToken (NewlineToken @@)?"`
 	Tokens []lexer.Token
 }
 
@@ -639,14 +730,14 @@ func (concrete *ConcreteCall) Abstract() Expression {
 }
 
 type ConcreteCallRight struct {
-	Arguments *ConcreteCallArguments `parser:"(IndentToken | OutdentToken)* '(' (IndentToken | OutdentToken | NewlineToken)* @@? (IndentToken | OutdentToken | NewlineToken)* ')'"`
+	Arguments *ConcreteCallArguments `parser:"(IndentToken | OutdentToken)* '(':LeftParenthesisToken (IndentToken | OutdentToken | NewlineToken)* @@? (IndentToken | OutdentToken | NewlineToken)* ')':RightParenthesisToken"`
 	Select    *ConcreteSelectRight   `parser:"| @@"`
 	Tokens    []lexer.Token
 }
 
 type ConcreteCallArguments struct {
 	Head ConcreteExpression     `parser:"@@"`
-	Tail *ConcreteCallArguments `parser:" ((IndentToken | OutdentToken | NewlineToken)* ',' (IndentToken | OutdentToken | NewlineToken)* @@)?"`
+	Tail *ConcreteCallArguments `parser:" ((IndentToken | OutdentToken | NewlineToken)* ',':CommaToken (IndentToken | OutdentToken | NewlineToken)* @@)?"`
 }
 
 type ConcreteSelect struct {
@@ -669,13 +760,13 @@ func (concrete *ConcreteSelect) Abstract() Expression {
 }
 
 type ConcreteSelectRight struct {
-	Field *ConcreteIdentifier `parser:"(IndentToken | OutdentToken | NewlineToken)* '.' (IndentToken | OutdentToken | NewlineToken)* @@"`
+	Field *ConcreteIdentifier `parser:"(IndentToken | OutdentToken | NewlineToken)* '.':SelectOperatorToken (IndentToken | OutdentToken | NewlineToken)* @@"`
 }
 
 // Single-token expressions and primaries
 
 type ConcreteParenthesized struct {
-	Value ConcreteExpression `parser:"'(' (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* ')'"`
+	Value ConcreteExpression `parser:"'(':LeftParenthesisToken (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* ')':RightParenthesisToken"`
 }
 
 func (concrete *ConcreteParenthesized) Abstract() Expression {
@@ -685,7 +776,7 @@ func (concrete *ConcreteParenthesized) Abstract() Expression {
 func (*ConcreteParenthesized) primary() {}
 
 type ConcreteTuple struct {
-	Elements []ConcreteExpression `parser:"'(' (IndentToken | OutdentToken | NewlineToken)* (@@ ((IndentToken | OutdentToken | NewlineToken)* ',' (IndentToken | OutdentToken | NewlineToken)* @@)+ | @@? (IndentToken | OutdentToken | NewlineToken)* ',') (IndentToken | OutdentToken | NewlineToken)* ')'"`
+	Elements []ConcreteExpression `parser:"'(':LeftParenthesisToken (IndentToken | OutdentToken | NewlineToken)* (@@ ((IndentToken | OutdentToken | NewlineToken)* ',':CommaToken (IndentToken | OutdentToken | NewlineToken)* @@)+ | @@? (IndentToken | OutdentToken | NewlineToken)* ',':CommaToken) (IndentToken | OutdentToken | NewlineToken)* ')':RightParenthesisToken"`
 	Tokens   []lexer.Token
 }
 
@@ -696,15 +787,7 @@ func (concrete *ConcreteTuple) Abstract() Expression {
 		abstractElements = append(abstractElements, element.Abstract())
 	}
 
-	return &Call{
-		Function: &Identifier{
-			Value:    "__tuple__",
-			position: nil,
-		},
-
-		Arguments: abstractElements,
-		position:  tokenListSyntaxTreePosition(concrete.Tokens),
-	}
+	return AbstractTuple(abstractElements, tokenListSyntaxTreePosition(concrete.Tokens))
 }
 
 func (*ConcreteTuple) primary() {}
@@ -808,6 +891,7 @@ var parser = participle.MustBuild[ConcreteStatementList](
 		&ConcreteAssignment{},
 		&ConcreteFunction{},
 		&ConcreteInfixMiscellaneous{},
+		&ConcreteStruct{},
 	),
 
 	participle.Union[ConcreteExpression](&ConcreteInfixMiscellaneous{}),

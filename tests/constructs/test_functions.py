@@ -53,7 +53,19 @@ fn identity3
 ):
 	value
 
-println((identity1(unit) == unit) && (identity2(unit) == unit) && (identity3(unit) == unit))
+fn identity4
+(
+	value
+)
+:
+	value
+
+println(
+	(identity1(0) == 0) &&
+	(identity2(0) == 0) &&
+	(identity3(0) == 0) &&
+	(identity4(0) == 0)
+)
 """
 	) == "true\n"
 

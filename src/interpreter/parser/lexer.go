@@ -14,8 +14,8 @@ const (
 	AssignmentOperatorToken lexer.TokenType = iota + 1
 	ColonToken
 	CommaToken
-	ElseToken
-	IfToken
+	ElseKeywordToken
+	IfKeywordToken
 	FloatToken
 	FunctionKeywordToken
 	IdentifierToken
@@ -29,6 +29,7 @@ const (
 	SelectOperatorToken
 	SpaceToken
 	StringToken
+	StructKeywordToken
 )
 
 var matcher = ExhaustiveMatcher{
@@ -53,12 +54,12 @@ var matcher = ExhaustiveMatcher{
 		},
 
 		{
-			MatcherCode(ElseToken),
+			MatcherCode(ElseKeywordToken),
 			CompileMatcher("^else$"),
 		},
 
 		{
-			MatcherCode(IfToken),
+			MatcherCode(IfKeywordToken),
 			CompileMatcher("^if$"),
 		},
 
@@ -102,6 +103,11 @@ var matcher = ExhaustiveMatcher{
 			CompileMatcher(`[\t ]+`),
 		},
 
+		{
+			MatcherCode(StructKeywordToken),
+			CompileMatcher(`^struct$`),
+		},
+
 		/*
 		 * Operators and identifiers are parsed last because they shouldn't contain anything that
 		 * would be _identified_ (get it?) as another token.
@@ -113,13 +119,13 @@ var matcher = ExhaustiveMatcher{
 		 * "\"", "(", ")", ",", ".", ":", "_"
 		 *
 		 * Reserved for future use:
-		 * "#", "$", ",", "/", ";", "?", "@", "[", "]", "\\", "`", "{", "}"
+		 * "#", "$", ",", ";", "?", "@", "[", "]", "\\", "`", "{", "}"
 		 *
 		 * "=" is also not a valid operator.
 		 */
 		{
 			MatcherCode(OperatorToken),
-			CompileMatcher(`[!%&*+\-<=>^|~]*=[!%&*+\-<=>^|~]+|[!%&*+\-<=>^|~]+=[!%&*+\-<=>^|~]*|[!%&*+\-<>^|~]+`),
+			CompileMatcher(`[!%&*+\-/<=>^|~]*=[!%&*+\-/<=>^|~]+|[!%&*+\-/<=>^|~]+=[!%&*+\-/<=>^|~]*|[!%&*+\-/<>^|~]+`),
 		},
 
 		/*
@@ -393,8 +399,8 @@ func (definition *LexerDefinition) Symbols() map[string]lexer.TokenType {
 		"AssignmentOperatorToken": lexer.TokenType(AssignmentOperatorToken),
 		"ColonToken":              lexer.TokenType(ColonToken),
 		"CommaToken":              lexer.TokenType(CommaToken),
-		"ElseToken":               lexer.TokenType(ElseToken),
-		"IfToken":                 lexer.TokenType(IfToken),
+		"ElseKeywordToken":        lexer.TokenType(ElseKeywordToken),
+		"IfKeywordToken":          lexer.TokenType(IfKeywordToken),
 		"FloatToken":              lexer.TokenType(FloatToken),
 		"FunctionKeywordToken":    lexer.TokenType(FunctionKeywordToken),
 		"IdentifierToken":         lexer.TokenType(IdentifierToken),
@@ -407,6 +413,7 @@ func (definition *LexerDefinition) Symbols() map[string]lexer.TokenType {
 		"OperatorToken":           lexer.TokenType(OperatorToken),
 		"SelectOperatorToken":     lexer.TokenType(SelectOperatorToken),
 		"StringToken":             lexer.TokenType(StringToken),
+		"StructKeywordToken":      lexer.TokenType(StructKeywordToken),
 		"EOF":                     lexer.EOF,
 	}
 }
