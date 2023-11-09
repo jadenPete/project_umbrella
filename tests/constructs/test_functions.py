@@ -200,3 +200,54 @@ Error (PARSER-5): Reassigning to an already declared value is impossible
 
 Consider assigning to a new value.
 """
+
+def test_function_hoisting() -> None:
+	assert output_from_code(
+		"""\
+fn foo():
+	bar()
+
+fn bar():
+	"bar"
+
+println(foo())
+"""
+	) == "bar\n"
+
+	assert output_from_code(
+		"""\
+println(foo())
+
+fn foo():
+	"foo"
+"""
+	) == "foo\n"
+
+	assert output_from_code(
+		"""\
+foo = bar_getter()
+bar = "bar"
+
+fn bar_getter():
+	bar
+
+println(foo)
+"""
+	) == "bar\n"
+
+	assert output_from_code(
+		"""\
+fn foo():
+	bar
+
+bar = "bar"
+""",
+		expected_return_code=1
+	) == """\
+Error (PARSER-6): Unknown value: `bar`
+
+  1  │ fn foo():
+  2  │     bar
+     │     ^^^
+
+"""
