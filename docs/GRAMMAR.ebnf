@@ -106,6 +106,13 @@ SelectRight = {Formatting} "." {Formatting} Identifier;
 (* Single-token expressions and primaries *)
 
 Parenthesized = "(" {Formatting} Expression {Formatting} ")";
+Tuple =
+	"("
+	{Formatting}
+	(Expression {{Formatting} "," {Formatting} Expression}- | Expression? {Formatting} ",")
+	{Formatting}
+	")";
+
 Float = FloatToken;
 Identifier =
 	| IdentifierToken

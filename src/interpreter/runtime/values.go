@@ -29,7 +29,7 @@ func newNumberDefinition[Value integerValue | floatValue](
 	return &valueDefinition{
 		fields: map[built_ins.BuiltInFieldID]value{
 			built_ins.ToStringMethodID: newToStringMethod(
-				func() string {
+				func(*runtime) string {
 					switch value_ := any(value_).(type) {
 					case integerValue:
 						return fmt.Sprintf("%d", value_)
@@ -187,6 +187,37 @@ var builtInValues = map[built_ins.BuiltInValueID]value{
 
 		ifElse,
 	),
+
+	built_ins.TupleFunctionID: newBuiltInFunction(
+		newVariadicFunctionArgumentValidator("__tuple__", nil),
+		tuple,
+	),
+
+	built_ins.StructFunctionID: newBuiltInFunction(
+		newFixedFunctionArgumentValidator("__struct__", reflect.TypeOf(&function{})),
+		struct_,
+	),
+}
+
+func equals(value1 value, value2 value) booleanValue {
+	tuple1, ok1 := value1.(tupleValue)
+	tuple2, ok2 := value2.(tupleValue)
+
+	if ok1 && ok2 {
+		if len(tuple1.elements) != len(tuple2.elements) {
+			return false
+		}
+
+		for i, element := range tuple1.elements {
+			if !equals(element, tuple2.elements[i]) {
+				return false
+			}
+		}
+
+		return true
+	}
+
+	return value1 == value2
 }
 
 func ifElse(runtime_ *runtime, arguments ...value) value {
@@ -213,6 +244,53 @@ func print(runtime_ *runtime, suffix string, arguments ...value) unitValue {
 	return unitValue{}
 }
 
+func struct_(runtime_ *runtime, arguments ...value) value {
+	fieldFactory := arguments[0].(*function)
+	fields := make(map[stringValue]value, len(arguments))
+
+	result := newBuiltInFunction(
+		newFixedFunctionArgumentValidator(builtInFunctionName, reflect.TypeOf(stringValue{})),
+		func(_ *runtime, resultArguments ...value) value {
+			fieldName := resultArguments[0].(stringValue)
+			fieldValue, ok := fields[fieldName]
+
+			if !ok {
+				errors.RaiseError(runtime_errors.UnknownField(fieldName.content))
+			}
+
+			return fieldValue
+		},
+	)
+
+	raiseError := func() {
+		errors.RaiseError(runtime_errors.IncorrectBuiltInFunctionArgumentType("__struct__", 0))
+	}
+
+	fieldEntries, ok := fieldFactory.evaluate(runtime_, result).(tupleValue)
+
+	if !ok {
+		raiseError()
+	}
+
+	for _, element := range fieldEntries.elements {
+		entry, ok := element.(tupleValue)
+
+		if !ok || len(entry.elements) != 2 {
+			raiseError()
+		}
+
+		name, ok := entry.elements[0].(stringValue)
+
+		if !ok {
+			raiseError()
+		}
+
+		fields[name] = entry.elements[1]
+	}
+
+	return result
+}
+
 func toString(runtime_ *runtime, value_ value) string {
 	resultingValue, ok := value_.
 		definition().fields[built_ins.ToStringMethodID].(*function).
@@ -225,14 +303,22 @@ func toString(runtime_ *runtime, value_ value) string {
 	return resultingValue.content
 }
 
+func tuple(runtime_ *runtime, arguments ...value) value {
+	return tupleValue{
+		elements: arguments,
+	}
+}
+
 type booleanValue bool
 
 func (value_ booleanValue) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[built_ins.BuiltInFieldID]value{
-			built_ins.ToStringMethodID: newToStringMethod(func() string {
-				return fmt.Sprintf("%t", value_)
-			}),
+			built_ins.ToStringMethodID: newToStringMethod(
+				func(*runtime) string {
+					return fmt.Sprintf("%t", value_)
+				},
+			),
 
 			built_ins.NotMethodID: newBuiltInFunction(
 				newFixedFunctionArgumentValidator("!"),
@@ -444,9 +530,11 @@ type function struct {
 func (function_ *function) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[built_ins.BuiltInFieldID]value{
-			built_ins.ToStringMethodID: newToStringMethod(func() string {
-				return function_.name
-			}),
+			built_ins.ToStringMethodID: newToStringMethod(
+				func(*runtime) string {
+					return function_.name
+				},
+			),
 		},
 	}
 }
@@ -465,6 +553,8 @@ func (function_ *function) evaluate(runtime_ *runtime, arguments ...value) value
 	return function_.evaluator(runtime_, arguments...)
 }
 
+const builtInFunctionName = "(built-in function)"
+
 func newBuiltInFunction(
 	argumentValidator functionArgumentValidator,
 	evaluator func(*runtime, ...value) value,
@@ -472,7 +562,7 @@ func newBuiltInFunction(
 	return &function{
 		functionEvaluator: builtInFunctionEvaluator(evaluator),
 		argumentValidator: argumentValidator,
-		name:              "(built-in function)",
+		name:              builtInFunctionName,
 	}
 }
 
@@ -497,7 +587,7 @@ func newEqualsMethod(value_ value) *function {
 	return newBuiltInFunction(
 		newFixedFunctionArgumentValidator("==", nil),
 		func(runtime_ *runtime, arguments ...value) value {
-			return booleanValue(value_ == arguments[0])
+			return equals(value_, arguments[0])
 		},
 	)
 }
@@ -506,7 +596,7 @@ func newNotEqualsMethod(value_ value) *function {
 	return newBuiltInFunction(
 		newFixedFunctionArgumentValidator("!=", nil),
 		func(runtime_ *runtime, arguments ...value) value {
-			return booleanValue(value_ != arguments[0])
+			return !equals(value_, arguments[0])
 		},
 	)
 }
@@ -536,11 +626,11 @@ func newMinusMethod[Value integerValue | floatValue](value_ Value) *function {
 	)
 }
 
-func newToStringMethod(result func() string) *function {
+func newToStringMethod(result func(*runtime) string) *function {
 	return newBuiltInFunction(
 		newFixedFunctionArgumentValidator("__to_str__"),
 		func(runtime_ *runtime, arguments ...value) value {
-			return stringValue{result()}
+			return stringValue{result(runtime_)}
 		},
 	)
 }
@@ -570,7 +660,7 @@ func (value_ stringValue) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[built_ins.BuiltInFieldID]value{
 			built_ins.ToStringMethodID: newToStringMethod(
-				func() string {
+				func(*runtime) string {
 					return value_.content
 				},
 			),
@@ -605,14 +695,52 @@ func (scope_ *scope) getValue(valueID int) value {
 	return currentScope.values[valueID]
 }
 
+type tupleValue struct {
+	elements []value
+}
+
+func (value_ tupleValue) definition() *valueDefinition {
+	return &valueDefinition{
+		fields: map[built_ins.BuiltInFieldID]value{
+			built_ins.ToStringMethodID: newToStringMethod(
+				func(runtime_ *runtime) string {
+					var insideParentheses string
+
+					switch len(value_.elements) {
+					case 0:
+						insideParentheses = ","
+
+					case 1:
+						insideParentheses =
+							fmt.Sprintf("%s,", toString(runtime_, value_.elements[0]))
+
+					default:
+						elementsAsStrings := make([]string, 0, len(value_.elements))
+
+						for _, element := range value_.elements {
+							elementsAsStrings = append(elementsAsStrings, toString(runtime_, element))
+						}
+
+						insideParentheses = strings.Join(elementsAsStrings, ", ")
+					}
+
+					return fmt.Sprintf("(%s)", insideParentheses)
+				},
+			),
+		},
+	}
+}
+
 type unitValue struct{}
 
 func (value_ unitValue) definition() *valueDefinition {
 	return &valueDefinition{
 		fields: map[built_ins.BuiltInFieldID]value{
-			built_ins.ToStringMethodID: newToStringMethod(func() string {
-				return "(unit)"
-			}),
+			built_ins.ToStringMethodID: newToStringMethod(
+				func(*runtime) string {
+					return "(unit)"
+				},
+			),
 		},
 	}
 }

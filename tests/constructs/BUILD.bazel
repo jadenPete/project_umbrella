@@ -1,5 +1,5 @@
 py_library(
-	name = "syntax",
+	name = "constructs",
 	srcs = glob(["*.py"]),
 	deps = ["//tests:tests-library"],
 	visibility = ["//tests:__pkg__"],

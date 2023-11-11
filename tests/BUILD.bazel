@@ -14,7 +14,7 @@ py_test(
 		":tests-library",
 		"//tests/builtin/functions",
 		"//tests/builtin/types",
-		"//tests/syntax",
+		"//tests/constructs",
 		requirement("pytest"),
 	],
 )
