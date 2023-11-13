@@ -89,7 +89,7 @@ func UnknownField(fieldName string) *errors.Error {
 func MethodCalledImproperly(
 	firstOperand string,
 	fieldName string,
-	fieldType parser_types.FieldType,
+	functionType *parser_types.FunctionType,
 	selectType parser_types.SelectType,
 ) *errors.Error {
 	var selectTypeName string
@@ -107,15 +107,12 @@ func MethodCalledImproperly(
 
 	var expectedSyntax string
 
-	switch fieldType {
-	case parser_types.NormalField:
-		expectedSyntax = fmt.Sprintf("%s.%s(...)", firstOperand, fieldName)
-
-	case parser_types.InfixField:
+	if functionType.IsInfix {
 		expectedSyntax = fmt.Sprintf("%s %s ...", firstOperand, fieldName)
-
-	case parser_types.PrefixField:
+	} else if functionType.IsPrefix {
 		expectedSyntax = fmt.Sprintf("%s%s", fieldName, firstOperand)
+	} else {
+		expectedSyntax = fmt.Sprintf("%s.%s(...)", firstOperand, fieldName)
 	}
 
 	return &errors.Error{

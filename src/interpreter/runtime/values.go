@@ -195,7 +195,7 @@ var builtInValues = map[built_ins.BuiltInValueID]value{
 			return print(runtime_, "", arguments...)
 		},
 
-		parser_types.NormalField,
+		parser_types.NormalFunction,
 	),
 
 	built_ins.PrintlnFunctionID: newBuiltInFunction(
@@ -204,7 +204,7 @@ var builtInValues = map[built_ins.BuiltInValueID]value{
 			return print(runtime_, "\n", arguments...)
 		},
 
-		parser_types.NormalField,
+		parser_types.NormalFunction,
 	),
 
 	built_ins.UnitValueID:  unitValue{},
@@ -219,19 +219,19 @@ var builtInValues = map[built_ins.BuiltInValueID]value{
 		),
 
 		ifElse,
-		parser_types.NormalField,
+		parser_types.NormalFunction,
 	),
 
 	built_ins.TupleFunctionID: newBuiltInFunction(
 		newVariadicFunctionArgumentValidator("__tuple__", nil),
 		tuple,
-		parser_types.NormalField,
+		parser_types.NormalFunction,
 	),
 
 	built_ins.StructFunctionID: newBuiltInFunction(
 		newFixedFunctionArgumentValidator("__struct__", reflect.TypeOf(&function{})),
 		struct_,
-		parser_types.NormalField,
+		parser_types.NormalFunction,
 	),
 }
 
@@ -297,7 +297,11 @@ func struct_(runtime_ *runtime, arguments ...value) value {
 			return fieldValue
 		},
 
-		parser_types.NormalField,
+		&parser_types.FunctionType{
+			IsInfix:          false,
+			IsPrefix:         false,
+			IsStructInstance: true,
+		},
 	)
 
 	raiseError := func() {
@@ -534,19 +538,23 @@ func (evaluator *bytecodeFunctionEvaluator) evaluator(runtime_ *runtime, argumen
 					}
 
 					fieldName := fieldNameValue.content
-					field, ok := structValue.definition().fields[fieldName]
 
-					if !ok {
-						if methodConstructor, ok := universalMethodConstructors[fieldName]; ok {
-							field = methodConstructor(structValue)
-						} else {
-							errors.RaiseError(runtime_errors.UnknownField(fieldName))
-						}
+					var result value
+
+					if function_, ok := structValue.(*function); ok &&
+						function_.type_.IsStructInstance {
+						result = function_.evaluate(runtime_, fieldNameValue)
+					} else if field, ok := structValue.definition().fields[fieldName]; ok {
+						result = field
+					} else if methodConstructor, ok := universalMethodConstructors[fieldName]; ok {
+						result = methodConstructor(structValue)
+					} else {
+						errors.RaiseError(runtime_errors.UnknownField(fieldName))
 					}
 
-					scope.values[element.instructionValueID] = field
+					scope.values[element.instructionValueID] = result
 
-					if function_ := field.(*function); ok {
+					if function_, ok := result.(*function); ok {
 						selectType := parser_types.SelectType(element.instruction.Arguments[2])
 
 						if !function_.type_.CanSelectBy(selectType) {
@@ -589,7 +597,7 @@ type function struct {
 
 	argumentValidator functionArgumentValidator
 	name              string
-	type_             parser_types.FieldType
+	type_             *parser_types.FunctionType
 }
 
 func (function_ *function) definition() *valueDefinition {
@@ -623,7 +631,7 @@ const builtInFunctionName = "(built-in function)"
 func newBuiltInFunction(
 	argumentValidator functionArgumentValidator,
 	evaluator func(*runtime, ...value) value,
-	type_ parser_types.FieldType,
+	type_ *parser_types.FunctionType,
 ) *function {
 	return &function{
 		functionEvaluator: builtInFunctionEvaluator(evaluator),
@@ -647,7 +655,7 @@ func newBytecodeFunction(
 		),
 
 		name:  name,
-		type_: parser_types.NormalField,
+		type_: parser_types.NormalFunction,
 	}
 }
 
