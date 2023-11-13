@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"project_umbrella/interpreter/errors"
+	"project_umbrella/interpreter/parser/parser_types"
 )
 
 func IncorrectCallArgumentCount(arity string, arityPlural bool, argumentCount int) *errors.Error {
@@ -46,19 +47,6 @@ var ToStringMethodReturnedNonString = &errors.Error{
 	Name:    "A __to_str__ method returned a non-string",
 }
 
-func UnrecognizedFieldID(value string, fieldID int) *errors.Error {
-	return &errors.Error{
-		Section: "RUNTIME",
-		Code:    4,
-		Name:    "Unrecognized field ID",
-		Description: fmt.Sprintf(
-			"%d is not a recognized field ID for the value `%s`.",
-			fieldID,
-			value,
-		),
-	}
-}
-
 var ValueCycle = &errors.Error{
 	Section: "RUNTIME",
 	Code:    5,
@@ -96,4 +84,58 @@ func UnknownField(fieldName string) *errors.Error {
 		Code:    9,
 		Name:    fmt.Sprintf("Unknown field: `%s`", fieldName),
 	}
+}
+
+func MethodCalledImproperly(
+	firstOperand string,
+	fieldName string,
+	fieldType parser_types.FieldType,
+	selectType parser_types.SelectType,
+) *errors.Error {
+	var selectTypeName string
+
+	switch selectType {
+	case parser_types.InfixSelect:
+		selectTypeName = "infix"
+
+	case parser_types.PrefixSelect:
+		selectTypeName = "prefix"
+
+	default:
+		panic("Expected `selectType` to be either `InfixField` or `PrefixField`.")
+	}
+
+	var expectedSyntax string
+
+	switch fieldType {
+	case parser_types.NormalField:
+		expectedSyntax = fmt.Sprintf("%s.%s(...)", firstOperand, fieldName)
+
+	case parser_types.InfixField:
+		expectedSyntax = fmt.Sprintf("%s %s ...", firstOperand, fieldName)
+
+	case parser_types.PrefixField:
+		expectedSyntax = fmt.Sprintf("%s%s", fieldName, firstOperand)
+	}
+
+	return &errors.Error{
+		Section: "RUNTIME",
+		Code:    10,
+		Name: fmt.Sprintf(
+			"`%s` is not an %s method and cannot be called so",
+			fieldName,
+			selectTypeName,
+		),
+
+		Description: fmt.Sprintf(
+			"Consider replacing that call with `%s`, substituting in the right-hand operand.",
+			expectedSyntax,
+		),
+	}
+}
+
+var NonStringFieldName = &errors.Error{
+	Section: "RUNTIME",
+	Code:    11,
+	Name:    "A constant value identifying a field name is not a string",
 }

@@ -5,13 +5,8 @@ def test_selects() -> None:
 	assert output_from_code("println((1).+)\n") == "(built-in function)\n"
 
 def test_nonexistent_fields() -> None:
-	assert output_from_code('"Hello, world!".foo\n', expected_return_code=1) == """\
-Error (PARSER-7): Unknown field: `foo`
-
-  1  │ "Hello, world!".foo
-     │                 ^^^
-
-"""
+	assert output_from_code('"Hello, world!".foo\n', expected_return_code=1) == \
+		"Error (RUNTIME-9): Unknown field: `foo`\n"
 
 def test_invalid_selects() -> None:
 	assert output_from_code("println.\n", expected_return_code=1) == """\

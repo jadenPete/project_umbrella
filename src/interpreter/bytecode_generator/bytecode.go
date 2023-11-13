@@ -69,24 +69,24 @@
  * - __tuple__ (-7)
  * - __struct__ (-8)
  *
- * Likewise, built-in fields are negative; the following are accessible on the following types.
- * - __to_str__ (-1) (every type)
- * - == (-2) (every type)
- * - != (-3) (every type)
+ * The following built-in fields are accessible on the following types.
+ * - __to_str__ (every type)
+ * - == (every type)
+ * - != (every type)
  *
- * - + (-4) (str, int, float)
- * - - (-5) (int, float)
- * - * (-6) (int, float)
- * - / (-7) (int, float)
- * - % (-8) (int, float)
- * - < (-9) (int, float)
- * - <= (-10) (int, float)
- * - > (-11) (int, float)
- * - >= (-12) (int, float)
+ * - + (str, int, float)
+ * - - (int, float)
+ * - * (int, float)
+ * - / (int, float)
+ * - % (int, float)
+ * - < (int, float)
+ * - <= (int, float)
+ * - > (int, float)
+ * - >= (int, float)
  *
- * - ! (-13) (bool)
- * - && (-14) (bool)
- * - || (-15) (bool)
+ * - ! (bool)
+ * - && (bool)
+ * - || (bool)
  *
  * Instructions:
  *
@@ -106,11 +106,14 @@
  * 	Retrieve the constant referred to by `CONST_ID` from the constant list and push it to the
  *  value list.
  *
- * VAL_FROM_STRUCT_VAL (4) (VAL_ID, FIELD_ID):
- * 	Retrieve the field identified by `FIELD_ID` from the struct instance referred to by `VAL_ID`,
- * 	pushing it to the value list.
+ * VAL_FROM_STRUCT_VAL (4) (VAL_ID, CONST_ID, TYPE):
+ * 	Retrieve the field identified by the string constant referred to by `CONST_ID` from the value
+ *  referred to by `VAL_ID`, pushing it to the value list.
  *
- * 	If `VAL_ID` doesn't refer to a struct instance, the runtime will panic.
+ * `TYPE` refers to the syntax used, which is either:
+ * - 1: Normal syntax ("foo.-")
+ * - 2: Infix syntax ("foo - bar")
+ * - 3: Prefix syntax ("-foo")
  *
  * PUSH_FN (5) (ARG_COUNT):
  *  Push a function accepting `ARG_COUNT` arguments to the function stack.
@@ -136,30 +139,9 @@ import (
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/parser_errors"
 	"project_umbrella/interpreter/parser"
-	"project_umbrella/interpreter/parser/parser_types"
 )
 
 const checksumSize = 32
-
-var builtInFields = map[string]*builtInField{
-	"__to_str__": {built_ins.ToStringMethodID, parser_types.NormalField},
-	"==":         {built_ins.EqualsMethodID, parser_types.InfixField},
-	"!=":         {built_ins.NotEqualsMethodID, parser_types.InfixField},
-
-	"+":  {built_ins.PlusMethodID, parser_types.InfixField},
-	"-":  {built_ins.MinusMethodID, parser_types.InfixPrefixField},
-	"*":  {built_ins.TimesMethodID, parser_types.InfixField},
-	"/":  {built_ins.OverMethodID, parser_types.InfixField},
-	"%":  {built_ins.ModuloMethodID, parser_types.InfixField},
-	"<":  {built_ins.LessThanMethodID, parser_types.InfixField},
-	"<=": {built_ins.LessThanOrEqualToMethodID, parser_types.InfixField},
-	">":  {built_ins.GreaterThanMethodID, parser_types.InfixField},
-	">=": {built_ins.GreaterThanOrEqualToMethodID, parser_types.InfixField},
-
-	"!":  {built_ins.NotMethodID, parser_types.PrefixField},
-	"&&": {built_ins.AndMethodID, parser_types.InfixField},
-	"||": {built_ins.OrMethodID, parser_types.InfixField},
-}
 
 var builtInValues = map[string]built_ins.BuiltInValueID{
 	"print":       built_ins.PrintFunctionID,
@@ -174,11 +156,6 @@ var builtInValues = map[string]built_ins.BuiltInValueID{
 
 func sourceChecksum(fileContent string) [checksumSize]byte {
 	return sha256.Sum256([]byte(fileContent))
-}
-
-type builtInField struct {
-	id        built_ins.BuiltInFieldID
-	fieldType parser_types.FieldType
 }
 
 type Bytecode struct {
@@ -234,6 +211,20 @@ func NewBytecodeTranslator(fileContent string) *BytecodeTranslator {
 			},
 		},
 	}
+}
+
+func (translator *BytecodeTranslator) constantIDForConstant(constant Constant) int {
+	var constantID int
+
+	if result, ok := translator.constantIDMap[constant]; ok {
+		return result
+	}
+
+	constantID = len(translator.constantIDMap)
+
+	translator.constantIDMap[constant] = constantID
+
+	return constantID
 }
 
 func (translator *BytecodeTranslator) currentScope() *scope {
@@ -343,31 +334,21 @@ func (translator *BytecodeTranslator) valueIDForCall(call *parser.Call) int {
 }
 
 func (translator *BytecodeTranslator) valueIDForConstant(constant Constant) int {
-	var constantID int
-
-	if result, ok := translator.constantIDMap[constant]; ok {
-		constantID = result
-	} else {
-		constantID = len(translator.constantIDMap)
-
-		translator.constantIDMap[constant] = constantID
-	}
-
-	var valueID int
+	constantID := translator.constantIDForConstant(constant)
 
 	if result, ok := translator.valueIDForNonBuiltInConstantInScope(constantID); ok {
-		valueID = result
-	} else {
-		translator.instructions = append(translator.instructions, &Instruction{
-			Type:      ValueFromConstantInstruction,
-			Arguments: []int{constantID},
-		})
-
-		valueID = translator.currentScope().nextValueID
-
-		translator.currentScope().nextValueID++
-		translator.currentScope().constantValueIDMap[constantID] = valueID
+		return result
 	}
+
+	translator.instructions = append(translator.instructions, &Instruction{
+		Type:      ValueFromConstantInstruction,
+		Arguments: []int{constantID},
+	})
+
+	valueID := translator.currentScope().nextValueID
+
+	translator.currentScope().nextValueID++
+	translator.currentScope().constantValueIDMap[constantID] = valueID
 
 	return valueID
 }
@@ -575,44 +556,21 @@ func (translator *BytecodeTranslator) valueIDForNonBuiltInIdentifierInScope(
 }
 
 func (translator *BytecodeTranslator) valueIDForSelect(select_ *parser.Select) int {
-	valueID := translator.valueIDForExpression(select_.Value)
-
-	fieldName := select_.Field.Value
-	field, ok := builtInFields[fieldName]
-
-	if !ok {
-		errors.RaisePositionalError(
-			&errors.PositionalError{
-				Error:    parser_errors.UnknownField(fieldName),
-				Position: select_.Field.Position(),
-			},
-
-			translator.fileContent,
-		)
-	}
-
-	if !field.fieldType.CanSelectBy(select_.Type) {
-		errors.RaisePositionalError(
-			&errors.PositionalError{
-				Error: parser_errors.MethodCalledImproperly(
-					translator.fileContent[select_.Value.Position().Start:select_.Value.Position().End],
-					fieldName,
-					field.fieldType,
-					select_.Type,
-				),
-
-				Position: select_.Field.Position(),
-			},
-
-			translator.fileContent,
-		)
-	}
-
 	translator.instructions = append(
 		translator.instructions,
 		&Instruction{
-			Type:      ValueFromStructValueInstruction,
-			Arguments: []int{valueID, int(field.id)},
+			Type: ValueFromStructValueInstruction,
+			Arguments: []int{
+				translator.valueIDForExpression(select_.Value),
+				translator.constantIDForConstant(
+					Constant{
+						Type:    StringConstant,
+						Encoded: select_.Field.Value,
+					},
+				),
+
+				int(select_.Type),
+			},
 		},
 	)
 

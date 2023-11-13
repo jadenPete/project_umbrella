@@ -7,7 +7,6 @@ go_library(
     visibility = ["//src/interpreter:__subpackages__"],
 	deps = [
         "//src/interpreter/errors",
-        "//src/interpreter/parser/parser_types",
         "@com_github_alecthomas_participle_v2//:go_default_library",
     ],
 )

@@ -11,5 +11,6 @@ go_library(
         "//src/interpreter/common",
         "//src/interpreter/errors",
         "//src/interpreter/errors/runtime_errors",
+        "//src/interpreter/parser/parser_types",
     ],
 )

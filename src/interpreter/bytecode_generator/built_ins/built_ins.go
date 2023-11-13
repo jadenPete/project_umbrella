@@ -1,28 +1,90 @@
 package built_ins
 
-type BuiltInFieldID int
+import "project_umbrella/interpreter/parser/parser_types"
 
-const (
+type BuiltInField struct {
+	Name string
+	Type parser_types.FieldType
+}
+
+var (
 	// Implemented on every type
-	ToStringMethodID BuiltInFieldID = -iota - 1
-	EqualsMethodID
-	NotEqualsMethodID
+	ToStringMethod = &BuiltInField{
+		Name: "__to_str__",
+		Type: parser_types.NormalField,
+	}
+
+	EqualsMethod = &BuiltInField{
+		Name: "==",
+		Type: parser_types.InfixField,
+	}
+
+	NotEqualsMethod = &BuiltInField{
+		Name: "!=",
+		Type: parser_types.InfixField,
+	}
 
 	// Implemented on int and float
-	PlusMethodID // Implemented on str
-	MinusMethodID
-	TimesMethodID
-	OverMethodID
-	ModuloMethodID
-	LessThanMethodID
-	LessThanOrEqualToMethodID
-	GreaterThanMethodID
-	GreaterThanOrEqualToMethodID
+	PlusMethod = &BuiltInField{ // Implemented on str, int, and float
+		Name: "+",
+		Type: parser_types.InfixField,
+	}
+
+	MinusMethod = &BuiltInField{
+		Name: "-",
+		Type: parser_types.InfixPrefixField,
+	}
+
+	TimesMethod = &BuiltInField{
+		Name: "*",
+		Type: parser_types.InfixField,
+	}
+
+	OverMethod = &BuiltInField{
+		Name: "/",
+		Type: parser_types.InfixField,
+	}
+
+	ModuloMethod = &BuiltInField{
+		Name: "%",
+		Type: parser_types.InfixField,
+	}
+
+	LessThanMethod = &BuiltInField{
+		Name: "<",
+		Type: parser_types.InfixField,
+	}
+
+	LessThanOrEqualToMethod = &BuiltInField{
+		Name: "<=",
+		Type: parser_types.InfixField,
+	}
+
+	GreaterThanMethod = &BuiltInField{
+		Name: ">",
+		Type: parser_types.InfixField,
+	}
+
+	GreaterThanOrEqualToMethod = &BuiltInField{
+		Name: ">=",
+		Type: parser_types.InfixField,
+	}
 
 	// Implemented on bool
-	NotMethodID
-	AndMethodID
-	OrMethodID
+	NotMethod = &BuiltInField{
+		Name: "!",
+		Type: parser_types.PrefixField,
+	}
+
+	AndMethod = &BuiltInField{
+		Name: "&&",
+		Type: parser_types.InfixField,
+	}
+
+	OrMethod = &BuiltInField{
+		Name: "||",
+		Type: parser_types.InfixField,
+	}
 )
 
 type BuiltInValueID int
