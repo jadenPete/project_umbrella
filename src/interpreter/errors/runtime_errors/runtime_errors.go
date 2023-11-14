@@ -41,12 +41,6 @@ func IncorrectBuiltInFunctionArgumentType(functionName string, i int) *errors.Er
 	}
 }
 
-var ToStringMethodReturnedNonString = &errors.Error{
-	Section: "RUNTIME",
-	Code:    3,
-	Name:    "A __to_str__ method returned a non-string",
-}
-
 var ValueCycle = &errors.Error{
 	Section: "RUNTIME",
 	Code:    5,
@@ -135,4 +129,16 @@ var NonStringFieldName = &errors.Error{
 	Section: "RUNTIME",
 	Code:    11,
 	Name:    "A constant value identifying a field name is not a string",
+}
+
+func UniversalMethodReturnedIncorrectValue(
+	methodName string,
+	expectedTypeName string,
+) *errors.Error {
+	return &errors.Error{
+		Section:     "RUNTIME",
+		Code:        12,
+		Name:        "A universal method returned a value of an incorrect type",
+		Description: fmt.Sprintf("%s should've returned a %s", methodName, expectedTypeName),
+	}
 }

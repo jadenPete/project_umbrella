@@ -313,34 +313,38 @@ type ConcreteStruct struct {
 func (concrete *ConcreteStruct) Abstract() Expression {
 	abstractBody := concrete.Body.AbstractExpressionList()
 	abstractParameters := AbstractFunctionOrStructParameters(concrete.Parameters.Tail)
-	fields := make([]Expression, 0, len(abstractParameters))
+	argumentFields := make([]Expression, 0, len(abstractParameters))
+	nonArgumentFields := make([]Expression, 0, len(abstractParameters))
 
-	addField := func(identifier *Identifier) {
-		fields = append(
-			fields,
-			AbstractTuple(
-				[]Expression{
-					&String{
-						Value:    identifier.Value,
-						position: nil,
-					},
-
-					identifier,
+	addField := func(identifier *Identifier, isArgument bool) {
+		field := AbstractTuple(
+			[]Expression{
+				&String{
+					Value:    identifier.Value,
+					position: nil,
 				},
 
-				nil,
-			),
+				identifier,
+			},
+
+			nil,
 		)
+
+		if isArgument {
+			argumentFields = append(argumentFields, field)
+		} else {
+			nonArgumentFields = append(nonArgumentFields, field)
+		}
 	}
 
 	for _, parameter := range abstractParameters {
-		addField(parameter)
+		addField(parameter, true)
 	}
 
 	for _, statement := range abstractBody.Children() {
 		if declaration, ok := statement.(Declaration); ok {
 			for _, name := range declaration.Names() {
-				addField(name)
+				addField(name, false)
 			}
 		}
 	}
@@ -356,32 +360,46 @@ func (concrete *ConcreteStruct) Abstract() Expression {
 
 		Body: &ExpressionList{
 			Children_: append(abstractBody.Children(), []Expression{
-				AbstractTuple(fields, nil),
+				AbstractTuple(nonArgumentFields, nil),
 			}...),
 		},
 
 		position: nil,
 	}
 
-	return &Function{
-		Name:       concrete.Name.AbstractIdentifier(),
+	resultName := concrete.Name.AbstractIdentifier()
+	result := &Function{
+		Name:       resultName,
 		Parameters: abstractParameters,
-		Body: &ExpressionList{
-			Children_: []Expression{
-				&Call{
-					Function: &Identifier{
-						Value:    "__struct__",
+		Body:       nil,
+		position:   tokenListSyntaxTreePosition(concrete.Tokens),
+	}
+
+	result.Body = &ExpressionList{
+		Children_: []Expression{
+			&Call{
+				Function: &Identifier{
+					Value:    "__struct__",
+					position: nil,
+				},
+
+				Arguments: []Expression{
+					&String{
+						Value:    concrete.Name.Value,
 						position: nil,
 					},
 
-					Arguments: []Expression{fieldFactory},
-					position:  nil,
+					resultName,
+					fieldFactory,
+					AbstractTuple(argumentFields, nil),
 				},
+
+				position: nil,
 			},
 		},
-
-		position: tokenListSyntaxTreePosition(concrete.Tokens),
 	}
+
+	return result
 }
 
 func (concrete *ConcreteStruct) Tokens_() []lexer.Token {

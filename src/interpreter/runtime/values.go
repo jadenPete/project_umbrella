@@ -229,13 +229,20 @@ var builtInValues = map[built_ins.BuiltInValueID]value{
 	),
 
 	built_ins.StructFunctionID: newBuiltInFunction(
-		newFixedFunctionArgumentValidator("__struct__", reflect.TypeOf(&function{})),
+		newFixedFunctionArgumentValidator(
+			"__struct__",
+			reflect.TypeOf(stringValue{}),
+			reflect.TypeOf(&function{}),
+			reflect.TypeOf(&function{}),
+			reflect.TypeOf(tupleValue{}),
+		),
+
 		struct_,
 		parser_types.NormalFunction,
 	),
 }
 
-func equals(value1 value, value2 value) booleanValue {
+func builtInEquals(runtime_ *runtime, value1 value, value2 value) booleanValue {
 	tuple1, ok1 := value1.(tupleValue)
 	tuple2, ok2 := value2.(tupleValue)
 
@@ -245,7 +252,7 @@ func equals(value1 value, value2 value) booleanValue {
 		}
 
 		for i, element := range tuple1.elements {
-			if !equals(element, tuple2.elements[i]) {
+			if !callEqualsMethod(runtime_, element, tuple2.elements[i]) {
 				return false
 			}
 		}
@@ -254,6 +261,113 @@ func equals(value1 value, value2 value) booleanValue {
 	}
 
 	return value1 == value2
+}
+
+func builtInStructFields(
+	structName string,
+	structConstructor *function,
+	structArgumentNames []string,
+	structArgumentValues []value,
+) map[string]value {
+	equalsMethodEvaluator := func(runtime_ *runtime, arguments ...value) booleanValue {
+		return structEquals(
+			runtime_,
+			structConstructor,
+			structArgumentNames,
+			structArgumentValues,
+			arguments...,
+		)
+	}
+
+	return map[string]value{
+		built_ins.ToStringMethod.Name: newBuiltInFunction(
+			newFixedFunctionArgumentValidator(built_ins.ToStringMethod.Name),
+			func(runtime_ *runtime, arguments ...value) value {
+				argumentsAsStrings := make([]string, 0, len(structArgumentValues))
+
+				for _, argument := range structArgumentValues {
+					argumentsAsStrings =
+						append(argumentsAsStrings, callToStringMethod(runtime_, argument).content)
+				}
+
+				return stringValue{
+					content: fmt.Sprintf(
+						"%s(%s)",
+						structName,
+						strings.Join(argumentsAsStrings, ", "),
+					),
+				}
+			},
+
+			built_ins.ToStringMethod.Type,
+		),
+
+		built_ins.EqualsMethod.Name: newBuiltInFunction(
+			newFixedFunctionArgumentValidator(
+				built_ins.EqualsMethod.Name,
+				reflect.TypeOf(&function{}),
+			),
+
+			func(runtime_ *runtime, arguments ...value) value {
+				return equalsMethodEvaluator(runtime_, arguments...)
+			},
+
+			built_ins.EqualsMethod.Type,
+		),
+
+		built_ins.NotEqualsMethod.Name: newBuiltInFunction(
+			newFixedFunctionArgumentValidator(
+				built_ins.EqualsMethod.Name,
+				reflect.TypeOf(&function{}),
+			),
+
+			func(runtime_ *runtime, arguments ...value) value {
+				return !equalsMethodEvaluator(runtime_, arguments...)
+			},
+
+			built_ins.NotEqualsMethod.Type,
+		),
+
+		built_ins.StructConstructorMethod.Name: structConstructor,
+	}
+}
+
+func callBuiltInMethod[ReturnValue value](
+	runtime_ *runtime,
+	value_ value,
+	methodName string,
+	returnValueTypeName string,
+	arguments ...value,
+) ReturnValue {
+	method, ok := lookupField(runtime_, value_, methodName, parser_types.NormalSelect).(*function)
+
+	if !ok {
+		errors.RaiseError(runtime_errors.NonFunctionCalled)
+	}
+
+	result, ok := method.evaluate(runtime_, arguments...).(ReturnValue)
+
+	if !ok {
+		errors.RaiseError(
+			runtime_errors.UniversalMethodReturnedIncorrectValue(methodName, returnValueTypeName),
+		)
+	}
+
+	return result
+}
+
+func callEqualsMethod(runtime_ *runtime, value1 value, value2 value) booleanValue {
+	return callBuiltInMethod[booleanValue](
+		runtime_,
+		value1,
+		built_ins.EqualsMethod.Name,
+		"boolean",
+		value2,
+	)
+}
+
+func callToStringMethod(runtime_ *runtime, value_ value) stringValue {
+	return callBuiltInMethod[stringValue](runtime_, value_, built_ins.ToStringMethod.Name, "str")
 }
 
 func ifElse(runtime_ *runtime, arguments ...value) value {
@@ -272,7 +386,7 @@ func print(runtime_ *runtime, suffix string, arguments ...value) unitValue {
 	serialized := make([]string, 0, len(arguments))
 
 	for _, argument := range arguments {
-		serialized = append(serialized, toString(runtime_, argument))
+		serialized = append(serialized, callToStringMethod(runtime_, argument).content)
 	}
 
 	fmt.Print(strings.Join(serialized, " ") + suffix)
@@ -281,14 +395,36 @@ func print(runtime_ *runtime, suffix string, arguments ...value) unitValue {
 }
 
 func struct_(runtime_ *runtime, arguments ...value) value {
-	fieldFactory := arguments[0].(*function)
-	fields := make(map[stringValue]value, len(arguments))
+	allFields := map[stringValue]value{}
+	argumentFields := arguments[3].(tupleValue)
+
+	raiseIncorrectArgumentTypeError := func(i int) {
+		errors.RaiseError(runtime_errors.IncorrectBuiltInFunctionArgumentType("__struct__", i))
+	}
+
+	populateFields := func(fieldEntries tupleValue, i int) {
+		for _, element := range fieldEntries.elements {
+			entry, ok := element.(tupleValue)
+
+			if !ok || len(entry.elements) != 2 {
+				raiseIncorrectArgumentTypeError(i)
+			}
+
+			name, ok := entry.elements[0].(stringValue)
+
+			if !ok {
+				raiseIncorrectArgumentTypeError(i)
+			}
+
+			allFields[name] = entry.elements[1]
+		}
+	}
 
 	result := newBuiltInFunction(
 		newFixedFunctionArgumentValidator(builtInFunctionName, reflect.TypeOf(stringValue{})),
 		func(_ *runtime, resultArguments ...value) value {
 			fieldName := resultArguments[0].(stringValue)
-			fieldValue, ok := fields[fieldName]
+			fieldValue, ok := allFields[fieldName]
 
 			if !ok {
 				errors.RaiseError(runtime_errors.UnknownField(fieldName.content))
@@ -304,45 +440,77 @@ func struct_(runtime_ *runtime, arguments ...value) value {
 		},
 	)
 
-	raiseError := func() {
-		errors.RaiseError(runtime_errors.IncorrectBuiltInFunctionArgumentType("__struct__", 0))
-	}
-
+	fieldFactory := arguments[2].(*function)
 	fieldEntries, ok := fieldFactory.evaluate(runtime_, result).(tupleValue)
 
 	if !ok {
-		raiseError()
+		raiseIncorrectArgumentTypeError(2)
 	}
 
-	for _, element := range fieldEntries.elements {
-		entry, ok := element.(tupleValue)
+	populateFields(fieldEntries, 2)
+	populateFields(argumentFields, 3)
 
-		if !ok || len(entry.elements) != 2 {
-			raiseError()
+	structName := arguments[0].(stringValue).content
+	structConstructor := arguments[1].(*function)
+	argumentFieldNames := make([]string, 0, len(argumentFields.elements))
+	argumentFieldValues := make([]value, 0, len(argumentFields.elements))
+
+	for _, element := range argumentFields.elements {
+		entry := element.(tupleValue)
+
+		argumentFieldNames = append(argumentFieldNames, entry.elements[0].(stringValue).content)
+		argumentFieldValues = append(argumentFieldValues, entry.elements[1])
+	}
+
+	for fieldName, fieldValue := range builtInStructFields(
+		structName,
+		structConstructor,
+		argumentFieldNames,
+		argumentFieldValues,
+	) {
+		key := stringValue{
+			content: fieldName,
 		}
 
-		name, ok := entry.elements[0].(stringValue)
-
-		if !ok {
-			raiseError()
-		}
-
-		fields[name] = entry.elements[1]
+		allFields[key] = fieldValue
 	}
 
 	return result
 }
 
-func toString(runtime_ *runtime, value_ value) string {
-	resultingValue, ok := value_.
-		definition().fields[built_ins.ToStringMethod.Name].(*function).
-		evaluate(runtime_).(stringValue)
+func structEquals(
+	runtime_ *runtime,
+	leftConstructor *function,
+	leftArgumentNames []string,
+	leftArgumentValues []value,
+	arguments ...value,
+) booleanValue {
+	rightHandSide := arguments[0].(*function)
 
-	if !ok {
-		errors.RaiseError(runtime_errors.ToStringMethodReturnedNonString)
+	if !rightHandSide.type_.IsStructInstance {
+		return false
 	}
 
-	return resultingValue.content
+	rightConstructor := rightHandSide.evaluate(runtime_, stringValue{
+		content: built_ins.StructConstructorMethod.Name,
+	})
+
+	if leftConstructor != rightConstructor {
+		return false
+	}
+
+	for i := 0; i < len(leftArgumentNames); i++ {
+		leftArgument := leftArgumentValues[i]
+		rightArgument := rightHandSide.evaluate(runtime_, stringValue{
+			leftArgumentNames[i],
+		})
+
+		if !callEqualsMethod(runtime_, leftArgument, rightArgument) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func tuple(runtime_ *runtime, arguments ...value) value {
@@ -472,6 +640,47 @@ type bytecodeFunctionEvaluator struct {
 	blockGraph      *bytecodeFunctionBlockGraph
 }
 
+func lookupField(
+	runtime_ *runtime,
+	value_ value,
+	fieldName string,
+	selectType parser_types.SelectType,
+) value {
+	var universalMethodConstructors = map[string]func(value) *function{
+		built_ins.EqualsMethod.Name:    newEqualsMethod,
+		built_ins.NotEqualsMethod.Name: newNotEqualsMethod,
+	}
+
+	var result value
+
+	if function_, ok := value_.(*function); ok && function_.type_.IsStructInstance {
+		result = function_.evaluate(runtime_, stringValue{
+			content: fieldName,
+		})
+	} else if field, ok := value_.definition().fields[fieldName]; ok {
+		result = field
+	} else if methodConstructor, ok := universalMethodConstructors[fieldName]; ok {
+		result = methodConstructor(value_)
+	} else {
+		errors.RaiseError(runtime_errors.UnknownField(fieldName))
+	}
+
+	if function_, ok := result.(*function); ok {
+		if !function_.type_.CanSelectBy(selectType) {
+			errors.RaiseError(
+				runtime_errors.MethodCalledImproperly(
+					callToStringMethod(runtime_, value_).content,
+					fieldName,
+					function_.type_,
+					selectType,
+				),
+			)
+		}
+	}
+
+	return result
+}
+
 // TODO: Make this concurrent
 func (evaluator *bytecodeFunctionEvaluator) evaluator(runtime_ *runtime, arguments ...value) value {
 	firstValueID := 0
@@ -529,7 +738,7 @@ func (evaluator *bytecodeFunctionEvaluator) evaluator(runtime_ *runtime, argumen
 						runtime_.constants[element.instruction.Arguments[0]]
 
 				case bytecode_generator.ValueFromStructValueInstruction:
-					structValue := scope.getValue(element.instruction.Arguments[0])
+					value_ := scope.getValue(element.instruction.Arguments[0])
 					fieldNameConstant := runtime_.constants[element.instruction.Arguments[1]]
 					fieldNameValue, ok := fieldNameConstant.(stringValue)
 
@@ -538,36 +747,10 @@ func (evaluator *bytecodeFunctionEvaluator) evaluator(runtime_ *runtime, argumen
 					}
 
 					fieldName := fieldNameValue.content
+					selectType := parser_types.SelectType(element.instruction.Arguments[2])
 
-					var result value
-
-					if function_, ok := structValue.(*function); ok &&
-						function_.type_.IsStructInstance {
-						result = function_.evaluate(runtime_, fieldNameValue)
-					} else if field, ok := structValue.definition().fields[fieldName]; ok {
-						result = field
-					} else if methodConstructor, ok := universalMethodConstructors[fieldName]; ok {
-						result = methodConstructor(structValue)
-					} else {
-						errors.RaiseError(runtime_errors.UnknownField(fieldName))
-					}
-
-					scope.values[element.instructionValueID] = result
-
-					if function_, ok := result.(*function); ok {
-						selectType := parser_types.SelectType(element.instruction.Arguments[2])
-
-						if !function_.type_.CanSelectBy(selectType) {
-							errors.RaiseError(
-								runtime_errors.MethodCalledImproperly(
-									toString(runtime_, structValue),
-									fieldName,
-									function_.type_,
-									selectType,
-								),
-							)
-						}
-					}
+					scope.values[element.instructionValueID] =
+						lookupField(runtime_, value_, fieldName, selectType)
 				}
 			}
 		}
@@ -663,7 +846,7 @@ func newEqualsMethod(value_ value) *function {
 	return newBuiltInFunction(
 		newFixedFunctionArgumentValidator(built_ins.EqualsMethod.Name, nil),
 		func(runtime_ *runtime, arguments ...value) value {
-			return equals(value_, arguments[0])
+			return builtInEquals(runtime_, value_, arguments[0])
 		},
 
 		built_ins.EqualsMethod.Type,
@@ -674,7 +857,7 @@ func newNotEqualsMethod(value_ value) *function {
 	return newBuiltInFunction(
 		newFixedFunctionArgumentValidator(built_ins.NotEqualsMethod.Name, nil),
 		func(runtime_ *runtime, arguments ...value) value {
-			return !equals(value_, arguments[0])
+			return !builtInEquals(runtime_, value_, arguments[0])
 		},
 
 		built_ins.NotEqualsMethod.Type,
@@ -724,11 +907,6 @@ func newToStringMethod(result func(*runtime) string) *function {
 
 		built_ins.ToStringMethod.Type,
 	)
-}
-
-var universalMethodConstructors = map[string]func(value) *function{
-	built_ins.EqualsMethod.Name:    newEqualsMethod,
-	built_ins.NotEqualsMethod.Name: newNotEqualsMethod,
 }
 
 type floatValue float64
@@ -804,14 +982,19 @@ func (value_ tupleValue) definition() *valueDefinition {
 						insideParentheses = ","
 
 					case 1:
-						insideParentheses =
-							fmt.Sprintf("%s,", toString(runtime_, value_.elements[0]))
+						insideParentheses = fmt.Sprintf(
+							"%s,",
+							callToStringMethod(runtime_, value_.elements[0]).content,
+						)
 
 					default:
 						elementsAsStrings := make([]string, 0, len(value_.elements))
 
 						for _, element := range value_.elements {
-							elementsAsStrings = append(elementsAsStrings, toString(runtime_, element))
+							elementsAsStrings = append(
+								elementsAsStrings,
+								callToStringMethod(runtime_, element).content,
+							)
 						}
 
 						insideParentheses = strings.Join(elementsAsStrings, ", ")

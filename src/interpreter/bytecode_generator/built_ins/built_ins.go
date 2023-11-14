@@ -85,6 +85,12 @@ var (
 		Name: "||",
 		Type: parser_types.InfixFunction,
 	}
+
+	// Implemented on structs
+	StructConstructorMethod = &BuiltInField{
+		Name: "__constructor__",
+		Type: parser_types.NormalFunction,
+	}
 )
 
 type BuiltInValueID int

@@ -32,6 +32,16 @@ const (
 	StructKeywordToken
 )
 
+/*
+ * NOTE: When modifying the lexer ruleset, use the start-of-line and end-of-line symbols
+ * ("^" and "$", respectively) sparingly, since they force the lexer to only match the pattern on
+ * entire unrecognized matches.
+ *
+ * Put simply, this means that the pattern will only be matched on an entire region sandwiched
+ * between already matched tokens. If it wasn't matched on that region, the lexer will traverse down
+ * the ruleset until a match has been found, causing it to shift back to the top of the ruleset and
+ * reevaluate the pattern.
+ */
 var matcher = ExhaustiveMatcher{
 	[]*ExhaustiveMatchPattern{
 		/*
@@ -65,7 +75,7 @@ var matcher = ExhaustiveMatcher{
 
 		{
 			MatcherCode(FloatToken),
-			CompileMatcher(`(?:\+|-)?(?:\d+\.\d*|\.\d+)`),
+			CompileMatcher(`^(?:\+|-)?(?:\d+\.\d*|\.\d+)$`),
 		},
 
 		{
@@ -94,11 +104,6 @@ var matcher = ExhaustiveMatcher{
 		},
 
 		{
-			MatcherCode(SelectOperatorToken),
-			CompileMatcher(`\.`),
-		},
-
-		{
 			MatcherCode(SpaceToken),
 			CompileMatcher(`[\t ]+`),
 		},
@@ -109,8 +114,8 @@ var matcher = ExhaustiveMatcher{
 		},
 
 		/*
-		 * Operators and identifiers are parsed last because they shouldn't contain anything that
-		 * would be _identified_ (get it?) as another token.
+		 * Operators and identifiers are parsed towards the end because they shouldn't contain
+		 * anything that'd be _identified_ (get it?) as another token.
 		 *
 		 * Operators can contain any special (non-control, non-alphanumeric) ASCII character with
 		 * the following exceptions.
@@ -140,7 +145,17 @@ var matcher = ExhaustiveMatcher{
 
 		{
 			MatcherCode(IdentifierToken),
-			CompileMatcher(`[^\t\n !"%&()*+,\-.<=>]+`),
+			CompileMatcher(`[^\t\n !"%&()*+,\-.\d<=>][^\t\n !"%&()*+,\-.<=>]*`),
+		},
+
+		/*
+		 * Because float tokens are parsed using the start-of-line and end-of-line symbols,
+		 * we'd like to give the lexer every opportunity to parse tokens beside floats before the
+		 * select operator is parsed (which would prevent float tokens from being parsed).
+		 */
+		{
+			MatcherCode(SelectOperatorToken),
+			CompileMatcher(`\.`),
 		},
 	},
 }
