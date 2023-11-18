@@ -10,7 +10,7 @@ import (
 	"project_umbrella/interpreter/errors/entry_errors"
 	"project_umbrella/interpreter/errors/parser_errors"
 	"project_umbrella/interpreter/parser"
-	"project_umbrella/interpreter/runtime"
+	"project_umbrella/interpreter/runtime/runtime_executor"
 )
 
 func executeSource(source string) {
@@ -51,7 +51,7 @@ func executeSource(source string) {
 
 	abstractTree := concreteTree.AbstractExpressionList()
 
-	runtime.ExecuteBytecode(bytecode_generator.ExpressionToBytecodeFromCache(abstractTree, source))
+	runtime_executor.ExecuteBytecode(bytecode_generator.ExpressionToBytecodeFromCache(abstractTree, source))
 }
 
 func main() {
