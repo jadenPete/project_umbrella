@@ -1,44 +1,49 @@
 package parser_types
 
-type FieldType struct {
-	IsInfix  bool
-	IsPrefix bool
+type FunctionType struct {
+	IsInfix          bool
+	IsPrefix         bool
+	IsStructInstance bool
 }
 
-func (fieldType FieldType) CanSelectBy(selectType SelectType) bool {
+func (functionType FunctionType) CanSelectBy(selectType SelectType) bool {
 	switch selectType {
 	case NormalSelect:
 		return true
 
 	case InfixSelect:
-		return fieldType.IsInfix
+		return functionType.IsInfix
 
 	case PrefixSelect:
-		return fieldType.IsPrefix
+		return functionType.IsPrefix
 
 	}
 
 	return false
 }
 
-var NormalField = FieldType{
-	IsInfix:  false,
-	IsPrefix: false,
+var NormalFunction = &FunctionType{
+	IsInfix:          false,
+	IsPrefix:         false,
+	IsStructInstance: false,
 }
 
-var InfixField = FieldType{
-	IsInfix:  true,
-	IsPrefix: false,
+var InfixFunction = &FunctionType{
+	IsInfix:          true,
+	IsPrefix:         false,
+	IsStructInstance: false,
 }
 
-var InfixPrefixField = FieldType{
-	IsInfix:  true,
-	IsPrefix: true,
+var InfixPrefixFunction = &FunctionType{
+	IsInfix:          true,
+	IsPrefix:         true,
+	IsStructInstance: false,
 }
 
-var PrefixField = FieldType{
-	IsInfix:  false,
-	IsPrefix: true,
+var PrefixFunction = &FunctionType{
+	IsInfix:          false,
+	IsPrefix:         true,
+	IsStructInstance: false,
 }
 
 type SelectType int

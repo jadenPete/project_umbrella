@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"project_umbrella/interpreter/errors"
+	"project_umbrella/interpreter/parser/parser_types"
 )
 
 func IncorrectCallArgumentCount(arity string, arityPlural bool, argumentCount int) *errors.Error {
@@ -36,25 +37,6 @@ func IncorrectBuiltInFunctionArgumentType(functionName string, i int) *errors.Er
 			"%s expected argument #%d to be of a different type.",
 			functionName,
 			i+1,
-		),
-	}
-}
-
-var ToStringMethodReturnedNonString = &errors.Error{
-	Section: "RUNTIME",
-	Code:    3,
-	Name:    "A __to_str__ method returned a non-string",
-}
-
-func UnrecognizedFieldID(value string, fieldID int) *errors.Error {
-	return &errors.Error{
-		Section: "RUNTIME",
-		Code:    4,
-		Name:    "Unrecognized field ID",
-		Description: fmt.Sprintf(
-			"%d is not a recognized field ID for the value `%s`.",
-			fieldID,
-			value,
 		),
 	}
 }
@@ -95,5 +77,68 @@ func UnknownField(fieldName string) *errors.Error {
 		Section: "RUNTIME",
 		Code:    9,
 		Name:    fmt.Sprintf("Unknown field: `%s`", fieldName),
+	}
+}
+
+func MethodCalledImproperly(
+	firstOperand string,
+	fieldName string,
+	functionType *parser_types.FunctionType,
+	selectType parser_types.SelectType,
+) *errors.Error {
+	var selectTypeName string
+
+	switch selectType {
+	case parser_types.InfixSelect:
+		selectTypeName = "infix"
+
+	case parser_types.PrefixSelect:
+		selectTypeName = "prefix"
+
+	default:
+		panic("Expected `selectType` to be either `InfixField` or `PrefixField`.")
+	}
+
+	var expectedSyntax string
+
+	if functionType.IsInfix {
+		expectedSyntax = fmt.Sprintf("%s %s ...", firstOperand, fieldName)
+	} else if functionType.IsPrefix {
+		expectedSyntax = fmt.Sprintf("%s%s", fieldName, firstOperand)
+	} else {
+		expectedSyntax = fmt.Sprintf("%s.%s(...)", firstOperand, fieldName)
+	}
+
+	return &errors.Error{
+		Section: "RUNTIME",
+		Code:    10,
+		Name: fmt.Sprintf(
+			"`%s` is not an %s method and cannot be called so",
+			fieldName,
+			selectTypeName,
+		),
+
+		Description: fmt.Sprintf(
+			"Consider replacing that call with `%s`, substituting in the right-hand operand.",
+			expectedSyntax,
+		),
+	}
+}
+
+var NonStringFieldName = &errors.Error{
+	Section: "RUNTIME",
+	Code:    11,
+	Name:    "A constant value identifying a field name is not a string",
+}
+
+func UniversalMethodReturnedIncorrectValue(
+	methodName string,
+	expectedTypeName string,
+) *errors.Error {
+	return &errors.Error{
+		Section:     "RUNTIME",
+		Code:        12,
+		Name:        "A universal method returned a value of an incorrect type",
+		Description: fmt.Sprintf("%s should've returned a %s", methodName, expectedTypeName),
 	}
 }

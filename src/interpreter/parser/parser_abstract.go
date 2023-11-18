@@ -10,15 +10,19 @@ type Expression interface {
 	Position() *errors.Position
 }
 
+type Declaration interface {
+	Names() []*Identifier
+}
+
 type Assignment struct {
-	Names []*Identifier
-	Value Expression
+	Names_ []*Identifier
+	Value  Expression
 }
 
 func (assignment *Assignment) Children() []Expression {
-	result := make([]Expression, 0, len(assignment.Names)+1)
+	result := make([]Expression, 0, len(assignment.Names_)+1)
 
-	for _, name := range assignment.Names {
+	for _, name := range assignment.Names_ {
 		result = append(result, name)
 	}
 
@@ -27,9 +31,13 @@ func (assignment *Assignment) Children() []Expression {
 	return result
 }
 
+func (assignment *Assignment) Names() []*Identifier {
+	return assignment.Names_
+}
+
 func (assignment *Assignment) Position() *errors.Position {
 	return &errors.Position{
-		Start: assignment.Names[0].Position().Start,
+		Start: assignment.Names_[0].Position().Start,
 		End:   assignment.Value.Position().End,
 	}
 }
@@ -103,6 +111,16 @@ func (function *Function) Children() []Expression {
 	return result
 }
 
+func (function *Function) Names() []*Identifier {
+	if function.Name == nil {
+		return []*Identifier{}
+	}
+
+	return []*Identifier{
+		function.Name,
+	}
+}
+
 func (function *Function) Position() *errors.Position {
 	return function.position
 }
@@ -161,4 +179,16 @@ func (*String) Children() []Expression {
 
 func (string_ *String) Position() *errors.Position {
 	return string_.position
+}
+
+func AbstractTuple(elements []Expression, position *errors.Position) *Call {
+	return &Call{
+		Function: &Identifier{
+			Value:    "__tuple__",
+			position: nil,
+		},
+
+		Arguments: elements,
+		position:  position,
+	}
 }
