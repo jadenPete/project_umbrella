@@ -10,7 +10,7 @@ go_library(
         "//src/interpreter/errors/entry_errors",
         "//src/interpreter/errors/parser_errors",
         "//src/interpreter/parser",
-        "//src/interpreter/runtime",
+        "//src/interpreter/runtime/runtime_executor",
         "@com_github_alecthomas_participle_v2//:go_default_library",
     ],
 )

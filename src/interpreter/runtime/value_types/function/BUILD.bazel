@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "function",
+    srcs = glob(["*.go"]),
+    importpath = "project_umbrella/interpreter/runtime/value_types/function",
+    visibility = ["//src/interpreter/runtime:__subpackages__"],
+	deps = [
+		"//src/interpreter/errors",
+		"//src/interpreter/errors/runtime_errors",
+		"//src/interpreter/parser/parser_types",
+		"//src/interpreter/runtime",
+		"//src/interpreter/runtime/value",
+	],
+)

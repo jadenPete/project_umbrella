@@ -7,9 +7,11 @@ go_library(
     visibility = [
         "//src/interpreter:__pkg__",
         "//src/interpreter/runtime:__pkg__",
+        "//src/interpreter/runtime/runtime_executor:__pkg__",
+        "//src/interpreter/runtime/value_types/bytecode_function:__pkg__",
     ],
     deps = [
-        "//src/interpreter/bytecode_generator/built_ins",
+        "//src/interpreter/bytecode_generator/built_in_declarations",
         "//src/interpreter/common",
         "//src/interpreter/errors",
         "//src/interpreter/errors/parser_errors",
