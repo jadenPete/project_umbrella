@@ -268,9 +268,7 @@ func newValueFromConstant(constant bytecode_generator.Constant) value.Value {
 		return value_types.IntegerValue(value)
 
 	case bytecode_generator.StringConstant:
-		return value_types.StringValue{
-			Content: constant.Encoded,
-		}
+		return value_types.StringValue(constant.Encoded)
 	}
 
 	return nil

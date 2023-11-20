@@ -74,9 +74,7 @@ func LookupField(
 	var result value.Value
 
 	if function_, ok := value_.(*function.Function); ok && function_.Type_.IsStructInstance {
-		result = function_.Evaluate(runtime, value_types.StringValue{
-			Content: fieldName,
-		})
+		result = function_.Evaluate(runtime, value_types.StringValue(fieldName))
 	} else if field, ok := value_.Definition().Fields[fieldName]; ok {
 		result = field
 	} else if methodConstructor, ok := universalMethodConstructors[fieldName]; ok {
@@ -89,7 +87,7 @@ func LookupField(
 		if !function_.Type_.CanSelectBy(selectType) {
 			errors.RaiseError(
 				runtime_errors.MethodCalledImproperly(
-					CallToStringMethod(runtime, value_).Content,
+					string(CallToStringMethod(runtime, value_)),
 					fieldName,
 					function_.Type_,
 					selectType,

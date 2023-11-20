@@ -90,11 +90,10 @@ func (evaluator *BytecodeFunctionEvaluator) Evaluator(
 						errors.RaiseError(runtime_errors.NonStringFieldName)
 					}
 
-					fieldName := fieldNameValue.Content
 					selectType := parser_types.SelectType(element.Instruction.Arguments[2])
 
 					scope.values[element.InstructionValueID] =
-						value_util.LookupField(runtime_, value_, fieldName, selectType)
+						value_util.LookupField(runtime_, value_, string(fieldNameValue), selectType)
 				}
 			}
 		}

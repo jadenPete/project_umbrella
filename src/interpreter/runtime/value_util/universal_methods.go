@@ -52,7 +52,7 @@ func functionToString(value_ *function.Function) string {
 }
 
 func stringToString(value_ value_types.StringValue) string {
-	return value_.Content
+	return string(value_)
 }
 
 func tupleToString(runtime_ *runtime.Runtime, value_ value_types.TupleValue) string {
@@ -63,19 +63,14 @@ func tupleToString(runtime_ *runtime.Runtime, value_ value_types.TupleValue) str
 		insideParentheses = ","
 
 	case 1:
-		insideParentheses = fmt.Sprintf(
-			"%s,",
-			CallToStringMethod(runtime_, value_.Elements[0]).Content,
-		)
+		insideParentheses = fmt.Sprintf("%s,", CallToStringMethod(runtime_, value_.Elements[0]))
 
 	default:
 		elementsAsStrings := make([]string, 0, len(value_.Elements))
 
 		for _, element := range value_.Elements {
-			elementsAsStrings = append(
-				elementsAsStrings,
-				CallToStringMethod(runtime_, element).Content,
-			)
+			elementsAsStrings =
+				append(elementsAsStrings, string(CallToStringMethod(runtime_, element)))
 		}
 
 		insideParentheses = strings.Join(elementsAsStrings, ", ")

@@ -59,7 +59,7 @@ var BuiltInValues = map[built_in_declarations.BuiltInValueID]value.Value{
 	built_in_declarations.StructFunctionID: function.NewBuiltInFunction(
 		function.NewFixedFunctionArgumentValidator(
 			"__struct__",
-			reflect.TypeOf(value_types.StringValue{}),
+			reflect.TypeOf(*new(value_types.StringValue)),
 			reflect.TypeOf(&function.Function{}),
 			reflect.TypeOf(&function.Function{}),
 			reflect.TypeOf(value_types.TupleValue{}),
@@ -96,17 +96,17 @@ func builtInStructFields(
 				for _, argument := range structArgumentValues {
 					argumentsAsStrings = append(
 						argumentsAsStrings,
-						value_util.CallToStringMethod(runtime_, argument).Content,
+						string(value_util.CallToStringMethod(runtime_, argument)),
 					)
 				}
 
-				return value_types.StringValue{
-					Content: fmt.Sprintf(
+				return value_types.StringValue(
+					fmt.Sprintf(
 						"%s(%s)",
 						structName,
 						strings.Join(argumentsAsStrings, ", "),
 					),
-				}
+				)
 			},
 
 			built_in_declarations.ToStringMethod.Type,
@@ -158,7 +158,7 @@ func print(runtime_ *runtime.Runtime, suffix string, arguments ...value.Value) v
 	serialized := make([]string, 0, len(arguments))
 
 	for _, argument := range arguments {
-		serialized = append(serialized, value_util.CallToStringMethod(runtime_, argument).Content)
+		serialized = append(serialized, string(value_util.CallToStringMethod(runtime_, argument)))
 	}
 
 	fmt.Print(strings.Join(serialized, " ") + suffix)
@@ -195,7 +195,7 @@ func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 	result := function.NewBuiltInFunction(
 		function.NewFixedFunctionArgumentValidator(
 			function.BuiltInFunctionName,
-			reflect.TypeOf(value_types.StringValue{}),
+			reflect.TypeOf(*new(value_types.StringValue)),
 		),
 
 		func(_ *runtime.Runtime, resultArguments ...value.Value) value.Value {
@@ -203,7 +203,7 @@ func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 			fieldValue, ok := allFields[fieldName]
 
 			if !ok {
-				errors.RaiseError(runtime_errors.UnknownField(fieldName.Content))
+				errors.RaiseError(runtime_errors.UnknownField(string(fieldName)))
 			}
 
 			return fieldValue
@@ -226,7 +226,7 @@ func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 	populateFields(fieldEntries, 2)
 	populateFields(argumentFields, 3)
 
-	structName := arguments[0].(value_types.StringValue).Content
+	structName := string(arguments[0].(value_types.StringValue))
 	structConstructor := arguments[1].(*function.Function)
 	argumentFieldNames := make([]string, 0, len(argumentFields.Elements))
 	argumentFieldValues := make([]value.Value, 0, len(argumentFields.Elements))
@@ -235,7 +235,7 @@ func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 		entry := element.(value_types.TupleValue)
 
 		argumentFieldNames =
-			append(argumentFieldNames, entry.Elements[0].(value_types.StringValue).Content)
+			append(argumentFieldNames, string(entry.Elements[0].(value_types.StringValue)))
 
 		argumentFieldValues = append(argumentFieldValues, entry.Elements[1])
 	}
@@ -246,11 +246,7 @@ func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 		argumentFieldNames,
 		argumentFieldValues,
 	) {
-		key := value_types.StringValue{
-			Content: fieldName,
-		}
-
-		allFields[key] = fieldValue
+		allFields[value_types.StringValue(fieldName)] = fieldValue
 	}
 
 	return result
@@ -269,9 +265,10 @@ func structEquals(
 		return false
 	}
 
-	rightConstructor := rightHandSide.Evaluate(runtime_, value_types.StringValue{
-		Content: built_in_declarations.StructConstructorMethod.Name,
-	})
+	rightConstructor := rightHandSide.Evaluate(
+		runtime_,
+		value_types.StringValue(built_in_declarations.StructConstructorMethod.Name),
+	)
 
 	if leftConstructor != rightConstructor {
 		return false
@@ -279,9 +276,8 @@ func structEquals(
 
 	for i := 0; i < len(leftArgumentNames); i++ {
 		leftArgument := leftArgumentValues[i]
-		rightArgument := rightHandSide.Evaluate(runtime_, value_types.StringValue{
-			Content: leftArgumentNames[i],
-		})
+		rightArgument :=
+			rightHandSide.Evaluate(runtime_, value_types.StringValue(leftArgumentNames[i]))
 
 		if !value_util.CallEqualsMethod(runtime_, leftArgument, rightArgument) {
 			return false

@@ -59,9 +59,7 @@ func newToStringMethod(value_ value.Value) *function.Function {
 				result = unitToString(value_)
 			}
 
-			return value_types.StringValue{
-				Content: result,
-			}
+			return value_types.StringValue(result)
 		},
 
 		built_in_declarations.ToStringMethod.Type,
