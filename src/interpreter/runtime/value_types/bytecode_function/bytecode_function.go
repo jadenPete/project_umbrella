@@ -4,7 +4,7 @@ import (
 	"reflect"
 
 	"project_umbrella/interpreter/bytecode_generator"
-	"project_umbrella/interpreter/bytecode_generator/built_ins"
+	"project_umbrella/interpreter/bytecode_generator/built_in_declarations"
 	"project_umbrella/interpreter/common"
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/runtime_errors"
@@ -127,7 +127,7 @@ type scope struct {
 
 func (scope_ *scope) getValue(valueID int) value.Value {
 	if builtInValue, ok :=
-		built_in_definitions.BuiltInValues[built_ins.BuiltInValueID(valueID)]; ok {
+		built_in_definitions.BuiltInValues[built_in_declarations.BuiltInValueID(valueID)]; ok {
 		return builtInValue
 	}
 

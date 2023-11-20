@@ -1,4 +1,4 @@
-package built_ins
+package built_in_declarations
 
 import "project_umbrella/interpreter/parser/parser_types"
 

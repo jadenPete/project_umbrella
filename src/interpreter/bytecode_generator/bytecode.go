@@ -134,7 +134,7 @@ import (
 
 	"github.com/ugorji/go/codec"
 
-	"project_umbrella/interpreter/bytecode_generator/built_ins"
+	"project_umbrella/interpreter/bytecode_generator/built_in_declarations"
 	"project_umbrella/interpreter/common"
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/parser_errors"
@@ -143,15 +143,15 @@ import (
 
 const checksumSize = 32
 
-var builtInValues = map[string]built_ins.BuiltInValueID{
-	"print":       built_ins.PrintFunctionID,
-	"println":     built_ins.PrintlnFunctionID,
-	"unit":        built_ins.UnitValueID,
-	"false":       built_ins.FalseValueID,
-	"true":        built_ins.TrueValueID,
-	"__if_else__": built_ins.IfElseFunctionID,
-	"__tuple__":   built_ins.TupleFunctionID,
-	"__struct__":  built_ins.StructFunctionID,
+var builtInValues = map[string]built_in_declarations.BuiltInValueID{
+	"print":       built_in_declarations.PrintFunctionID,
+	"println":     built_in_declarations.PrintlnFunctionID,
+	"unit":        built_in_declarations.UnitValueID,
+	"false":       built_in_declarations.FalseValueID,
+	"true":        built_in_declarations.TrueValueID,
+	"__if_else__": built_in_declarations.IfElseFunctionID,
+	"__tuple__":   built_in_declarations.TupleFunctionID,
+	"__struct__":  built_in_declarations.StructFunctionID,
 }
 
 func sourceChecksum(fileContent string) [checksumSize]byte {

@@ -7,7 +7,7 @@ go_library(
     visibility = ["//src/interpreter/runtime:__subpackages__"],
 	deps = [
 		"//src/interpreter/bytecode_generator",
-		"//src/interpreter/bytecode_generator/built_ins",
+		"//src/interpreter/bytecode_generator/built_in_declarations",
 		"//src/interpreter/common",
 		"//src/interpreter/errors",
 		"//src/interpreter/errors/runtime_errors",

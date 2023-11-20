@@ -1,7 +1,7 @@
 package value_util
 
 import (
-	"project_umbrella/interpreter/bytecode_generator/built_ins"
+	"project_umbrella/interpreter/bytecode_generator/built_in_declarations"
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/runtime_errors"
 	"project_umbrella/interpreter/parser/parser_types"
@@ -44,7 +44,7 @@ func CallEqualsMethod(
 	return callUniversalMethod[value_types.BooleanValue](
 		runtime_,
 		value1,
-		built_ins.EqualsMethod.Name,
+		built_in_declarations.EqualsMethod.Name,
 		"boolean",
 		value2,
 	)
@@ -54,7 +54,7 @@ func CallToStringMethod(runtime_ *runtime.Runtime, value_ value.Value) value_typ
 	return callUniversalMethod[value_types.StringValue](
 		runtime_,
 		value_,
-		built_ins.ToStringMethod.Name,
+		built_in_declarations.ToStringMethod.Name,
 		"str",
 	)
 }
@@ -66,9 +66,9 @@ func LookupField(
 	selectType parser_types.SelectType,
 ) value.Value {
 	var universalMethodConstructors = map[string]func(value.Value) *function.Function{
-		built_ins.ToStringMethod.Name:  newToStringMethod,
-		built_ins.EqualsMethod.Name:    newEqualsMethod,
-		built_ins.NotEqualsMethod.Name: newNotEqualsMethod,
+		built_in_declarations.ToStringMethod.Name:  newToStringMethod,
+		built_in_declarations.EqualsMethod.Name:    newEqualsMethod,
+		built_in_declarations.NotEqualsMethod.Name: newNotEqualsMethod,
 	}
 
 	var result value.Value

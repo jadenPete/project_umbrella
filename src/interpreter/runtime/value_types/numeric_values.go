@@ -4,7 +4,7 @@ import (
 	"math"
 	"reflect"
 
-	"project_umbrella/interpreter/bytecode_generator/built_ins"
+	"project_umbrella/interpreter/bytecode_generator/built_in_declarations"
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/runtime_errors"
 	"project_umbrella/interpreter/runtime"
@@ -30,7 +30,7 @@ func newMinusMethod[Value IntegerValue | FloatValue](value_ Value) *function.Fun
 			func(argumentTypes []reflect.Type) *errors.Error {
 				if len(argumentTypes) == 1 {
 					return runtime_errors.IncorrectBuiltInFunctionArgumentType(
-						built_ins.MinusMethod.Name,
+						built_in_declarations.MinusMethod.Name,
 						0,
 					)
 				}
@@ -42,8 +42,8 @@ func newMinusMethod[Value IntegerValue | FloatValue](value_ Value) *function.Fun
 				)
 			},
 
-			function.NewFixedFunctionArgumentValidator(built_ins.MinusMethod.Name),
-			function.NewFixedFunctionArgumentValidator(built_ins.MinusMethod.Name, reflect.TypeOf(value_)),
+			function.NewFixedFunctionArgumentValidator(built_in_declarations.MinusMethod.Name),
+			function.NewFixedFunctionArgumentValidator(built_in_declarations.MinusMethod.Name, reflect.TypeOf(value_)),
 		),
 
 		func(_ *runtime.Runtime, arguments ...value.Value) value.Value {
@@ -54,7 +54,7 @@ func newMinusMethod[Value IntegerValue | FloatValue](value_ Value) *function.Fun
 			return value.Value(value_ - arguments[0].(Value))
 		},
 
-		built_ins.MinusMethod.Type,
+		built_in_declarations.MinusMethod.Type,
 	)
 }
 
@@ -66,50 +66,50 @@ func newNumberDefinition[Value IntegerValue | FloatValue](
 
 	return &value.ValueDefinition{
 		Fields: map[string]value.Value{
-			built_ins.PlusMethod.Name: function.NewBuiltInFunction(
-				function.NewFixedFunctionArgumentValidator(built_ins.PlusMethod.Name, valueType),
+			built_in_declarations.PlusMethod.Name: function.NewBuiltInFunction(
+				function.NewFixedFunctionArgumentValidator(built_in_declarations.PlusMethod.Name, valueType),
 				func(_ *runtime.Runtime, arguments ...value.Value) value.Value {
 					return value.Value(value_ + arguments[0].(Value))
 				},
 
-				built_ins.PlusMethod.Type,
+				built_in_declarations.PlusMethod.Type,
 			),
 
-			built_ins.MinusMethod.Name: newMinusMethod(value_),
-			built_ins.TimesMethod.Name: function.NewBuiltInFunction(
-				function.NewFixedFunctionArgumentValidator(built_ins.TimesMethod.Name, valueType),
+			built_in_declarations.MinusMethod.Name: newMinusMethod(value_),
+			built_in_declarations.TimesMethod.Name: function.NewBuiltInFunction(
+				function.NewFixedFunctionArgumentValidator(built_in_declarations.TimesMethod.Name, valueType),
 				func(_ *runtime.Runtime, arguments ...value.Value) value.Value {
 					return value.Value(value_ * arguments[0].(Value))
 				},
 
-				built_ins.TimesMethod.Type,
+				built_in_declarations.TimesMethod.Type,
 			),
 
-			built_ins.OverMethod.Name: function.NewBuiltInFunction(
-				function.NewFixedFunctionArgumentValidator(built_ins.OverMethod.Name, valueType),
+			built_in_declarations.OverMethod.Name: function.NewBuiltInFunction(
+				function.NewFixedFunctionArgumentValidator(built_in_declarations.OverMethod.Name, valueType),
 				func(_ *runtime.Runtime, arguments ...value.Value) value.Value {
 					rightHandSide := arguments[0].(Value)
 
 					if rightHandSide == 0 {
 						errors.RaiseError(
-							runtime_errors.DivisionByZero(valueTypeName, built_ins.OverMethod.Name),
+							runtime_errors.DivisionByZero(valueTypeName, built_in_declarations.OverMethod.Name),
 						)
 					}
 
 					return value.Value(value_ / rightHandSide)
 				},
 
-				built_ins.OverMethod.Type,
+				built_in_declarations.OverMethod.Type,
 			),
 
-			built_ins.ModuloMethod.Name: function.NewBuiltInFunction(
-				function.NewFixedFunctionArgumentValidator(built_ins.ModuloMethod.Name, valueType),
+			built_in_declarations.ModuloMethod.Name: function.NewBuiltInFunction(
+				function.NewFixedFunctionArgumentValidator(built_in_declarations.ModuloMethod.Name, valueType),
 				func(_ *runtime.Runtime, arguments ...value.Value) value.Value {
 					modulus := arguments[0].(Value)
 
 					if modulus == 0 {
 						errors.RaiseError(
-							runtime_errors.DivisionByZero(valueTypeName, built_ins.ModuloMethod.Name),
+							runtime_errors.DivisionByZero(valueTypeName, built_in_declarations.ModuloMethod.Name),
 						)
 					}
 
@@ -125,21 +125,21 @@ func newNumberDefinition[Value IntegerValue | FloatValue](
 					}
 				},
 
-				built_ins.ModuloMethod.Type,
+				built_in_declarations.ModuloMethod.Type,
 			),
 
-			built_ins.LessThanMethod.Name: function.NewBuiltInFunction(
-				function.NewFixedFunctionArgumentValidator(built_ins.LessThanMethod.Name, valueType),
+			built_in_declarations.LessThanMethod.Name: function.NewBuiltInFunction(
+				function.NewFixedFunctionArgumentValidator(built_in_declarations.LessThanMethod.Name, valueType),
 				func(_ *runtime.Runtime, arguments ...value.Value) value.Value {
 					return BooleanValue(value_ < arguments[0].(Value))
 				},
 
-				built_ins.LessThanMethod.Type,
+				built_in_declarations.LessThanMethod.Type,
 			),
 
-			built_ins.LessThanOrEqualToMethod.Name: function.NewBuiltInFunction(
+			built_in_declarations.LessThanOrEqualToMethod.Name: function.NewBuiltInFunction(
 				function.NewFixedFunctionArgumentValidator(
-					built_ins.LessThanOrEqualToMethod.Name,
+					built_in_declarations.LessThanOrEqualToMethod.Name,
 					valueType,
 				),
 
@@ -147,21 +147,21 @@ func newNumberDefinition[Value IntegerValue | FloatValue](
 					return BooleanValue(value_ <= arguments[0].(Value))
 				},
 
-				built_ins.LessThanOrEqualToMethod.Type,
+				built_in_declarations.LessThanOrEqualToMethod.Type,
 			),
 
-			built_ins.GreaterThanMethod.Name: function.NewBuiltInFunction(
-				function.NewFixedFunctionArgumentValidator(built_ins.GreaterThanMethod.Name, valueType),
+			built_in_declarations.GreaterThanMethod.Name: function.NewBuiltInFunction(
+				function.NewFixedFunctionArgumentValidator(built_in_declarations.GreaterThanMethod.Name, valueType),
 				func(_ *runtime.Runtime, arguments ...value.Value) value.Value {
 					return BooleanValue(value_ > arguments[0].(Value))
 				},
 
-				built_ins.GreaterThanMethod.Type,
+				built_in_declarations.GreaterThanMethod.Type,
 			),
 
-			built_ins.GreaterThanOrEqualToMethod.Name: function.NewBuiltInFunction(
+			built_in_declarations.GreaterThanOrEqualToMethod.Name: function.NewBuiltInFunction(
 				function.NewFixedFunctionArgumentValidator(
-					built_ins.GreaterThanOrEqualToMethod.Name,
+					built_in_declarations.GreaterThanOrEqualToMethod.Name,
 					valueType,
 				),
 
@@ -169,7 +169,7 @@ func newNumberDefinition[Value IntegerValue | FloatValue](
 					return BooleanValue(value_ >= arguments[0].(Value))
 				},
 
-				built_ins.GreaterThanOrEqualToMethod.Type,
+				built_in_declarations.GreaterThanOrEqualToMethod.Type,
 			),
 		},
 	}

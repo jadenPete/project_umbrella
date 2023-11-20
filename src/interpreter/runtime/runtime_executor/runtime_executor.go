@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 
 	"project_umbrella/interpreter/bytecode_generator"
-	"project_umbrella/interpreter/bytecode_generator/built_ins"
+	"project_umbrella/interpreter/bytecode_generator/built_in_declarations"
 	"project_umbrella/interpreter/common"
 	"project_umbrella/interpreter/runtime"
 	"project_umbrella/interpreter/runtime/built_in_definitions"
@@ -52,7 +52,7 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime.Runtime {
 
 	addDependencyForLatestBlock := func(dependencyValueID int) {
 		if _, ok :=
-			built_in_definitions.BuiltInValues[built_ins.BuiltInValueID(dependencyValueID)]; ok {
+			built_in_definitions.BuiltInValues[built_in_declarations.BuiltInValueID(dependencyValueID)]; ok {
 			return
 		}
 

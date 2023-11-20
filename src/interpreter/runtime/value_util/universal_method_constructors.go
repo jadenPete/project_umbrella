@@ -1,7 +1,7 @@
 package value_util
 
 import (
-	"project_umbrella/interpreter/bytecode_generator/built_ins"
+	"project_umbrella/interpreter/bytecode_generator/built_in_declarations"
 	"project_umbrella/interpreter/runtime"
 	"project_umbrella/interpreter/runtime/value"
 	"project_umbrella/interpreter/runtime/value_types"
@@ -10,29 +10,29 @@ import (
 
 func newEqualsMethod(value_ value.Value) *function.Function {
 	return function.NewBuiltInFunction(
-		function.NewFixedFunctionArgumentValidator(built_ins.EqualsMethod.Name, nil),
+		function.NewFixedFunctionArgumentValidator(built_in_declarations.EqualsMethod.Name, nil),
 		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 			return builtInEquals(runtime_, value_, arguments[0])
 		},
 
-		built_ins.EqualsMethod.Type,
+		built_in_declarations.EqualsMethod.Type,
 	)
 }
 
 func newNotEqualsMethod(value_ value.Value) *function.Function {
 	return function.NewBuiltInFunction(
-		function.NewFixedFunctionArgumentValidator(built_ins.NotEqualsMethod.Name, nil),
+		function.NewFixedFunctionArgumentValidator(built_in_declarations.NotEqualsMethod.Name, nil),
 		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 			return !builtInEquals(runtime_, value_, arguments[0])
 		},
 
-		built_ins.NotEqualsMethod.Type,
+		built_in_declarations.NotEqualsMethod.Type,
 	)
 }
 
 func newToStringMethod(value_ value.Value) *function.Function {
 	return function.NewBuiltInFunction(
-		function.NewFixedFunctionArgumentValidator(built_ins.ToStringMethod.Name),
+		function.NewFixedFunctionArgumentValidator(built_in_declarations.ToStringMethod.Name),
 		func(runtime_ *runtime.Runtime, _ ...value.Value) value.Value {
 			var result string
 
@@ -64,6 +64,6 @@ func newToStringMethod(value_ value.Value) *function.Function {
 			}
 		},
 
-		built_ins.ToStringMethod.Type,
+		built_in_declarations.ToStringMethod.Type,
 	)
 }

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"project_umbrella/interpreter/bytecode_generator/built_ins"
+	"project_umbrella/interpreter/bytecode_generator/built_in_declarations"
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/runtime_errors"
 	"project_umbrella/interpreter/parser/parser_types"
@@ -16,8 +16,8 @@ import (
 	"project_umbrella/interpreter/runtime/value_util"
 )
 
-var BuiltInValues = map[built_ins.BuiltInValueID]value.Value{
-	built_ins.PrintFunctionID: function.NewBuiltInFunction(
+var BuiltInValues = map[built_in_declarations.BuiltInValueID]value.Value{
+	built_in_declarations.PrintFunctionID: function.NewBuiltInFunction(
 		function.NewVariadicFunctionArgumentValidator("print", nil),
 		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 			return print(runtime_, "", arguments...)
@@ -26,7 +26,7 @@ var BuiltInValues = map[built_ins.BuiltInValueID]value.Value{
 		parser_types.NormalFunction,
 	),
 
-	built_ins.PrintlnFunctionID: function.NewBuiltInFunction(
+	built_in_declarations.PrintlnFunctionID: function.NewBuiltInFunction(
 		function.NewVariadicFunctionArgumentValidator("println", nil),
 		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 			return print(runtime_, "\n", arguments...)
@@ -35,10 +35,10 @@ var BuiltInValues = map[built_ins.BuiltInValueID]value.Value{
 		parser_types.NormalFunction,
 	),
 
-	built_ins.UnitValueID:  value_types.UnitValue{},
-	built_ins.FalseValueID: value_types.BooleanValue(false),
-	built_ins.TrueValueID:  value_types.BooleanValue(true),
-	built_ins.IfElseFunctionID: function.NewBuiltInFunction(
+	built_in_declarations.UnitValueID:  value_types.UnitValue{},
+	built_in_declarations.FalseValueID: value_types.BooleanValue(false),
+	built_in_declarations.TrueValueID:  value_types.BooleanValue(true),
+	built_in_declarations.IfElseFunctionID: function.NewBuiltInFunction(
 		function.NewFixedFunctionArgumentValidator(
 			"__if_else__",
 			reflect.TypeOf(*new(value_types.BooleanValue)),
@@ -50,13 +50,13 @@ var BuiltInValues = map[built_ins.BuiltInValueID]value.Value{
 		parser_types.NormalFunction,
 	),
 
-	built_ins.TupleFunctionID: function.NewBuiltInFunction(
+	built_in_declarations.TupleFunctionID: function.NewBuiltInFunction(
 		function.NewVariadicFunctionArgumentValidator("__tuple__", nil),
 		tuple,
 		parser_types.NormalFunction,
 	),
 
-	built_ins.StructFunctionID: function.NewBuiltInFunction(
+	built_in_declarations.StructFunctionID: function.NewBuiltInFunction(
 		function.NewFixedFunctionArgumentValidator(
 			"__struct__",
 			reflect.TypeOf(value_types.StringValue{}),
@@ -88,8 +88,8 @@ func builtInStructFields(
 		}
 
 	return map[string]value.Value{
-		built_ins.ToStringMethod.Name: function.NewBuiltInFunction(
-			function.NewFixedFunctionArgumentValidator(built_ins.ToStringMethod.Name),
+		built_in_declarations.ToStringMethod.Name: function.NewBuiltInFunction(
+			function.NewFixedFunctionArgumentValidator(built_in_declarations.ToStringMethod.Name),
 			func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 				argumentsAsStrings := make([]string, 0, len(structArgumentValues))
 
@@ -109,12 +109,12 @@ func builtInStructFields(
 				}
 			},
 
-			built_ins.ToStringMethod.Type,
+			built_in_declarations.ToStringMethod.Type,
 		),
 
-		built_ins.EqualsMethod.Name: function.NewBuiltInFunction(
+		built_in_declarations.EqualsMethod.Name: function.NewBuiltInFunction(
 			function.NewFixedFunctionArgumentValidator(
-				built_ins.EqualsMethod.Name,
+				built_in_declarations.EqualsMethod.Name,
 				reflect.TypeOf(&function.Function{}),
 			),
 
@@ -122,12 +122,12 @@ func builtInStructFields(
 				return equalsMethodEvaluator(runtime_, arguments...)
 			},
 
-			built_ins.EqualsMethod.Type,
+			built_in_declarations.EqualsMethod.Type,
 		),
 
-		built_ins.NotEqualsMethod.Name: function.NewBuiltInFunction(
+		built_in_declarations.NotEqualsMethod.Name: function.NewBuiltInFunction(
 			function.NewFixedFunctionArgumentValidator(
-				built_ins.EqualsMethod.Name,
+				built_in_declarations.EqualsMethod.Name,
 				reflect.TypeOf(&function.Function{}),
 			),
 
@@ -135,10 +135,10 @@ func builtInStructFields(
 				return !equalsMethodEvaluator(runtime_, arguments...)
 			},
 
-			built_ins.NotEqualsMethod.Type,
+			built_in_declarations.NotEqualsMethod.Type,
 		),
 
-		built_ins.StructConstructorMethod.Name: structConstructor,
+		built_in_declarations.StructConstructorMethod.Name: structConstructor,
 	}
 }
 
@@ -270,7 +270,7 @@ func structEquals(
 	}
 
 	rightConstructor := rightHandSide.Evaluate(runtime_, value_types.StringValue{
-		Content: built_ins.StructConstructorMethod.Name,
+		Content: built_in_declarations.StructConstructorMethod.Name,
 	})
 
 	if leftConstructor != rightConstructor {

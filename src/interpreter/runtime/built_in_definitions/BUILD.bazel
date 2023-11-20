@@ -6,7 +6,7 @@ go_library(
     importpath = "project_umbrella/interpreter/runtime/built_in_definitions",
     visibility = ["//src/interpreter/runtime:__subpackages__"],
 	deps = [
-		"//src/interpreter/bytecode_generator/built_ins",
+		"//src/interpreter/bytecode_generator/built_in_declarations",
 		"//src/interpreter/errors",
 		"//src/interpreter/errors/runtime_errors",
 		"//src/interpreter/parser/parser_types",
