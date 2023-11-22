@@ -61,6 +61,50 @@ func (expressionList *ExpressionList) Position() *errors.Position {
 	}
 }
 
+func (expressionList *ExpressionList) ToModule() *ExpressionList {
+	fields := []Expression{}
+
+	addArgument := func(identifier *Identifier) {
+		fields = append(
+			fields,
+			AbstractTuple(
+				[]Expression{
+					&String{
+						Value:    identifier.Value,
+						position: nil,
+					},
+
+					identifier,
+				},
+
+				nil,
+			),
+		)
+	}
+
+	for _, statement := range expressionList.Children() {
+		if declaration, ok := statement.(Declaration); ok {
+			for _, name := range declaration.Names() {
+				addArgument(name)
+			}
+		}
+	}
+
+	moduleCall := &Call{
+		Function: &Identifier{
+			Value:    "__module__",
+			position: nil,
+		},
+
+		Arguments: []Expression{AbstractTuple(fields, nil)},
+		position:  nil,
+	}
+
+	return &ExpressionList{
+		Children_: append(expressionList.Children_, moduleCall),
+	}
+}
+
 type Call struct {
 	Function  Expression
 	Arguments []Expression

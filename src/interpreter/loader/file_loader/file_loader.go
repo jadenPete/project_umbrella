@@ -61,7 +61,7 @@ func loadSource(source string, loaderChannel *loader.LoaderChannel) value.Value 
 		)
 	}
 
-	abstractTree := concreteTree.AbstractExpressionList()
+	abstractTree := concreteTree.AbstractExpressionList().ToModule()
 
 	return runtime_executor.ExecuteBytecode(
 		bytecode_generator.ExpressionToBytecodeFromCache(abstractTree, source),
