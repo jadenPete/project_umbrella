@@ -1,11 +1,12 @@
 load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "value",
+    name = "loader",
     srcs = glob(["*.go"]),
-    importpath = "project_umbrella/interpreter/runtime/value",
+    importpath = "project_umbrella/interpreter/loader",
     visibility = [
         "//src/interpreter/loader:__subpackages__",
         "//src/interpreter/runtime:__subpackages__",
     ],
+    deps = ["//src/interpreter/runtime/value"],
 )

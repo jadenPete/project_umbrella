@@ -5,8 +5,8 @@ go_library(
     srcs = glob(["*.go"]),
     importpath = "project_umbrella/interpreter/parser",
     visibility = [
-        "//src/interpreter:__pkg__",
         "//src/interpreter/bytecode_generator:__pkg__",
+        "//src/interpreter/loader:__subpackages__",
     ],
     deps = [
         "//src/interpreter/common",

@@ -96,14 +96,14 @@ var (
 type BuiltInValueID int
 
 const (
-	PrintFunctionID BuiltInValueID = -iota - 1
-	PrintlnFunctionID
-
-	UnitValueID
-	FalseValueID
+	FalseValueID BuiltInValueID = -iota - 1
 	TrueValueID
+	UnitValueID
 
 	IfElseFunctionID
+	ImportFunctionID
+	PrintFunctionID
+	PrintlnFunctionID
 	TupleFunctionID
 	StructFunctionID
 )

@@ -17,6 +17,30 @@ import (
 )
 
 var BuiltInValues = map[built_in_declarations.BuiltInValueID]value.Value{
+	built_in_declarations.FalseValueID: value_types.BooleanValue(false),
+	built_in_declarations.TrueValueID:  value_types.BooleanValue(true),
+	built_in_declarations.IfElseFunctionID: function.NewBuiltInFunction(
+		function.NewFixedFunctionArgumentValidator(
+			"__if_else__",
+			reflect.TypeOf(*new(value_types.BooleanValue)),
+			reflect.TypeOf(&function.Function{}),
+			reflect.TypeOf(&function.Function{}),
+		),
+
+		ifElse,
+		parser_types.NormalFunction,
+	),
+
+	built_in_declarations.ImportFunctionID: function.NewBuiltInFunction(
+		function.NewFixedFunctionArgumentValidator(
+			"import",
+			reflect.TypeOf(*new(value_types.StringValue)),
+		),
+
+		import_,
+		parser_types.NormalFunction,
+	),
+
 	built_in_declarations.PrintFunctionID: function.NewBuiltInFunction(
 		function.NewVariadicFunctionArgumentValidator("print", nil),
 		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
@@ -35,27 +59,6 @@ var BuiltInValues = map[built_in_declarations.BuiltInValueID]value.Value{
 		parser_types.NormalFunction,
 	),
 
-	built_in_declarations.UnitValueID:  value_types.UnitValue{},
-	built_in_declarations.FalseValueID: value_types.BooleanValue(false),
-	built_in_declarations.TrueValueID:  value_types.BooleanValue(true),
-	built_in_declarations.IfElseFunctionID: function.NewBuiltInFunction(
-		function.NewFixedFunctionArgumentValidator(
-			"__if_else__",
-			reflect.TypeOf(*new(value_types.BooleanValue)),
-			reflect.TypeOf(&function.Function{}),
-			reflect.TypeOf(&function.Function{}),
-		),
-
-		ifElse,
-		parser_types.NormalFunction,
-	),
-
-	built_in_declarations.TupleFunctionID: function.NewBuiltInFunction(
-		function.NewVariadicFunctionArgumentValidator("__tuple__", nil),
-		tuple,
-		parser_types.NormalFunction,
-	),
-
 	built_in_declarations.StructFunctionID: function.NewBuiltInFunction(
 		function.NewFixedFunctionArgumentValidator(
 			"__struct__",
@@ -68,6 +71,14 @@ var BuiltInValues = map[built_in_declarations.BuiltInValueID]value.Value{
 		struct_,
 		parser_types.NormalFunction,
 	),
+
+	built_in_declarations.TupleFunctionID: function.NewBuiltInFunction(
+		function.NewVariadicFunctionArgumentValidator("__tuple__", nil),
+		tuple,
+		parser_types.NormalFunction,
+	),
+
+	built_in_declarations.UnitValueID: value_types.UnitValue{},
 }
 
 func builtInStructFields(
@@ -152,6 +163,12 @@ func ifElse(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 	}
 
 	return arguments[branchIndex].(*function.Function).Evaluate(runtime_)
+}
+
+func import_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
+	runtime_.LoaderChannel.LoadRequest <- string(arguments[0].(value_types.StringValue))
+
+	return <-runtime_.LoaderChannel.LoadResponse
 }
 
 func print(runtime_ *runtime.Runtime, suffix string, arguments ...value.Value) value_types.UnitValue {

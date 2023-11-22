@@ -24,6 +24,7 @@ package runtime
 import (
 	"project_umbrella/interpreter/bytecode_generator"
 	"project_umbrella/interpreter/common"
+	"project_umbrella/interpreter/loader"
 	"project_umbrella/interpreter/runtime/value"
 )
 
@@ -52,4 +53,5 @@ func (InstructionList) BytecodeFunctionBlock() {}
 type Runtime struct {
 	Constants      []value.Value
 	RootBlockGraph *BytecodeFunctionBlockGraph
+	LoaderChannel  *loader.LoaderChannel
 }

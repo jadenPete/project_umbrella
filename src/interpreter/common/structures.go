@@ -6,25 +6,6 @@ type BinaryTree[T any] struct {
 	Value T
 }
 
-func NewBalancedBinaryTreeFromSlice[T any](slice []T) *BinaryTree[T] {
-	if len(slice) == 0 {
-		return nil
-	}
-
-	if len(slice) == 1 {
-		return &BinaryTree[T]{
-			Value: slice[0],
-		}
-	}
-
-	middle := len(slice) / 2
-
-	return &BinaryTree[T]{
-		Left:  NewBalancedBinaryTreeFromSlice(slice[:middle]),
-		Right: NewBalancedBinaryTreeFromSlice(slice[middle:]),
-	}
-}
-
 /*
  * Perform a depth-first search on the binary tree, calling a given callback function for each node.
  * If the function returns `true`, the search will stop and that node will be returned.
@@ -57,16 +38,28 @@ func (tree *BinaryTree[T]) DFS(finder func(node *BinaryTree[T]) bool) *BinaryTre
 	return nil
 }
 
+func NewBalancedBinaryTreeFromSlice[T any](slice []T) *BinaryTree[T] {
+	if len(slice) == 0 {
+		return nil
+	}
+
+	if len(slice) == 1 {
+		return &BinaryTree[T]{
+			Value: slice[0],
+		}
+	}
+
+	middle := len(slice) / 2
+
+	return &BinaryTree[T]{
+		Left:  NewBalancedBinaryTreeFromSlice(slice[:middle]),
+		Right: NewBalancedBinaryTreeFromSlice(slice[middle:]),
+	}
+}
+
 type Graph[T any] struct {
 	Nodes []T
 	Edges map[int][]int
-}
-
-func NewGraph[T any]() *Graph[T] {
-	return &Graph[T]{
-		Nodes: []T{},
-		Edges: map[int][]int{},
-	}
 }
 
 /*
@@ -123,4 +116,38 @@ func (graph *Graph[T]) Evaluate(evaluator func(i int)) bool {
 	}
 
 	return processed == len(graph.Nodes)
+}
+
+func NewGraph[T any]() *Graph[T] {
+	return &Graph[T]{
+		Nodes: []T{},
+		Edges: map[int][]int{},
+	}
+}
+
+func LinkedListToSlice[LinkedList any, Element any](
+	linkedList *LinkedList,
+	head func(*LinkedList) Element,
+	tail func(*LinkedList) *LinkedList,
+) ([]Element, *LinkedList) {
+	result := []Element{}
+
+	if linkedList == nil {
+		return result, nil
+	}
+
+	current := linkedList
+
+	for {
+		result = append(result, head(current))
+		next := tail(current)
+
+		if next == nil {
+			break
+		}
+
+		current = next
+	}
+
+	return result, current
 }
