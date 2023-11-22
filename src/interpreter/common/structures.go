@@ -8,10 +8,10 @@ type BinaryTree[T any] struct {
 
 /*
  * Perform a depth-first search on the binary tree, calling a given callback function for each node.
- * If the function returns `true`, the search will stop and that node will be returned.
- * If the function always returns `false`, `nil` will be returned.
+ * If the function returns `true`, the search will stop and that node and `true` will be returned.
+ * If the function always returns `false`, `nil` and `false` will be returned.
  */
-func (tree *BinaryTree[T]) DFS(finder func(node *BinaryTree[T]) bool) *BinaryTree[T] {
+func (tree *BinaryTree[T]) DFS(finder func(node *BinaryTree[T]) bool) (*BinaryTree[T], bool) {
 	stack := []*BinaryTree[T]{tree}
 
 	for len(stack) > 0 {
@@ -23,7 +23,7 @@ func (tree *BinaryTree[T]) DFS(finder func(node *BinaryTree[T]) bool) *BinaryTre
 		left, right := node.Left, node.Right
 
 		if finder(node) {
-			return node
+			return node, true
 		}
 
 		if right != nil {
@@ -35,7 +35,7 @@ func (tree *BinaryTree[T]) DFS(finder func(node *BinaryTree[T]) bool) *BinaryTre
 		}
 	}
 
-	return nil
+	return nil, false
 }
 
 func NewBalancedBinaryTreeFromSlice[T any](slice []T) *BinaryTree[T] {

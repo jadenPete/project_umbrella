@@ -173,10 +173,12 @@ type ExhaustiveMatcher struct {
 
 const UnrecognizedMatcherCode MatcherCode = 0
 
-func flattenedExhaustiveMatchTree(tree *common.BinaryTree[*ExhaustiveMatch]) []*ExhaustiveMatch {
+func flattenedExhaustiveMatchTree(
+	tree *common.BinaryTree[*ExhaustiveMatch],
+) ([]*ExhaustiveMatch, bool) {
 	result := []*ExhaustiveMatch{}
 
-	if tree.DFS(func(node *common.BinaryTree[*ExhaustiveMatch]) bool {
+	if _, ok := tree.DFS(func(node *common.BinaryTree[*ExhaustiveMatch]) bool {
 		if node.Value == nil {
 			return false
 		}
@@ -188,11 +190,11 @@ func flattenedExhaustiveMatchTree(tree *common.BinaryTree[*ExhaustiveMatch]) []*
 		result = append(result, node.Value)
 
 		return false
-	}) != nil {
-		return nil
+	}); ok {
+		return nil, false
 	}
 
-	return result
+	return result, true
 }
 
 /*
@@ -200,7 +202,7 @@ func flattenedExhaustiveMatchTree(tree *common.BinaryTree[*ExhaustiveMatch]) []*
  *
  * If the input couldn't be exhaustively matched against, they return `nil`.
  */
-func (matcher *ExhaustiveMatcher) Match(input MatcherInput) []*ExhaustiveMatch {
+func (matcher *ExhaustiveMatcher) Match(input MatcherInput) ([]*ExhaustiveMatch, bool) {
 	return matcher.MatchWithInitial(input, []*ExhaustiveMatch{
 		{
 			Type:  UnrecognizedMatcherCode,
@@ -213,7 +215,7 @@ func (matcher *ExhaustiveMatcher) Match(input MatcherInput) []*ExhaustiveMatch {
 func (matcher *ExhaustiveMatcher) MatchWithInitial(
 	input MatcherInput,
 	initialMatches []*ExhaustiveMatch,
-) []*ExhaustiveMatch {
+) ([]*ExhaustiveMatch, bool) {
 	tree := common.NewBalancedBinaryTreeFromSlice(initialMatches)
 	stack := []*common.BinaryTree[*ExhaustiveMatch]{}
 
@@ -274,7 +276,7 @@ func (matcher *ExhaustiveMatcher) MatchWithInitial(
 		}
 
 		if len(replacements) == 0 {
-			return nil
+			return nil, false
 		}
 
 		if node.Value.Start+lastMatchEnd < node.Value.End {
