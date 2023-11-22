@@ -102,6 +102,7 @@ const (
 
 	IfElseFunctionID
 	ImportFunctionID
+	ModuleFunctionID
 	PrintFunctionID
 	PrintlnFunctionID
 	TupleFunctionID

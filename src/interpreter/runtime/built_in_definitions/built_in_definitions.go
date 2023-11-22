@@ -41,6 +41,16 @@ var BuiltInValues = map[built_in_declarations.BuiltInValueID]value.Value{
 		parser_types.NormalFunction,
 	),
 
+	built_in_declarations.ModuleFunctionID: function.NewBuiltInFunction(
+		function.NewFixedFunctionArgumentValidator(
+			"__module__",
+			reflect.TypeOf(value_types.TupleValue{}),
+		),
+
+		module,
+		parser_types.NormalFunction,
+	),
+
 	built_in_declarations.PrintFunctionID: function.NewBuiltInFunction(
 		function.NewVariadicFunctionArgumentValidator("print", nil),
 		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
@@ -171,6 +181,66 @@ func import_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 	return <-runtime_.LoaderChannel.LoadResponse
 }
 
+func module(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
+	fields, ok := moduleOrStructFieldsToMap(arguments[0].(value_types.TupleValue))
+
+	if !ok {
+		errors.RaiseError(runtime_errors.IncorrectBuiltInFunctionArgumentType("__module__", 0))
+	}
+
+	return newLookupFunction(fields)
+}
+
+func moduleOrStructFieldsToMap(
+	fields value_types.TupleValue,
+) (map[value_types.StringValue]value.Value, bool) {
+	result := make(map[value_types.StringValue]value.Value, len(fields.Elements))
+
+	for _, element := range fields.Elements {
+		field, ok := element.(value_types.TupleValue)
+
+		if !ok || len(field.Elements) != 2 {
+			return nil, false
+		}
+
+		name, ok := field.Elements[0].(value_types.StringValue)
+
+		if !ok {
+			return nil, false
+		}
+
+		result[name] = field.Elements[1]
+	}
+
+	return result, true
+}
+
+func newLookupFunction(fields map[value_types.StringValue]value.Value) *function.Function {
+	return function.NewBuiltInFunction(
+		function.NewFixedFunctionArgumentValidator(
+			function.BuiltInFunctionName,
+			reflect.TypeOf(*new(value_types.StringValue)),
+		),
+
+		func(_ *runtime.Runtime, resultArguments ...value.Value) value.Value {
+			fieldName := resultArguments[0].(value_types.StringValue)
+			fieldValue, ok := fields[fieldName]
+
+			if !ok {
+				errors.RaiseError(runtime_errors.UnknownField(string(fieldName)))
+			}
+
+			return fieldValue
+		},
+
+		&parser_types.FunctionType{
+			IsInfix:  false,
+			IsPrefix: false,
+			IsLookup: true,
+		},
+	)
+}
+
 func print(runtime_ *runtime.Runtime, suffix string, arguments ...value.Value) value_types.UnitValue {
 	serialized := make([]string, 0, len(arguments))
 
@@ -185,54 +255,24 @@ func print(runtime_ *runtime.Runtime, suffix string, arguments ...value.Value) v
 
 func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 	allFields := map[value_types.StringValue]value.Value{}
-	argumentFields := arguments[3].(value_types.TupleValue)
 
 	raiseIncorrectArgumentTypeError := func(i int) {
 		errors.RaiseError(runtime_errors.IncorrectBuiltInFunctionArgumentType("__struct__", i))
 	}
 
 	populateFields := func(fieldEntries value_types.TupleValue, i int) {
-		for _, element := range fieldEntries.Elements {
-			entry, ok := element.(value_types.TupleValue)
+		newFields, ok := moduleOrStructFieldsToMap(fieldEntries)
 
-			if !ok || len(entry.Elements) != 2 {
-				raiseIncorrectArgumentTypeError(i)
+		if ok {
+			for name, value := range newFields {
+				allFields[name] = value
 			}
-
-			name, ok := entry.Elements[0].(value_types.StringValue)
-
-			if !ok {
-				raiseIncorrectArgumentTypeError(i)
-			}
-
-			allFields[name] = entry.Elements[1]
+		} else {
+			raiseIncorrectArgumentTypeError(i)
 		}
 	}
 
-	result := function.NewBuiltInFunction(
-		function.NewFixedFunctionArgumentValidator(
-			function.BuiltInFunctionName,
-			reflect.TypeOf(*new(value_types.StringValue)),
-		),
-
-		func(_ *runtime.Runtime, resultArguments ...value.Value) value.Value {
-			fieldName := resultArguments[0].(value_types.StringValue)
-			fieldValue, ok := allFields[fieldName]
-
-			if !ok {
-				errors.RaiseError(runtime_errors.UnknownField(string(fieldName)))
-			}
-
-			return fieldValue
-		},
-
-		&parser_types.FunctionType{
-			IsInfix:          false,
-			IsPrefix:         false,
-			IsStructInstance: true,
-		},
-	)
-
+	result := newLookupFunction(allFields)
 	fieldFactory := arguments[2].(*function.Function)
 	fieldEntries, ok := fieldFactory.Evaluate(runtime_, result).(value_types.TupleValue)
 
@@ -240,15 +280,17 @@ func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 		raiseIncorrectArgumentTypeError(2)
 	}
 
+	argumentFieldEntries := arguments[3].(value_types.TupleValue)
+
 	populateFields(fieldEntries, 2)
-	populateFields(argumentFields, 3)
+	populateFields(argumentFieldEntries, 3)
 
 	structName := string(arguments[0].(value_types.StringValue))
 	structConstructor := arguments[1].(*function.Function)
-	argumentFieldNames := make([]string, 0, len(argumentFields.Elements))
-	argumentFieldValues := make([]value.Value, 0, len(argumentFields.Elements))
+	argumentFieldNames := make([]string, 0, len(argumentFieldEntries.Elements))
+	argumentFieldValues := make([]value.Value, 0, len(argumentFieldEntries.Elements))
 
-	for _, element := range argumentFields.Elements {
+	for _, element := range argumentFieldEntries.Elements {
 		entry := element.(value_types.TupleValue)
 
 		argumentFieldNames =
@@ -278,7 +320,7 @@ func structEquals(
 ) value_types.BooleanValue {
 	rightHandSide := arguments[0].(*function.Function)
 
-	if !rightHandSide.Type_.IsStructInstance {
+	if !rightHandSide.Type_.IsLookup {
 		return false
 	}
 

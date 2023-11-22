@@ -73,7 +73,7 @@ func LookupField(
 
 	var result value.Value
 
-	if function_, ok := value_.(*function.Function); ok && function_.Type_.IsStructInstance {
+	if function_, ok := value_.(*function.Function); ok && function_.Type_.IsLookup {
 		result = function_.Evaluate(runtime, value_types.StringValue(fieldName))
 	} else if field, ok := value_.Definition().Fields[fieldName]; ok {
 		result = field

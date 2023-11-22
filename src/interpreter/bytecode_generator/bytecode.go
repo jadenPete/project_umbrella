@@ -145,6 +145,7 @@ const checksumSize = 32
 
 var builtInValues = map[string]built_in_declarations.BuiltInValueID{
 	"__if_else__": built_in_declarations.IfElseFunctionID,
+	"__module__":  built_in_declarations.ModuleFunctionID,
 	"__struct__":  built_in_declarations.StructFunctionID,
 	"__tuple__":   built_in_declarations.TupleFunctionID,
 	"false":       built_in_declarations.FalseValueID,
