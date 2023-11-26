@@ -60,7 +60,7 @@ func CallToStringMethod(runtime_ *runtime.Runtime, value_ value.Value) value_typ
 }
 
 func LookupField(
-	runtime *runtime.Runtime,
+	runtime_ *runtime.Runtime,
 	value_ value.Value,
 	fieldName string,
 	selectType parser_types.SelectType,
@@ -74,7 +74,7 @@ func LookupField(
 	var result value.Value
 
 	if function_, ok := value_.(*function.Function); ok && function_.Type_.IsLookup {
-		result = function_.Evaluate(runtime, value_types.StringValue(fieldName))
+		result = function_.Evaluate(runtime_, value_types.StringValue(fieldName))
 	} else if field, ok := value_.Definition().Fields[fieldName]; ok {
 		result = field
 	} else if methodConstructor, ok := universalMethodConstructors[fieldName]; ok {
@@ -87,7 +87,7 @@ func LookupField(
 		if !function_.Type_.CanSelectBy(selectType) {
 			errors.RaiseError(
 				runtime_errors.MethodCalledImproperly(
-					string(CallToStringMethod(runtime, value_)),
+					string(CallToStringMethod(runtime_, value_)),
 					fieldName,
 					function_.Type_,
 					selectType,

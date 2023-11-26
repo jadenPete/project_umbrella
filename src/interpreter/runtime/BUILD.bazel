@@ -12,6 +12,5 @@ go_library(
         "//src/interpreter/bytecode_generator",
         "//src/interpreter/common",
         "//src/interpreter/loader",
-        "//src/interpreter/runtime/value",
     ],
 )

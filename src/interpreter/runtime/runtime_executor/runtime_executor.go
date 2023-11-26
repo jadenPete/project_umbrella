@@ -15,24 +15,30 @@ import (
 	"project_umbrella/interpreter/runtime/value_types/bytecode_function"
 )
 
-func executeRuntime(runtime_ *runtime.Runtime) value.Value {
-	return bytecode_function.NewBytecodeFunction(0, &bytecode_function.BytecodeFunctionEvaluator{
-		ContainingScope: nil,
-		BlockGraph:      runtime_.RootBlockGraph,
-	}).Evaluate(runtime_)
-}
-
 func ExecuteBytecode(
 	bytecode *bytecode_generator.Bytecode,
 	loaderChannel *loader.LoaderChannel,
 ) value.Value {
-	return executeRuntime(newRuntime(bytecode, loaderChannel))
+	constants := make([]value.Value, 0, len(bytecode.Constants))
+
+	for _, constant := range bytecode.Constants {
+		constants = append(constants, newValueFromConstant(constant))
+	}
+
+	return bytecode_function.
+		NewBytecodeFunction(0, &bytecode_function.BytecodeFunctionEvaluator{
+			Constants:       constants,
+			ContainingScope: nil,
+			BlockGraph:      newBlockGraphFromBytecode(bytecode),
+		}).
+		Evaluate(&runtime.Runtime{
+			LoaderChannel: loaderChannel,
+		})
 }
 
-func newRuntime(
+func newBlockGraphFromBytecode(
 	bytecode *bytecode_generator.Bytecode,
-	loaderChannel *loader.LoaderChannel,
-) *runtime.Runtime {
+) *runtime.BytecodeFunctionBlockGraph {
 	type runtimeConstructorScope struct {
 		nextValueID              int
 		valueIDBlockMap          map[int]int
@@ -238,17 +244,7 @@ func newRuntime(
 		}
 	}
 
-	runtime := &runtime.Runtime{
-		Constants:      make([]value.Value, 0, len(bytecode.Constants)),
-		RootBlockGraph: scopeStack[0].blockGraph,
-		LoaderChannel:  loaderChannel,
-	}
-
-	for _, constant := range bytecode.Constants {
-		runtime.Constants = append(runtime.Constants, newValueFromConstant(constant))
-	}
-
-	return runtime
+	return scopeStack[0].blockGraph
 }
 
 func newValueFromConstant(constant bytecode_generator.Constant) value.Value {
