@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "module_loader",
+    srcs = glob(["*.go"]),
+    importpath = "project_umbrella/interpreter/loader/module_loader",
+    visibility = ["//src/interpreter:__pkg__"],
+    deps = [
+        "//src/interpreter/common",
+        "//src/interpreter/errors",
+        "//src/interpreter/errors/runtime_errors",
+        "//src/interpreter/loader",
+        "//src/interpreter/loader/file_loader",
+        "//src/interpreter/runtime/value",
+        "@com_github_benbjohnson_immutable//:go_default_library",
+        "@com_github_puzpuzpuz_xsync_v3//:go_default_library",
+    ],
+)

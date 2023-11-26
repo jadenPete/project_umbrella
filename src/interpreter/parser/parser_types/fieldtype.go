@@ -1,9 +1,9 @@
 package parser_types
 
 type FunctionType struct {
-	IsInfix          bool
-	IsPrefix         bool
-	IsStructInstance bool
+	IsInfix  bool
+	IsPrefix bool
+	IsLookup bool
 }
 
 func (functionType FunctionType) CanSelectBy(selectType SelectType) bool {
@@ -23,27 +23,27 @@ func (functionType FunctionType) CanSelectBy(selectType SelectType) bool {
 }
 
 var NormalFunction = &FunctionType{
-	IsInfix:          false,
-	IsPrefix:         false,
-	IsStructInstance: false,
+	IsInfix:  false,
+	IsPrefix: false,
+	IsLookup: false,
 }
 
 var InfixFunction = &FunctionType{
-	IsInfix:          true,
-	IsPrefix:         false,
-	IsStructInstance: false,
+	IsInfix:  true,
+	IsPrefix: false,
+	IsLookup: false,
 }
 
 var InfixPrefixFunction = &FunctionType{
-	IsInfix:          true,
-	IsPrefix:         true,
-	IsStructInstance: false,
+	IsInfix:  true,
+	IsPrefix: true,
+	IsLookup: false,
 }
 
 var PrefixFunction = &FunctionType{
-	IsInfix:          false,
-	IsPrefix:         true,
-	IsStructInstance: false,
+	IsInfix:  false,
+	IsPrefix: true,
+	IsLookup: false,
 }
 
 type SelectType int

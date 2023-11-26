@@ -1,5 +1,7 @@
 package common
 
+import "os"
+
 func Abs(x int) int {
 	if x < 0 {
 		return -x
@@ -8,39 +10,32 @@ func Abs(x int) int {
 	return x
 }
 
+func IsDirectoryUnsafe(path string) bool {
+	info, err := os.Stat(path)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return info.IsDir()
+}
+
+func IsFileUnsafe(path string) bool {
+	info, err := os.Stat(path)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return info.Mode().IsRegular()
+}
+
 func Max(x int, y int) int {
 	if x < y {
 		return y
 	}
 
 	return x
-}
-
-func LinkedListToSlice[LinkedList any, Element any](
-	linkedList *LinkedList,
-	head func(*LinkedList) Element,
-	tail func(*LinkedList) *LinkedList,
-) ([]Element, *LinkedList) {
-	result := []Element{}
-
-	if linkedList == nil {
-		return result, nil
-	}
-
-	current := linkedList
-
-	for {
-		result = append(result, head(current))
-		next := tail(current)
-
-		if next == nil {
-			break
-		}
-
-		current = next
-	}
-
-	return result, current
 }
 
 func Repeat[T any](element T, size int) []T {

@@ -7,6 +7,7 @@ import (
 	"project_umbrella/interpreter/bytecode_generator"
 	"project_umbrella/interpreter/bytecode_generator/built_in_declarations"
 	"project_umbrella/interpreter/common"
+	"project_umbrella/interpreter/loader"
 	"project_umbrella/interpreter/runtime"
 	"project_umbrella/interpreter/runtime/built_in_definitions"
 	"project_umbrella/interpreter/runtime/value"
@@ -14,18 +15,30 @@ import (
 	"project_umbrella/interpreter/runtime/value_types/bytecode_function"
 )
 
-func executeRuntime(runtime_ *runtime.Runtime) {
-	bytecode_function.NewBytecodeFunction(0, &bytecode_function.BytecodeFunctionEvaluator{
-		ContainingScope: nil,
-		BlockGraph:      runtime_.RootBlockGraph,
-	}).Evaluate(runtime_)
+func ExecuteBytecode(
+	bytecode *bytecode_generator.Bytecode,
+	loaderChannel *loader.LoaderChannel,
+) value.Value {
+	constants := make([]value.Value, 0, len(bytecode.Constants))
+
+	for _, constant := range bytecode.Constants {
+		constants = append(constants, newValueFromConstant(constant))
+	}
+
+	return bytecode_function.
+		NewBytecodeFunction(0, &bytecode_function.BytecodeFunctionEvaluator{
+			Constants:       constants,
+			ContainingScope: nil,
+			BlockGraph:      newBlockGraphFromBytecode(bytecode),
+		}).
+		Evaluate(&runtime.Runtime{
+			LoaderChannel: loaderChannel,
+		})
 }
 
-func ExecuteBytecode(bytecode *bytecode_generator.Bytecode) {
-	executeRuntime(newRuntime(bytecode))
-}
-
-func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime.Runtime {
+func newBlockGraphFromBytecode(
+	bytecode *bytecode_generator.Bytecode,
+) *runtime.BytecodeFunctionBlockGraph {
 	type runtimeConstructorScope struct {
 		nextValueID              int
 		valueIDBlockMap          map[int]int
@@ -231,16 +244,7 @@ func newRuntime(bytecode *bytecode_generator.Bytecode) *runtime.Runtime {
 		}
 	}
 
-	runtime := &runtime.Runtime{
-		Constants:      make([]value.Value, 0, len(bytecode.Constants)),
-		RootBlockGraph: scopeStack[0].blockGraph,
-	}
-
-	for _, constant := range bytecode.Constants {
-		runtime.Constants = append(runtime.Constants, newValueFromConstant(constant))
-	}
-
-	return runtime
+	return scopeStack[0].blockGraph
 }
 
 func newValueFromConstant(constant bytecode_generator.Constant) value.Value {

@@ -18,6 +18,7 @@ import (
 )
 
 type BytecodeFunctionEvaluator struct {
+	Constants       []value.Value
 	ContainingScope *scope
 	BlockGraph      *runtime.BytecodeFunctionBlockGraph
 }
@@ -51,6 +52,7 @@ func (evaluator *BytecodeFunctionEvaluator) Evaluator(
 			scope.values[node.ValueID] = NewBytecodeFunction(
 				node.ParameterCount,
 				&BytecodeFunctionEvaluator{
+					Constants:       evaluator.Constants,
 					ContainingScope: scope,
 					BlockGraph:      node,
 				},
@@ -79,11 +81,11 @@ func (evaluator *BytecodeFunctionEvaluator) Evaluator(
 
 				case bytecode_generator.ValueFromConstantInstruction:
 					scope.values[element.InstructionValueID] =
-						runtime_.Constants[element.Instruction.Arguments[0]]
+						evaluator.Constants[element.Instruction.Arguments[0]]
 
 				case bytecode_generator.ValueFromStructValueInstruction:
 					value_ := scope.getValue(element.Instruction.Arguments[0])
-					fieldNameConstant := runtime_.Constants[element.Instruction.Arguments[1]]
+					fieldNameConstant := evaluator.Constants[element.Instruction.Arguments[1]]
 					fieldNameValue, ok := fieldNameConstant.(value_types.StringValue)
 
 					if !ok {

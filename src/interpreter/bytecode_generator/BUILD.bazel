@@ -5,10 +5,8 @@ go_library(
     srcs = glob(["*.go"]),
     importpath = "project_umbrella/interpreter/bytecode_generator",
     visibility = [
-        "//src/interpreter:__pkg__",
-        "//src/interpreter/runtime:__pkg__",
-        "//src/interpreter/runtime/runtime_executor:__pkg__",
-        "//src/interpreter/runtime/value_types/bytecode_function:__pkg__",
+        "//src/interpreter/loader:__subpackages__",
+        "//src/interpreter/runtime:__subpackages__",
     ],
     deps = [
         "//src/interpreter/bytecode_generator/built_in_declarations",

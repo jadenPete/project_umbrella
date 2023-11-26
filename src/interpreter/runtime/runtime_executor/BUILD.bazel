@@ -4,11 +4,12 @@ go_library(
     name = "runtime_executor",
     srcs = glob(["*.go"]),
     importpath = "project_umbrella/interpreter/runtime/runtime_executor",
-    visibility = ["//src/interpreter:__pkg__"],
+    visibility = ["//src/interpreter/loader:__subpackages__"],
 	deps = [
 		"//src/interpreter/bytecode_generator",
 		"//src/interpreter/bytecode_generator/built_in_declarations",
 		"//src/interpreter/common",
+        "//src/interpreter/loader",
 		"//src/interpreter/runtime",
 		"//src/interpreter/runtime/built_in_definitions",
 		"//src/interpreter/runtime/value",

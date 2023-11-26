@@ -146,9 +146,6 @@ struct_("foo")
 """
 	) == "Called!\n"
 
-def test_argument_fields() -> None:
-	pass
-
 def _malformed_argument_error(i: int) -> str:
 	return f"""\
 Error (RUNTIME-2): A built-in function was called with an argument of incorrect type

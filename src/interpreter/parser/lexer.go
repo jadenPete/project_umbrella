@@ -196,11 +196,13 @@ func isLineBlank(line string) bool {
 
 func (lexer_ *Lexer) Next() (lexer.Token, error) {
 	if lexer_.cachedTokens == nil {
-		lexer_.cachedTokens = lexer_.tokens()
+		tokens, ok := lexer_.tokens()
 
-		if lexer_.cachedTokens == nil {
+		if !ok {
 			errors.RaiseError(lexer_errors.LexerFailed)
 		}
+
+		lexer_.cachedTokens = tokens
 	}
 
 	if lexer_.i == len(lexer_.cachedTokens) {
@@ -231,15 +233,16 @@ func (lexer_ *Lexer) Next() (lexer.Token, error) {
 	return *token, nil
 }
 
-func (lexer_ *Lexer) tokens() []*lexer.Token {
+func (lexer_ *Lexer) tokens() ([]*lexer.Token, bool) {
 	if len(lexer_.fileContent) == 0 {
-		return []*lexer.Token{}
+		return []*lexer.Token{}, true
 	}
 
-	matches := matcher.MatchWithInitial(MatcherInput(lexer_.fileContent), lexer_.parseIndentation())
+	matches, ok :=
+		matcher.MatchWithInitial(MatcherInput(lexer_.fileContent), lexer_.parseIndentation())
 
-	if matches == nil {
-		return nil
+	if !ok {
+		return nil, false
 	}
 
 	result := []*lexer.Token{}
@@ -261,7 +264,7 @@ func (lexer_ *Lexer) tokens() []*lexer.Token {
 		}
 	}
 
-	return result
+	return result, true
 }
 
 /*

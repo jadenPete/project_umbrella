@@ -5,13 +5,9 @@ go_library(
     srcs = glob(["*.go"]),
     importpath = "project_umbrella/interpreter",
     deps = [
-        "//src/interpreter/bytecode_generator",
         "//src/interpreter/errors",
         "//src/interpreter/errors/entry_errors",
-        "//src/interpreter/errors/parser_errors",
-        "//src/interpreter/parser",
-        "//src/interpreter/runtime/runtime_executor",
-        "@com_github_alecthomas_participle_v2//:go_default_library",
+        "//src/interpreter/loader/module_loader",
     ],
 )
 

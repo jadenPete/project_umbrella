@@ -13,7 +13,9 @@ go_deps.from_file(go_mod = "//src/interpreter:go.mod")
 use_repo(
     go_deps,
     "com_github_alecthomas_participle_v2",
+    "com_github_benbjohnson_immutable",
     "com_github_dlclark_regexp2",
+    "com_github_puzpuzpuz_xsync_v3",
     "com_github_ugorji_go_codec",
 )
 

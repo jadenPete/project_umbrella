@@ -2,6 +2,7 @@ package runtime_errors
 
 import (
 	"fmt"
+	"strings"
 
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/parser/parser_types"
@@ -140,5 +141,36 @@ func UniversalMethodReturnedIncorrectValue(
 		Code:        12,
 		Name:        "A universal method returned a value of an incorrect type",
 		Description: fmt.Sprintf("%s should've returned a %s", methodName, expectedTypeName),
+	}
+}
+
+func ModuleNotFound(moduleName string) *errors.Error {
+	return &errors.Error{
+		Section: "RUNTIME",
+		Code:    13,
+		Name:    fmt.Sprintf("The module \"%s\" wasn't found", moduleName),
+	}
+}
+
+func ModuleCycle(moduleLoaderStack []string) *errors.Error {
+	var description strings.Builder
+
+	description.WriteString(
+		fmt.Sprintf(
+			"\"%s\" couldn't be imported. See the following import stack.\n\n%s",
+			moduleLoaderStack[len(moduleLoaderStack)-1],
+			moduleLoaderStack[0],
+		),
+	)
+
+	for _, moduleName := range moduleLoaderStack[1:] {
+		description.WriteString(fmt.Sprintf("\n↳ %s", moduleName))
+	}
+
+	return &errors.Error{
+		Section:     "RUNTIME",
+		Code:        13,
+		Name:        "Encountered an import cycle",
+		Description: description.String(),
 	}
 }
