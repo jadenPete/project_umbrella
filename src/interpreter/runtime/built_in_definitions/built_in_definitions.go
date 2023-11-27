@@ -109,30 +109,6 @@ func builtInStructFields(
 		}
 
 	return map[string]value.Value{
-		built_in_declarations.ToStringMethod.Name: function.NewBuiltInFunction(
-			function.NewFixedFunctionArgumentValidator(built_in_declarations.ToStringMethod.Name),
-			func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
-				argumentsAsStrings := make([]string, 0, len(structArgumentValues))
-
-				for _, argument := range structArgumentValues {
-					argumentsAsStrings = append(
-						argumentsAsStrings,
-						string(value_util.CallToStringMethod(runtime_, argument)),
-					)
-				}
-
-				return value_types.StringValue(
-					fmt.Sprintf(
-						"%s(%s)",
-						structName,
-						strings.Join(argumentsAsStrings, ", "),
-					),
-				)
-			},
-
-			built_in_declarations.ToStringMethod.Type,
-		),
-
 		built_in_declarations.EqualsMethod.Name: function.NewBuiltInFunction(
 			function.NewFixedFunctionArgumentValidator(
 				built_in_declarations.EqualsMethod.Name,
@@ -160,6 +136,29 @@ func builtInStructFields(
 		),
 
 		built_in_declarations.StructConstructorMethod.Name: structConstructor,
+		built_in_declarations.ToStringMethod.Name: function.NewBuiltInFunction(
+			function.NewFixedFunctionArgumentValidator(built_in_declarations.ToStringMethod.Name),
+			func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
+				argumentsAsStrings := make([]string, 0, len(structArgumentValues))
+
+				for _, argument := range structArgumentValues {
+					argumentsAsStrings = append(
+						argumentsAsStrings,
+						string(value_util.CallToStringMethod(runtime_, argument)),
+					)
+				}
+
+				return value_types.StringValue(
+					fmt.Sprintf(
+						"%s(%s)",
+						structName,
+						strings.Join(argumentsAsStrings, ", "),
+					),
+				)
+			},
+
+			built_in_declarations.ToStringMethod.Type,
+		),
 	}
 }
 

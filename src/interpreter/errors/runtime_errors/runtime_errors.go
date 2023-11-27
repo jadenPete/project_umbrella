@@ -174,3 +174,16 @@ func ModuleCycle(moduleLoaderStack []string) *errors.Error {
 		Description: description.String(),
 	}
 }
+
+func TupleGetIndexOutOfBounds(i int, length int) *errors.Error {
+	return &errors.Error{
+		Section: "RUNTIME",
+		Code:    14,
+		Name:    "An out-of-bounds index was provided",
+		Description: fmt.Sprintf(
+			"tuple#get expected an index in the range [0, %d), but got %d.",
+			length,
+			i,
+		),
+	}
+}

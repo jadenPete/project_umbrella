@@ -7,13 +7,8 @@ type BuiltInField struct {
 	Type *parser_types.FunctionType
 }
 
+// Implemented on every type
 var (
-	// Implemented on every type
-	ToStringMethod = &BuiltInField{
-		Name: "__to_str__",
-		Type: parser_types.NormalFunction,
-	}
-
 	EqualsMethod = &BuiltInField{
 		Name: "==",
 		Type: parser_types.InfixFunction,
@@ -24,7 +19,14 @@ var (
 		Type: parser_types.InfixFunction,
 	}
 
-	// Implemented on int and float
+	ToStringMethod = &BuiltInField{
+		Name: "__to_str__",
+		Type: parser_types.NormalFunction,
+	}
+)
+
+// Implemented on int and float
+var (
 	PlusMethod = &BuiltInField{ // Implemented on str, int, and float
 		Name: "+",
 		Type: parser_types.InfixFunction,
@@ -69,8 +71,10 @@ var (
 		Name: ">=",
 		Type: parser_types.InfixFunction,
 	}
+)
 
-	// Implemented on bool
+// Implemented on bool
+var (
 	NotMethod = &BuiltInField{
 		Name: "!",
 		Type: parser_types.PrefixFunction,
@@ -85,13 +89,26 @@ var (
 		Name: "||",
 		Type: parser_types.InfixFunction,
 	}
+)
 
-	// Implemented on structs
-	StructConstructorMethod = &BuiltInField{
-		Name: "__constructor__",
+// Implemented on tuple
+var (
+	GetMethod = &BuiltInField{
+		Name: "get",
 		Type: parser_types.NormalFunction,
 	}
+
+	LengthField = &BuiltInField{
+		Name: "length",
+		Type: nil,
+	}
 )
+
+// Implemented on structs
+var StructConstructorMethod = &BuiltInField{
+	Name: "__constructor__",
+	Type: parser_types.NormalFunction,
+}
 
 type BuiltInValueID int
 

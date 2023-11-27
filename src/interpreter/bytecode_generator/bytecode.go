@@ -277,9 +277,7 @@ func (translator *BytecodeTranslator) generateBytecode() *Bytecode {
 	return bytecode
 }
 
-func (translator *BytecodeTranslator) valueIDForAssignment(
-	assignment *parser.Assignment,
-) int {
+func (translator *BytecodeTranslator) valueIDForAssignment(assignment *parser.Assignment) int {
 	valueID := translator.valueIDForExpression(assignment.Value)
 
 	/*
