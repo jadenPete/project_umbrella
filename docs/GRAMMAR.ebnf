@@ -21,6 +21,8 @@ Formatting =
 (* Statements *)
 
 Assignment = Identifier {Formatting} "=" {Formatting} (Expression | Assignment);
+Block = ":" [{NewlineToken}- IndentToken StatementList (OutdentToken | EOF)];
+StatementList;
 Function =
 	"fn"
 	{Formatting}
@@ -32,12 +34,9 @@ Function =
 	{Formatting}
 	")"
 	{NewlineToken}
-	FunctionOrStructBody;
+	Block;
 
-FunctionOrStructBody = ":" (NewlineToken IndentedStatementList)?;
-FunctionOrStructParameters = Identifier [{Formatting} "," {Formatting} FunctionParameters];
-IndentedStatementList = {NewlineToken} [IndentToken StatementList (OutdentToken | EOF)];
-StatementList;
+FunctionOrStructParameters = Identifier [{Formatting} "," {Formatting} FunctionOrStructParameters];
 Struct =
 	"struct"
 	{Formatting}
@@ -49,7 +48,7 @@ Struct =
 	{Formatting}
 	")"
 	{NewlineToken}
-	FunctionOrStructBody;
+	Block;
 
 (* Multi-token expressions *)
 
@@ -69,7 +68,7 @@ InfixAdditionRight =
 	)
 	InfixMultiplication;
 
-InfixMultiplication = Call {InfixMultiplicationRight};
+InfixMultiplication = PrefixOperation {InfixMultiplicationRight};
 InfixMultiplicationRight =
 	(
 		| {IndentToken | OutdentToken} ("*" | "/") {Formatting}
@@ -84,8 +83,7 @@ If =
 		{Formatting}
 		Expression
 		{Formatting}
-		":"
-		(NewlineToken IndentedStatementList)?
+		Block
 		{{NewlineToken}- ElseIf}
 		[{NewlineToken}- Else]
 	)
@@ -99,10 +97,9 @@ ElseIf =
 	{Formatting}
 	Expression
 	{Formatting}
-	":"
-	(NewlineToken IndentedStatementList)?;
+	Block;
 
-Else = "else" {Formatting} ":" (NewlineToken IndentedStatementList)?;
+Else = "else" {Formatting} Block;
 Call = Select {CallRight};
 CallRight =
 	| {IndentToken | OutdentToken} "(" {Formatting} [CallArguments] {Formatting} ")"
