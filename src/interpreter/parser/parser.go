@@ -131,21 +131,18 @@ func (concrete *ConcreteBlock) AbstractExpressionList() *ExpressionList {
 }
 
 type ConcreteFunction struct {
-	Name       *ConcreteIdentifier                 `parser:"'fn':FunctionKeywordToken (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)* '(':LeftParenthesisToken (IndentToken | OutdentToken | NewlineToken)*"`
-	Parameters *ConcreteFunctionOrStructParameters `parser:"@@? (IndentToken | OutdentToken | NewlineToken)* ')':RightParenthesisToken NewlineToken*"`
-	Body       *ConcreteBlock                      `parser:"@@"`
-	Tokens     []lexer.Token
+	Name              *ConcreteIdentifier                `parser:"'fn':FunctionKeywordToken (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)*"`
+	ParametersAndBody *ConcreteFunctionParametersAndBody `parser:"@@"`
+	Tokens            []lexer.Token
 }
 
 func (concrete *ConcreteFunction) Abstract() Expression {
-	return concrete.AbstractFunction()
-}
+	abstractParameters, abstractBody := concrete.ParametersAndBody.Abstract()
 
-func (concrete *ConcreteFunction) AbstractFunction() *Function {
 	return &Function{
 		Name:       concrete.Name.AbstractIdentifier(),
-		Parameters: AbstractFunctionOrStructParameters(concrete.Parameters),
-		Body:       concrete.Body.AbstractExpressionList(),
+		Parameters: abstractParameters,
+		Body:       abstractBody,
 		position:   tokenListSyntaxTreePosition(concrete.Tokens),
 	}
 }
@@ -174,6 +171,18 @@ func AbstractFunctionOrStructParameters(concrete *ConcreteFunctionOrStructParame
 	)
 
 	return result
+}
+
+type ConcreteFunctionParametersAndBody struct {
+	Parameters *ConcreteFunctionOrStructParameters `parser:"'(':LeftParenthesisToken (IndentToken | OutdentToken | NewlineToken)* @@? (IndentToken | OutdentToken | NewlineToken)* ')':RightParenthesisToken NewlineToken*"`
+	Body       *ConcreteBlock                      `parser:"@@"`
+}
+
+func (concrete *ConcreteFunctionParametersAndBody) Abstract() ([]*Identifier, *ExpressionList) {
+	abstractParameters := AbstractFunctionOrStructParameters(concrete.Parameters)
+	abstractBody := concrete.Body.AbstractExpressionList()
+
+	return abstractParameters, abstractBody
 }
 
 type ConcreteStatementList struct {
@@ -591,17 +600,17 @@ func (concrete *ConcretePrefixOperation) Abstract() Expression {
 func (*ConcretePrefixOperation) concreteInfixOperand() {}
 
 type ConcreteIf struct {
-	Condition ConcreteExpression `parser:"('if':IfKeywordToken (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)*"`
-	Body      *ConcreteBlock     `parser:" @@"`
-	ElseIf    []*ConcreteElseIf  `parser:" (NewlineToken+ @@)*"`
-	Else      *ConcreteElse      `parser:" (NewlineToken+ @@)?)"`
-	Call      *ConcreteCall      `parser:"| @@"`
-	Tokens    []lexer.Token
+	Condition         ConcreteExpression         `parser:"('if':IfKeywordToken (IndentToken | OutdentToken | NewlineToken)* @@ (IndentToken | OutdentToken | NewlineToken)*"`
+	Body              *ConcreteBlock             `parser:" @@"`
+	ElseIf            []*ConcreteElseIf          `parser:" (NewlineToken+ @@)*"`
+	Else              *ConcreteElse              `parser:" (NewlineToken+ @@)?)"`
+	AnonymousFunction *ConcreteAnonymousFunction `parser:"| @@"`
+	Tokens            []lexer.Token
 }
 
 func (concrete *ConcreteIf) Abstract() Expression {
-	if concrete.Call != nil {
-		return concrete.Call.Abstract()
+	if concrete.AnonymousFunction != nil {
+		return concrete.AnonymousFunction.Abstract()
 	}
 
 	abstractFunctionFromBody := func(concrete *ConcreteBlock) *Function {
@@ -708,6 +717,27 @@ type ConcreteElseIf struct {
 type ConcreteElse struct {
 	Body   *ConcreteBlock `parser:"'else':ElseKeywordToken (IndentToken | OutdentToken | NewlineToken)* @@"`
 	Tokens []lexer.Token
+}
+
+type ConcreteAnonymousFunction struct {
+	ParametersAndBody *ConcreteFunctionParametersAndBody `parser:"  (@@"`
+	Call              *ConcreteCall                      `parser:" | @@)"`
+	Tokens            []lexer.Token
+}
+
+func (concrete *ConcreteAnonymousFunction) Abstract() Expression {
+	if concrete.Call != nil {
+		return concrete.Call.Abstract()
+	}
+
+	abstractParameters, abstractBody := concrete.ParametersAndBody.Abstract()
+
+	return &Function{
+		Name:       nil,
+		Parameters: abstractParameters,
+		Body:       abstractBody,
+		position:   tokenListSyntaxTreePosition(concrete.Tokens),
+	}
 }
 
 type ConcreteCall struct {

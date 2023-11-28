@@ -27,14 +27,19 @@ println((
 
 	assert output_from_code(
 		"""\
-println(
-	if(true):
-		"foo"
-	else:
-		"bar"
-)
+if (true):
+	"foo"
+else:
+	"bar"
+""",
+		expected_return_code=1
+	) == """\
+Error (PARSER-1): The parser failed: unexpected token "if"
+
+  1  │ if (true):
+     │ ^^
+
 """
-	) == "foo\n"
 
 def test_parenthesized_primaries() -> None:
 	assert output_from_code("println((0.5))\n") == "0.5\n"

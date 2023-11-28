@@ -32,6 +32,10 @@ Function =
 	{Formatting}
 	Identifier
 	{Formatting}
+	FunctionParametersAndBody;
+
+FunctionOrStructParameters = Identifier [{Formatting} "," {Formatting} FunctionOrStructParameters];
+FunctionParametersAndBody =
 	"("
 	{Formatting}
 	[FunctionOrStructParameters]
@@ -40,7 +44,6 @@ Function =
 	{NewlineToken}
 	Block;
 
-FunctionOrStructParameters = Identifier [{Formatting} "," {Formatting} FunctionOrStructParameters];
 Struct =
 	"struct"
 	{Formatting}
@@ -92,7 +95,7 @@ If =
 		[{NewlineToken}- Else]
 	)
 
-	| Call;
+	| AnonymousFunction;
 
 ElseIf =
 	"else"
@@ -104,6 +107,10 @@ ElseIf =
 	Block;
 
 Else = "else" {Formatting} Block;
+AnonymousFunction =
+	| FunctionParametersAndBody
+	| Call;
+
 Call = Select {CallRight};
 CallRight =
 	| {IndentToken | OutdentToken} "(" {Formatting} [CallArguments] {Formatting} ")"
