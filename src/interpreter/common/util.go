@@ -79,14 +79,6 @@ func IsFileUnsafe(path string) bool {
 	return info.Mode().IsRegular()
 }
 
-func Max(x int, y int) int {
-	if x < y {
-		return y
-	}
-
-	return x
-}
-
 func Repeat[T any](element T, size int) []T {
 	result := make([]T, 0, size)
 

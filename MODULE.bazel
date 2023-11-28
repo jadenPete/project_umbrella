@@ -1,9 +1,9 @@
-"""The main module."""
+""" The main module. """
 
 module(name = "project_umbrella", version = "0.1")
 
-bazel_dep(name = "gazelle", version = "0.31.0")
-bazel_dep(name = "rules_go", version = "0.39.1")
+bazel_dep(name = "gazelle", version = "0.34.0")
+bazel_dep(name = "rules_go", version = "0.43.0")
 bazel_dep(name = "rules_python", version = "0.22.0")
 
 # Go

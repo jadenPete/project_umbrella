@@ -185,13 +185,9 @@ func indentCharacterAndCount(line string) (rune, int) {
 }
 
 func isLineBlank(line string) bool {
-	for _, character := range line {
-		if character != '\t' && character != ' ' {
-			return false
-		}
-	}
-
-	return true
+	return !strings.ContainsFunc(line, func(character rune) bool {
+		return character != '\t' && character != ' '
+	})
 }
 
 func (lexer_ *Lexer) Next() (lexer.Token, error) {

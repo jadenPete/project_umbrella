@@ -6,8 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"project_umbrella/interpreter/common"
 )
 
 const contextLines = 3
@@ -73,7 +71,7 @@ func newTabAdjustedPosition(lines []string, position *Position) *tabAdjustedPosi
 }
 
 func newContext(adjustedLines []string, position *tabAdjustedPosition) *context {
-	contextStartLine := common.Max(position.startLine-contextLines, 1)
+	contextStartLine := max(position.startLine-contextLines, 1)
 
 	return &context{
 		contextStartLine:    contextStartLine,
@@ -83,7 +81,7 @@ func newContext(adjustedLines []string, position *tabAdjustedPosition) *context 
 }
 
 func (context_ *context) formattedLineNumber(lineNumber string) string {
-	lineNumberLength := common.Max(
+	lineNumberLength := max(
 		len(strconv.Itoa(context_.highlightedPosition.endLine)),
 		lineNumberMinimumLength,
 	)
@@ -118,7 +116,8 @@ func tabAdjustedCodeLines(lines []string) []string {
 	adjustedLines := make([]string, 0, len(lines))
 
 	for _, line := range lines {
-		adjustedLines = append(adjustedLines, strings.ReplaceAll(line, "\t", strings.Repeat(" ", tabSpaces)))
+		adjustedLines =
+			append(adjustedLines, strings.ReplaceAll(line, "\t", strings.Repeat(" ", tabSpaces)))
 	}
 
 	return adjustedLines
