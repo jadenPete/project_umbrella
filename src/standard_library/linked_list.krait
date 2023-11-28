@@ -1,0 +1,16 @@
+struct Cons(self, value, next):
+	fn map(mapper):
+		Cons(mapper(value), next.map(mapper))
+
+struct Nil(self):
+	fn map(_):
+		self
+
+fn new_linked_list(values):
+	fn with_offset(i):
+		if i < values.length:
+			Cons(values.get(i), with_offset(i + 1))
+		else:
+			Nil()
+
+	with_offset(0)

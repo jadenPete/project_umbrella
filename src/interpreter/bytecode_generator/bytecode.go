@@ -291,8 +291,6 @@ func (translator *BytecodeTranslator) valueIDForAssignment(assignment *parser.As
 					Error:    parser_errors.ValueReassigned,
 					Position: assignment.Position(),
 				},
-
-				translator.fileContent,
 			)
 		}
 	}
@@ -430,8 +428,6 @@ func (translator *BytecodeTranslator) valueIDForExpressionList(
 							Error:    parser_errors.ValueReassigned,
 							Position: function.Name.Position(),
 						},
-
-						translator.fileContent,
 					)
 				}
 
@@ -525,8 +521,6 @@ func (translator *BytecodeTranslator) valueIDForIdentifier(identifier *parser.Id
 				Error:    parser_errors.UnknownValue(identifier.Value),
 				Position: identifier.Position(),
 			},
-
-			translator.fileContent,
 		)
 	}
 

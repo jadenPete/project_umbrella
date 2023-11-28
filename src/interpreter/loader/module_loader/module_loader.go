@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 
@@ -15,14 +14,13 @@ import (
 	"github.com/puzpuzpuz/xsync/v3"
 
 	"project_umbrella/interpreter/common"
+	"project_umbrella/interpreter/environment_variables"
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/runtime_errors"
 	"project_umbrella/interpreter/loader"
 	"project_umbrella/interpreter/loader/file_loader"
 	"project_umbrella/interpreter/runtime/value"
 )
-
-const defaultLinuxKraitPath = "/usr/lib/krait/standard_library"
 
 type ModuleLoader struct {
 	cache *xsync.MapOf[string, *moduleLoaderCacheEntry]
@@ -86,20 +84,8 @@ func (loader *ModuleLoader) loadModuleWithStack(
 	return loader.loadFileWithStack(path_, moduleLoaderStack_)
 }
 
-func getKraitPathEnvironmentVariable() string {
-	if result, ok := os.LookupEnv("KRAIT_PATH"); ok {
-		return result
-	}
-
-	if runtime.GOOS == "linux" {
-		return defaultLinuxKraitPath
-	}
-
-	return ""
-}
-
 func getModulePath(moduleName string) (string, bool) {
-	kraitPathDirectories := strings.Split(getKraitPathEnvironmentVariable(), ":")
+	kraitPathDirectories := strings.Split(environment_variables.KRAIT_PATH, ":")
 	moduleComponents := strings.Split(moduleName, ".")
 
 	for _, path_ := range kraitPathDirectories {

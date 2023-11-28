@@ -37,8 +37,9 @@ func (assignment *Assignment) Names() []*Identifier {
 
 func (assignment *Assignment) Position() *errors.Position {
 	return &errors.Position{
-		Start: assignment.Names_[0].Position().Start,
-		End:   assignment.Value.Position().End,
+		Filename: assignment.Names_[0].Position().Filename,
+		Start:    assignment.Names_[0].Position().Start,
+		End:      assignment.Value.Position().End,
 	}
 }
 
@@ -56,8 +57,9 @@ func (expressionList *ExpressionList) Position() *errors.Position {
 	}
 
 	return &errors.Position{
-		Start: expressionList.Children_[0].Position().Start,
-		End:   expressionList.Children_[len(expressionList.Children_)-1].Position().End,
+		Filename: expressionList.Children_[0].Position().Filename,
+		Start:    expressionList.Children_[0].Position().Start,
+		End:      expressionList.Children_[len(expressionList.Children_)-1].Position().End,
 	}
 }
 
@@ -207,8 +209,9 @@ func (select_ *Select) Children() []Expression {
 
 func (select_ *Select) Position() *errors.Position {
 	return &errors.Position{
-		Start: select_.Value.Position().Start,
-		End:   select_.Field.Position().End,
+		Filename: select_.Value.Position().Filename,
+		Start:    select_.Value.Position().Start,
+		End:      select_.Field.Position().End,
 	}
 }
 

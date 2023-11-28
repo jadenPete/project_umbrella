@@ -1,0 +1,13 @@
+struct Some(self, value):
+	fn get_or_else(_):
+		value
+
+	fn map(mapper):
+		Some(mapper(value))
+
+struct None(self):
+	fn get_or_else(default):
+		default
+
+	fn map(_):
+		self

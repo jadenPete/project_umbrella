@@ -1,6 +1,9 @@
 package common
 
-import "os"
+import (
+	"os"
+	"path/filepath"
+)
 
 func Abs(x int) int {
 	if x < 0 {
@@ -8,6 +11,52 @@ func Abs(x int) int {
 	}
 
 	return x
+}
+
+func IsDirectoryAncestorOfFile(directory string, filePath string) bool {
+	absolutizeAndEvaluate := func(path string) (string, error) {
+		absolute, err := filepath.Abs(path)
+
+		if err != nil {
+			return "", err
+		}
+
+		evaluated, err := filepath.EvalSymlinks(absolute)
+
+		if err != nil {
+			return "", err
+		}
+
+		return evaluated, nil
+	}
+
+	evaluatedDirectory, err := absolutizeAndEvaluate(directory)
+
+	if err != nil {
+		return false
+	}
+
+	currentFilePath, err := absolutizeAndEvaluate(filePath)
+
+	if err != nil {
+		return false
+	}
+
+	for {
+		newFilePath := filepath.Dir(currentFilePath)
+
+		if newFilePath == currentFilePath {
+			break
+		}
+
+		currentFilePath = newFilePath
+
+		if currentFilePath == evaluatedDirectory {
+			return true
+		}
+	}
+
+	return currentFilePath == evaluatedDirectory
 }
 
 func IsDirectoryUnsafe(path string) bool {

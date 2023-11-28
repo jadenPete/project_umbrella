@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+set -e
+
 bazel build --enable_bzlmod //src/interpreter
 
-"$(bazel cquery --enable_bzlmod --output files //src/interpreter 2> /dev/null)" "$@"
+INTERPRETER_PATH="$(bazel cquery --enable_bzlmod --output files //src/interpreter 2> /dev/null)"
+SCRIPT_DIRECTORY="$(dirname -- "${BASH_SOURCE[0]}")"
+STANDARD_LIBRARY_PATH="$SCRIPT_DIRECTORY/src/standard_library"
+STARTUP_FILE_PATH="$SCRIPT_DIRECTORY/src/startup_file.krait"
+
+KRAIT_PATH="$STANDARD_LIBRARY_PATH:$KRAIT_PATH" \
+	KRAIT_STARTUP="$STARTUP_FILE_PATH" \
+	KRAIT_STARTUP_EXCLUDE="$STANDARD_LIBRARY_PATH:$KRAIT_PATH" \
+	"$INTERPRETER_PATH" \
+	"$@"
