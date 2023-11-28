@@ -21,7 +21,11 @@ Formatting =
 (* Statements *)
 
 Assignment = Identifier {Formatting} "=" {Formatting} (Expression | Assignment);
-Block = ":" [{NewlineToken}- IndentToken StatementList (OutdentToken | EOF)];
+Block = ":" [
+	| {IndentToken | OutdentToken} Expression
+	| {NewlineToken}- IndentToken StatementList (OutdentToken | EOF)
+];
+
 StatementList;
 Function =
 	"fn"

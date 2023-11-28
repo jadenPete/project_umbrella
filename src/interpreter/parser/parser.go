@@ -110,17 +110,24 @@ func (concrete *ConcreteAssignment) Tokens_() []lexer.Token {
 func (*ConcreteAssignment) concreteStatement() {}
 
 type ConcreteBlock struct {
-	Value *ConcreteStatementList `parser:"':':ColonToken (NewlineToken+ IndentToken @@ (OutdentToken | EOF))?"`
+	Expression    ConcreteExpression     `parser:"':':ColonToken (@@"`
+	StatementList *ConcreteStatementList `parser:"              | NewlineToken+ IndentToken @@ (OutdentToken | EOF))?"`
 }
 
 func (concrete *ConcreteBlock) AbstractExpressionList() *ExpressionList {
-	if concrete.Value == nil {
+	if concrete.Expression != nil {
 		return &ExpressionList{
-			Children_: []Expression{},
+			Children_: []Expression{concrete.Expression.Abstract()},
 		}
 	}
 
-	return concrete.Value.AbstractExpressionList()
+	if concrete.StatementList != nil {
+		return concrete.StatementList.AbstractExpressionList()
+	}
+
+	return &ExpressionList{
+		Children_: []Expression{},
+	}
 }
 
 type ConcreteFunction struct {
