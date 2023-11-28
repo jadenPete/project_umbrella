@@ -1,6 +1,6 @@
 module project_umbrella/interpreter
 
-go 1.20
+go 1.21
 
 require github.com/alecthomas/participle/v2 v2.1.0
 require (

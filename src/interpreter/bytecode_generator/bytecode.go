@@ -131,6 +131,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
+	"slices"
 
 	"github.com/ugorji/go/codec"
 
@@ -268,10 +269,8 @@ func (translator *BytecodeTranslator) generateBytecode() *Bytecode {
 		constantsSet[i] = true
 	}
 
-	for _, isSet := range constantsSet {
-		if !isSet {
-			errors.RaiseError(parser_errors.NonexhaustiveConstantIDMap)
-		}
+	if slices.Contains(constantsSet, false) {
+		errors.RaiseError(parser_errors.NonexhaustiveConstantIDMap)
 	}
 
 	return bytecode

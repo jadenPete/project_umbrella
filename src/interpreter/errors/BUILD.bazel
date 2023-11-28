@@ -5,5 +5,4 @@ go_library(
     srcs = glob(["*.go"]),
     importpath = "project_umbrella/interpreter/errors",
     visibility = ["//src/interpreter:__subpackages__"],
-	deps = ["//src/interpreter/common"],
 )

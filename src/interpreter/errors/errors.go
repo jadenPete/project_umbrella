@@ -55,15 +55,10 @@ func RaisePositionalError(error_ *PositionalError) {
 
 	RaiseError(
 		&Error{
-			Section: error_.Error.Section,
-			Code:    error_.Error.Code,
-			Name:    error_.Error.Name,
-			Description: fmt.Sprintf(
-				"%s:\n%s%s",
-				error_.Position.Filename,
-				highlightedSource(error_.Position),
-				description,
-			),
+			Section:     error_.Error.Section,
+			Code:        error_.Error.Code,
+			Name:        error_.Error.Name,
+			Description: fmt.Sprintf("%s%s", highlightedSource(error_.Position), description),
 		},
 	)
 }
