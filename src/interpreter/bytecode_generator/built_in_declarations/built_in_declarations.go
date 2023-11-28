@@ -149,10 +149,17 @@ var (
 )
 
 // Implemented on structs
-var StructConstructorMethod = &BuiltInField{
-	Name: "__constructor__",
-	Type: parser_types.NormalFunction,
-}
+var (
+	StructIsInstanceOfMethod = &BuiltInField{
+		Name: "__is_instance_of__",
+		Type: parser_types.NormalFunction,
+	}
+
+	StructConstructorMethod = &BuiltInField{
+		Name: "__constructor__",
+		Type: parser_types.NormalFunction,
+	}
+)
 
 // Implemented on libraries
 var (

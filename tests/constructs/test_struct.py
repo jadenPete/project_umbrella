@@ -206,3 +206,45 @@ struct Box(self, value):
 println(Box(Box("foo")))
 """
 	) == "Box(Box(foo))\n"
+
+def test_is_instance_of() -> None:
+	assert output_from_code(
+		"""\
+struct Foo(self):
+struct Bar(self):
+
+println(Foo().__is_instance_of__(Foo))
+"""
+	) == "true\n"
+
+	assert output_from_code(
+		"""\
+struct Foo(self):
+struct Bar(self):
+
+println(Foo().__is_instance_of__(Bar))
+"""
+	) == "false\n"
+
+	assert output_from_code(
+		"""\
+struct Foo(self):
+
+fn function():
+
+println(Foo().__is_instance_of__(function))
+"""
+	) == "false\n"
+
+	assert output_from_code(
+		"""\
+struct Foo(self):
+
+println(Foo().__is_instance_of__(unit))
+""",
+		expected_return_code=1
+	) == """\
+Error (RUNTIME-2): A built-in function was called with an argument of incorrect type
+
+__is_instance_of__ expected argument #1 to be of a different type.
+"""

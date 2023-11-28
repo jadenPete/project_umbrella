@@ -134,6 +134,19 @@ func builtInStructFields(
 			built_in_declarations.UniversalNotEqualsMethod.Type,
 		),
 
+		built_in_declarations.StructIsInstanceOfMethod.Name: function.NewBuiltInFunction(
+			function.NewFixedFunctionArgumentValidator(
+				built_in_declarations.StructIsInstanceOfMethod.Name,
+				reflect.TypeOf(&function.Function{}),
+			),
+
+			func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
+				return value_types.BooleanValue(structConstructor == arguments[0])
+			},
+
+			built_in_declarations.StructIsInstanceOfMethod.Type,
+		),
+
 		built_in_declarations.StructConstructorMethod.Name: structConstructor,
 		built_in_declarations.UniversalToStringMethod.Name: function.NewBuiltInFunction(
 			function.NewFixedFunctionArgumentValidator(
