@@ -1,0 +1,10 @@
+linked_list = import("linked_list")
+
+Cons = linked_list.Cons
+Nil = linked_list.Nil
+new_linked_list = linked_list.new_linked_list
+
+option = import("option")
+
+Some = option.Some
+None = option.None

@@ -7,6 +7,8 @@ go_library(
     visibility = ["//src/interpreter/loader/module_loader:__pkg__"],
     deps = [
         "//src/interpreter/bytecode_generator",
+        "//src/interpreter/common",
+        "//src/interpreter/environment_variables",
         "//src/interpreter/errors",
         "//src/interpreter/errors/entry_errors",
         "//src/interpreter/errors/parser_errors",

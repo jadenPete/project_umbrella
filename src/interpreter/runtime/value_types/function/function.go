@@ -25,7 +25,7 @@ func (function *Function) Definition() *value.ValueDefinition {
 	}
 }
 
-func (function *Function) Evaluate(runtime *runtime.Runtime, arguments ...value.Value) value.Value {
+func (function *Function) Evaluate(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 	argumentTypes := make([]reflect.Type, 0, len(arguments))
 
 	for _, argument := range arguments {
@@ -36,7 +36,7 @@ func (function *Function) Evaluate(runtime *runtime.Runtime, arguments ...value.
 		errors.RaiseError(err)
 	}
 
-	return function.Evaluator(runtime, arguments...)
+	return function.Evaluator(runtime_, arguments...)
 }
 
 type FunctionArgumentValidator func(argumentTypes []reflect.Type) *errors.Error

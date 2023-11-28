@@ -277,9 +277,7 @@ func (translator *BytecodeTranslator) generateBytecode() *Bytecode {
 	return bytecode
 }
 
-func (translator *BytecodeTranslator) valueIDForAssignment(
-	assignment *parser.Assignment,
-) int {
+func (translator *BytecodeTranslator) valueIDForAssignment(assignment *parser.Assignment) int {
 	valueID := translator.valueIDForExpression(assignment.Value)
 
 	/*
@@ -293,8 +291,6 @@ func (translator *BytecodeTranslator) valueIDForAssignment(
 					Error:    parser_errors.ValueReassigned,
 					Position: assignment.Position(),
 				},
-
-				translator.fileContent,
 			)
 		}
 	}
@@ -432,8 +428,6 @@ func (translator *BytecodeTranslator) valueIDForExpressionList(
 							Error:    parser_errors.ValueReassigned,
 							Position: function.Name.Position(),
 						},
-
-						translator.fileContent,
 					)
 				}
 
@@ -527,8 +521,6 @@ func (translator *BytecodeTranslator) valueIDForIdentifier(identifier *parser.Id
 				Error:    parser_errors.UnknownValue(identifier.Value),
 				Position: identifier.Position(),
 			},
-
-			translator.fileContent,
 		)
 	}
 

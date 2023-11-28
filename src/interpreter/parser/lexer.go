@@ -337,12 +337,11 @@ func (lexer_ *Lexer) parseIndentation() []*ExhaustiveMatch {
 						),
 
 						Position: &errors.Position{
-							Start: fileOffset,
-							End:   fileOffset + indentCount,
+							Filename: lexer_.filename,
+							Start:    fileOffset,
+							End:      fileOffset + indentCount,
 						},
 					},
-
-					lexer_.fileContent,
 				)
 			}
 

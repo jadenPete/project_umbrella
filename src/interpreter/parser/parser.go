@@ -52,8 +52,9 @@ func AbstractInfixOperation[
 
 			Arguments: []Expression{abstractRightHandSide},
 			position: &errors.Position{
-				Start: result.Position().Start,
-				End:   abstractRightHandSide.Position().End,
+				Filename: result.Position().Filename,
+				Start:    result.Position().Start,
+				End:      abstractRightHandSide.Position().End,
 			},
 		}
 	}
@@ -578,8 +579,9 @@ func (concrete *ConcretePrefixOperation) Abstract() Expression {
 
 			Arguments: []Expression{},
 			position: &errors.Position{
-				Start: abstractOperator.Position().Start,
-				End:   result.Position().End,
+				Filename: abstractOperator.Position().Filename,
+				Start:    abstractOperator.Position().Start,
+				End:      result.Position().End,
 			},
 		}
 	}
@@ -729,7 +731,8 @@ func (concrete *ConcreteCall) Abstract() Expression {
 				Function:  result,
 				Arguments: arguments,
 				position: &errors.Position{
-					Start: result.Position().Start,
+					Filename: result.Position().Filename,
+					Start:    result.Position().Start,
 					End: tokenSyntaxTreePosition(
 						&rightHandSide.Tokens[len(rightHandSide.Tokens)-1],
 					).End,
@@ -895,8 +898,9 @@ func (concrete *ConcreteString) AbstractString() *String {
 	return &String{
 		Value: concrete.Value,
 		position: &errors.Position{
-			Start: unadjustedPosition.Start,
-			End:   unadjustedPosition.End + 2,
+			Filename: unadjustedPosition.Filename,
+			Start:    unadjustedPosition.Start,
+			End:      unadjustedPosition.End + 2,
 		},
 	}
 }
@@ -926,22 +930,24 @@ var parser = participle.MustBuild[ConcreteStatementList](
 	participle.UseLookahead(participle.MaxLookahead),
 )
 
-func ParseString(source string) (*ConcreteStatementList, error) {
-	return parser.ParseString("", source)
+func ParseString(path string, source string) (*ConcreteStatementList, error) {
+	return parser.ParseString(path, source)
 }
 
 func tokenListSyntaxTreePosition(tokens []lexer.Token) *errors.Position {
 	lastToken := tokens[len(tokens)-1]
 
 	return &errors.Position{
-		Start: tokens[0].Pos.Offset,
-		End:   lastToken.Pos.Offset + len(lastToken.Value),
+		Filename: tokens[0].Pos.Filename,
+		Start:    tokens[0].Pos.Offset,
+		End:      lastToken.Pos.Offset + len(lastToken.Value),
 	}
 }
 
 func tokenSyntaxTreePosition(token *lexer.Token) *errors.Position {
 	return &errors.Position{
-		Start: token.Pos.Offset,
-		End:   token.Pos.Offset + len(token.Value),
+		Filename: token.Pos.Filename,
+		Start:    token.Pos.Offset,
+		End:      token.Pos.Offset + len(token.Value),
 	}
 }

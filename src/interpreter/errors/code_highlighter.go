@@ -3,6 +3,7 @@ package errors
 import (
 	"fmt"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 
@@ -123,8 +124,15 @@ func tabAdjustedCodeLines(lines []string) []string {
 	return adjustedLines
 }
 
-func highlightedCode(code string, position *Position) string {
-	lines := strings.Split(code, "\n")
+func highlightedSource(position *Position) string {
+	sourceByteSlice, err := os.ReadFile(position.Filename)
+
+	if err != nil {
+		panic(err)
+	}
+
+	source := string(sourceByteSlice)
+	lines := strings.Split(source, "\n")
 	adjustedLines := tabAdjustedCodeLines(lines)
 	adjustedPosition := newTabAdjustedPosition(lines, position)
 	context_ := newContext(adjustedLines, adjustedPosition)
@@ -145,7 +153,7 @@ func highlightedCode(code string, position *Position) string {
 	for _, line := range context_.contextLines {
 		lineLength := len([]rune(line))
 
-		if lineLength < maximumContextLineLength {
+		if lineLength > maximumContextLineLength {
 			maximumContextLineLength = lineLength
 		}
 	}
@@ -169,7 +177,6 @@ func highlightedCode(code string, position *Position) string {
 		emptyLineNumber,
 		belowContextLeftPadding,
 		strings.Repeat(" ", belowContextRightPaddingLength),
-		emptyLineNumber,
 		strings.Repeat("═", belowContextRightPaddingLength),
 	)
 }

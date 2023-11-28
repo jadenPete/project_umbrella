@@ -2,10 +2,13 @@ package file_loader
 
 import (
 	"os"
+	"strings"
 
 	"github.com/alecthomas/participle/v2"
 
 	"project_umbrella/interpreter/bytecode_generator"
+	"project_umbrella/interpreter/common"
+	"project_umbrella/interpreter/environment_variables"
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/entry_errors"
 	"project_umbrella/interpreter/errors/parser_errors"
@@ -15,18 +18,12 @@ import (
 	"project_umbrella/interpreter/runtime/value"
 )
 
-func LoadFile(path string, loaderChannel *loader.LoaderChannel) value.Value {
-	fileContent, err := os.ReadFile(path)
-
-	if err != nil {
-		errors.RaiseError(entry_errors.FileNotOpened)
-	}
-
-	return loadSource(string(fileContent), loaderChannel)
-}
-
-func loadSource(source string, loaderChannel *loader.LoaderChannel) value.Value {
-	concreteTree, err := parser.ParseString(source)
+func expressionListFromSource(
+	path string,
+	source string,
+	loaderChannel *loader.LoaderChannel,
+) *parser.ExpressionList {
+	concreteResult, err := parser.ParseString(path, source)
 
 	if err != nil {
 		var participleError participle.Error
@@ -36,15 +33,17 @@ func loadSource(source string, loaderChannel *loader.LoaderChannel) value.Value 
 		case *participle.ParseError:
 			participleError = err
 			participleErrorPosition = &errors.Position{
-				Start: err.Pos.Offset,
-				End:   err.Pos.Offset + 1,
+				Filename: path,
+				Start:    err.Pos.Offset,
+				End:      err.Pos.Offset + 1,
 			}
 
 		case *participle.UnexpectedTokenError:
 			participleError = err
 			participleErrorPosition = &errors.Position{
-				Start: err.Unexpected.Pos.Offset,
-				End:   err.Unexpected.Pos.Offset + len(err.Unexpected.Value),
+				Filename: path,
+				Start:    err.Unexpected.Pos.Offset,
+				End:      err.Unexpected.Pos.Offset + len(err.Unexpected.Value),
 			}
 
 		default:
@@ -56,15 +55,64 @@ func loadSource(source string, loaderChannel *loader.LoaderChannel) value.Value 
 				Error:    parser_errors.ParserFailed(participleError),
 				Position: participleErrorPosition,
 			},
-
-			source,
 		)
 	}
 
-	abstractTree := concreteTree.AbstractExpressionList().ToModule()
+	return concreteResult.AbstractExpressionList()
+}
+
+func expressionListFromStartupFile(
+	sourcePath string,
+	loaderChannel *loader.LoaderChannel,
+) *parser.ExpressionList {
+	excludedDirectories := strings.Split(environment_variables.KRAIT_STARTUP_EXCLUDE, ":")
+	emptyResult := &parser.ExpressionList{
+		Children_: []parser.Expression{},
+	}
+
+	for _, excludedDirectory := range excludedDirectories {
+		if excludedDirectory != "" &&
+			common.IsDirectoryAncestorOfFile(excludedDirectory, sourcePath) {
+			return &parser.ExpressionList{
+				Children_: []parser.Expression{},
+			}
+		}
+	}
+
+	if environment_variables.KRAIT_STARTUP == "" {
+		return emptyResult
+	}
+
+	startupFileContent, err := os.ReadFile(environment_variables.KRAIT_STARTUP)
+
+	if err != nil {
+		errors.RaiseError(entry_errors.StartupFileNotOpened(environment_variables.KRAIT_STARTUP))
+	}
+
+	return expressionListFromSource(
+		environment_variables.KRAIT_STARTUP,
+		string(startupFileContent),
+		loaderChannel,
+	)
+}
+
+func LoadFile(path string, loaderChannel *loader.LoaderChannel) value.Value {
+	fileContentByteSlice, err := os.ReadFile(path)
+
+	if err != nil {
+		errors.RaiseError(entry_errors.FileNotOpened(path))
+	}
+
+	fileContent := string(fileContentByteSlice)
+	expressionList := (&parser.ExpressionList{
+		Children_: append(
+			expressionListFromStartupFile(path, loaderChannel).Children_,
+			expressionListFromSource(path, fileContent, loaderChannel).Children_...,
+		),
+	}).ToModule()
 
 	return runtime_executor.ExecuteBytecode(
-		bytecode_generator.ExpressionToBytecodeFromCache(abstractTree, source),
+		bytecode_generator.ExpressionToBytecodeFromCache(expressionList, fileContent),
 		loaderChannel,
 	)
 }

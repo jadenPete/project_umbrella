@@ -66,9 +66,9 @@ func LookupField(
 	selectType parser_types.SelectType,
 ) value.Value {
 	var universalMethodConstructors = map[string]func(value.Value) *function.Function{
-		built_in_declarations.ToStringMethod.Name:  newToStringMethod,
 		built_in_declarations.EqualsMethod.Name:    newEqualsMethod,
 		built_in_declarations.NotEqualsMethod.Name: newNotEqualsMethod,
+		built_in_declarations.ToStringMethod.Name:  newToStringMethod,
 	}
 
 	var result value.Value

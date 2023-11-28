@@ -1,6 +1,10 @@
 package entry_errors
 
-import "project_umbrella/interpreter/errors"
+import (
+	"fmt"
+
+	"project_umbrella/interpreter/errors"
+)
 
 var FileNotSpecified = &errors.Error{
 	Section: "ENTRY",
@@ -8,8 +12,18 @@ var FileNotSpecified = &errors.Error{
 	Name:    "Please specify a file to run",
 }
 
-var FileNotOpened = &errors.Error{
-	Section: "ENTRY",
-	Code:    2,
-	Name:    "Couldn't open the specified file",
+func FileNotOpened(path string) *errors.Error {
+	return &errors.Error{
+		Section: "ENTRY",
+		Code:    2,
+		Name:    fmt.Sprintf("Couldn't open the specified file: %s", path),
+	}
+}
+
+func StartupFileNotOpened(path string) *errors.Error {
+	return &errors.Error{
+		Section: "ENTRY",
+		Code:    3,
+		Name:    fmt.Sprintf("Couldn't open the file in $KRAIT_STARTUP: %s", path),
+	}
 }

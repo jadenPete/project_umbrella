@@ -17,8 +17,9 @@ type Error struct {
  * within which the error occurred.
  */
 type Position struct {
-	Start int
-	End   int
+	Filename string
+	Start    int
+	End      int
 }
 
 type PositionalError struct {
@@ -45,21 +46,24 @@ func RaiseError(error_ *Error) {
 	os.Exit(1)
 }
 
-func RaisePositionalError(error_ *PositionalError, sourceContent string) {
+func RaisePositionalError(error_ *PositionalError) {
 	description := ""
 
 	if error_.Error.Description != "" {
 		description = fmt.Sprintf("\n%s", error_.Error.Description)
 	}
 
-	RaiseError(&Error{
-		Section: error_.Error.Section,
-		Code:    error_.Error.Code,
-		Name:    error_.Error.Name,
-		Description: fmt.Sprintf(
-			"%s%s",
-			highlightedCode(sourceContent, error_.Position),
-			description,
-		),
-	})
+	RaiseError(
+		&Error{
+			Section: error_.Error.Section,
+			Code:    error_.Error.Code,
+			Name:    error_.Error.Name,
+			Description: fmt.Sprintf(
+				"%s:\n%s%s",
+				error_.Position.Filename,
+				highlightedSource(error_.Position),
+				description,
+			),
+		},
+	)
 }
