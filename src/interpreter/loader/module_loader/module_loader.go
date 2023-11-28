@@ -47,13 +47,15 @@ func (moduleLoader *ModuleLoader) loadFileWithStack(
 
 	loaderChannel := loader.NewLoaderChannel()
 
-	go entry.computeResult.Do(
-		func() {
-			entry.result = file_loader.LoadFile(path_, loaderChannel)
+	go func() {
+		entry.computeResult.Do(
+			func() {
+				entry.result = file_loader.LoadFile(path_, loaderChannel)
+			},
+		)
 
-			loaderChannel.Close()
-		},
-	)
+		loaderChannel.Close()
+	}()
 
 	for {
 		moduleName, ok := <-loaderChannel.LoadRequest
