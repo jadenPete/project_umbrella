@@ -116,6 +116,14 @@ var StructConstructorMethod = &BuiltInField{
 	Type: parser_types.NormalFunction,
 }
 
+// Implemented on libraries
+var (
+	LibraryGetMethod = &BuiltInField{
+		Name: "get",
+		Type: parser_types.NormalFunction,
+	}
+)
+
 type BuiltInValueID int
 
 const (
@@ -125,6 +133,7 @@ const (
 
 	IfElseFunctionID
 	ImportFunctionID
+	ImportLibraryFunctionID
 	ModuleFunctionID
 	PrintFunctionID
 	PrintlnFunctionID

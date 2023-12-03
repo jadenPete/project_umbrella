@@ -78,7 +78,3 @@ func tupleToString(runtime_ *runtime.Runtime, value_ value_types.TupleValue) str
 
 	return fmt.Sprintf("(%s)", insideParentheses)
 }
-
-func unitToString(value_ value_types.UnitValue) string {
-	return "(unit)"
-}

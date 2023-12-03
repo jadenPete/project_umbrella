@@ -8,6 +8,7 @@ import (
 	"project_umbrella/interpreter/bytecode_generator/built_in_declarations"
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/runtime_errors"
+	"project_umbrella/interpreter/loader"
 	"project_umbrella/interpreter/parser/parser_types"
 	"project_umbrella/interpreter/runtime"
 	"project_umbrella/interpreter/runtime/value"
@@ -37,7 +38,23 @@ var BuiltInValues = map[built_in_declarations.BuiltInValueID]value.Value{
 			reflect.TypeOf(*new(value_types.StringValue)),
 		),
 
-		import_,
+		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
+			return import_(runtime_, loader.ModuleRequest, arguments...)
+		},
+
+		parser_types.NormalFunction,
+	),
+
+	built_in_declarations.ImportLibraryFunctionID: function.NewBuiltInFunction(
+		function.NewFixedFunctionArgumentValidator(
+			"import_library",
+			reflect.TypeOf(*new(value_types.StringValue)),
+		),
+
+		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
+			return import_(runtime_, loader.LibraryRequest, arguments...)
+		},
+
 		parser_types.NormalFunction,
 	),
 
@@ -177,8 +194,11 @@ func ifElse(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 	return arguments[branchIndex].(*function.Function).Evaluate(runtime_)
 }
 
-func import_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
-	runtime_.LoaderChannel.LoadRequest <- string(arguments[0].(value_types.StringValue))
+func import_(runtime_ *runtime.Runtime, type_ loader.LoaderRequestType, arguments ...value.Value) value.Value {
+	runtime_.LoaderChannel.LoadRequest <- &loader.LoaderRequest{
+		Type: type_,
+		Name: string(arguments[0].(value_types.StringValue)),
+	}
 
 	return <-runtime_.LoaderChannel.LoadResponse
 }

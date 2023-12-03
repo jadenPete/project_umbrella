@@ -14,5 +14,6 @@ go_library(
 		"//src/interpreter/runtime/value",
 		"//src/interpreter/runtime/value_types",
 		"//src/interpreter/runtime/value_types/function",
+		"//src/interpreter/runtime/value_types/library",
 	],
 )

@@ -187,3 +187,48 @@ func TupleGetIndexOutOfBounds(i int, length int) *errors.Error {
 		),
 	}
 }
+
+func LibraryNotFound(libraryName string) *errors.Error {
+	return &errors.Error{
+		Section: "RUNTIME",
+		Code:    15,
+		Name:    fmt.Sprintf("The library \"%s\" wasn't found", libraryName),
+	}
+}
+
+func librarySymbolError(
+	libraryPath string,
+	symbolName string,
+	code int,
+	description string,
+) *errors.Error {
+	return &errors.Error{
+		Section: "RUNTIME",
+		Code:    code,
+		Name: fmt.Sprintf(
+			"Couldn't fetch the symbol \"%s\" from the library at \"%s\"",
+			symbolName,
+			libraryPath,
+		),
+
+		Description: description,
+	}
+}
+
+func LibrarySymbolNotValue(libraryPath string, symbolName string) *errors.Error {
+	return librarySymbolError(
+		libraryPath,
+		symbolName,
+		16,
+		fmt.Sprintf("\"%s\" isn't a value.", symbolName),
+	)
+}
+
+func LibrarySymbolNotFound(libraryPath string, symbolName string) *errors.Error {
+	return librarySymbolError(
+		libraryPath,
+		symbolName,
+		17,
+		fmt.Sprintf("\"%s\" doesn't exist.", symbolName),
+	)
+}

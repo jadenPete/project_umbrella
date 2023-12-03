@@ -15,6 +15,7 @@ py_test(
 		"//tests/builtin/functions",
 		"//tests/builtin/types",
 		"//tests/constructs",
+		"//tests/foreign_function_interface",
 		requirement("pytest"),
 	],
 )

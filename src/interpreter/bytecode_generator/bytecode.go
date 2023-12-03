@@ -145,16 +145,17 @@ import (
 const checksumSize = 32
 
 var builtInValues = map[string]built_in_declarations.BuiltInValueID{
-	"__if_else__": built_in_declarations.IfElseFunctionID,
-	"__module__":  built_in_declarations.ModuleFunctionID,
-	"__struct__":  built_in_declarations.StructFunctionID,
-	"__tuple__":   built_in_declarations.TupleFunctionID,
-	"false":       built_in_declarations.FalseValueID,
-	"import":      built_in_declarations.ImportFunctionID,
-	"print":       built_in_declarations.PrintFunctionID,
-	"println":     built_in_declarations.PrintlnFunctionID,
-	"true":        built_in_declarations.TrueValueID,
-	"unit":        built_in_declarations.UnitValueID,
+	"__if_else__":    built_in_declarations.IfElseFunctionID,
+	"__module__":     built_in_declarations.ModuleFunctionID,
+	"__struct__":     built_in_declarations.StructFunctionID,
+	"__tuple__":      built_in_declarations.TupleFunctionID,
+	"false":          built_in_declarations.FalseValueID,
+	"import":         built_in_declarations.ImportFunctionID,
+	"import_library": built_in_declarations.ImportLibraryFunctionID,
+	"print":          built_in_declarations.PrintFunctionID,
+	"println":        built_in_declarations.PrintlnFunctionID,
+	"true":           built_in_declarations.TrueValueID,
+	"unit":           built_in_declarations.UnitValueID,
 }
 
 func sourceChecksum(fileContent string) [checksumSize]byte {

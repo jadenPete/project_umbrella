@@ -6,6 +6,7 @@ import (
 	"project_umbrella/interpreter/runtime/value"
 	"project_umbrella/interpreter/runtime/value_types"
 	"project_umbrella/interpreter/runtime/value_types/function"
+	"project_umbrella/interpreter/runtime/value_types/library"
 )
 
 func newEqualsMethod(value_ value.Value) *function.Function {
@@ -60,6 +61,9 @@ func newToStringMethod(value_ value.Value) *function.Function {
 			case *function.Function:
 				result = functionToString(value_)
 
+			case *library.Library:
+				result = "(library)"
+
 			case value_types.StringValue:
 				result = stringToString(value_)
 
@@ -67,7 +71,7 @@ func newToStringMethod(value_ value.Value) *function.Function {
 				result = tupleToString(runtime_, value_)
 
 			case value_types.UnitValue:
-				result = unitToString(value_)
+				result = "(unit)"
 			}
 
 			return value_types.StringValue(result)
