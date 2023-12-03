@@ -61,7 +61,7 @@ var BuiltInValues = map[built_in_declarations.BuiltInValueID]value.Value{
 	built_in_declarations.ModuleFunctionID: function.NewBuiltInFunction(
 		function.NewFixedFunctionArgumentValidator(
 			"__module__",
-			reflect.TypeOf(value_types.TupleValue{}),
+			reflect.TypeOf(&value_types.TupleValue{}),
 		),
 
 		module,
@@ -74,7 +74,7 @@ var BuiltInValues = map[built_in_declarations.BuiltInValueID]value.Value{
 			reflect.TypeOf(*new(value_types.StringValue)),
 			reflect.TypeOf(&function.Function{}),
 			reflect.TypeOf(&function.Function{}),
-			reflect.TypeOf(value_types.TupleValue{}),
+			reflect.TypeOf(&value_types.TupleValue{}),
 		),
 
 		struct_,
@@ -186,7 +186,7 @@ func import_(runtime_ *runtime.Runtime, type_ loader.LoaderRequestType, argument
 }
 
 func module(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
-	fields, ok := moduleOrStructFieldsToMap(arguments[0].(value_types.TupleValue))
+	fields, ok := moduleOrStructFieldsToMap(arguments[0].(*value_types.TupleValue))
 
 	if !ok {
 		errors.RaiseError(runtime_errors.IncorrectBuiltInFunctionArgumentType("__module__", 0))
@@ -196,12 +196,12 @@ func module(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 }
 
 func moduleOrStructFieldsToMap(
-	fields value_types.TupleValue,
+	fields *value_types.TupleValue,
 ) (map[value_types.StringValue]value.Value, bool) {
 	result := make(map[value_types.StringValue]value.Value, len(fields.Elements))
 
 	for _, element := range fields.Elements {
-		field, ok := element.(value_types.TupleValue)
+		field, ok := element.(*value_types.TupleValue)
 
 		if !ok || len(field.Elements) != 2 {
 			return nil, false
@@ -252,7 +252,7 @@ func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 		errors.RaiseError(runtime_errors.IncorrectBuiltInFunctionArgumentType("__struct__", i))
 	}
 
-	populateFields := func(fieldEntries value_types.TupleValue, i int) {
+	populateFields := func(fieldEntries *value_types.TupleValue, i int) {
 		newFields, ok := moduleOrStructFieldsToMap(fieldEntries)
 
 		if ok {
@@ -266,13 +266,13 @@ func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 
 	result := newLookupFunction(allFields)
 	fieldFactory := arguments[2].(*function.Function)
-	fieldEntries, ok := fieldFactory.Evaluate(runtime_, result).(value_types.TupleValue)
+	fieldEntries, ok := fieldFactory.Evaluate(runtime_, result).(*value_types.TupleValue)
 
 	if !ok {
 		raiseIncorrectArgumentTypeError(2)
 	}
 
-	argumentFieldEntries := arguments[3].(value_types.TupleValue)
+	argumentFieldEntries := arguments[3].(*value_types.TupleValue)
 
 	populateFields(fieldEntries, 2)
 	populateFields(argumentFieldEntries, 3)
@@ -283,7 +283,7 @@ func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 	argumentFieldValues := make([]value.Value, 0, len(argumentFieldEntries.Elements))
 
 	for _, element := range argumentFieldEntries.Elements {
-		entry := element.(value_types.TupleValue)
+		entry := element.(*value_types.TupleValue)
 
 		argumentFieldNames =
 			append(argumentFieldNames, string(entry.Elements[0].(value_types.StringValue)))
@@ -339,7 +339,7 @@ func structEquals(
 }
 
 func tuple(_ *runtime.Runtime, arguments ...value.Value) value.Value {
-	return value_types.TupleValue{
+	return &value_types.TupleValue{
 		Elements: arguments,
 	}
 }

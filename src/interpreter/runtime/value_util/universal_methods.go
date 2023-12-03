@@ -19,8 +19,8 @@ func builtInEquals(
 	value1 value.Value,
 	value2 value.Value,
 ) value_types.BooleanValue {
-	tuple1, ok1 := value1.(value_types.TupleValue)
-	tuple2, ok2 := value2.(value_types.TupleValue)
+	tuple1, ok1 := value1.(*value_types.TupleValue)
+	tuple2, ok2 := value2.(*value_types.TupleValue)
 
 	if ok1 && ok2 {
 		if len(tuple1.Elements) != len(tuple2.Elements) {

@@ -26,10 +26,17 @@ var (
 )
 
 // Implemented on str
-var StringPlusMethod = &BuiltInField{
-	Name: "+",
-	Type: parser_types.InfixFunction,
-}
+var (
+	StringLengthField = &BuiltInField{
+		Name: "length",
+		Type: nil,
+	}
+
+	StringPlusMethod = &BuiltInField{
+		Name: "+",
+		Type: parser_types.InfixFunction,
+	}
+)
 
 // Implemented on int and float
 var (

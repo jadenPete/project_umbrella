@@ -1,3 +1,8 @@
+_either = import("either")
+
+Left = _either.Left
+Right = _either.Right
+
 _io = import("io")
 
 print = _io.print

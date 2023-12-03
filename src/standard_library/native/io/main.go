@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"reflect"
 	"strings"
 
 	"project_umbrella/interpreter/parser/parser_types"
@@ -41,6 +43,34 @@ var Println = function.NewBuiltInFunction(
 	function.NewVariadicFunctionArgumentValidator("println", nil),
 	func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 		return print(runtime_, "\n", arguments...)
+	},
+
+	parser_types.NormalFunction,
+)
+
+var ReadFile = function.NewBuiltInFunction(
+	function.NewFixedFunctionArgumentValidator(
+		"read_file",
+		reflect.TypeOf(*new(value_types.StringValue)),
+	),
+
+	func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
+		content, err := os.ReadFile(string(arguments[0].(value_types.StringValue)))
+		contentString := ""
+		errorString := ""
+
+		if err == nil {
+			contentString = string(content)
+		} else {
+			errorString = err.Error()
+		}
+
+		return &value_types.TupleValue{
+			Elements: []value.Value{
+				value_types.StringValue(contentString),
+				value_types.StringValue(errorString),
+			},
+		}
 	},
 
 	parser_types.NormalFunction,

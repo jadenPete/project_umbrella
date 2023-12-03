@@ -15,7 +15,7 @@ type TupleValue struct {
 	Elements []value.Value
 }
 
-func (value_ TupleValue) Definition() *value.ValueDefinition {
+func (value_ *TupleValue) Definition() *value.ValueDefinition {
 	return &value.ValueDefinition{
 		Fields: map[string]value.Value{
 			built_in_declarations.TupleGetMethod.Name: function.NewBuiltInFunction(

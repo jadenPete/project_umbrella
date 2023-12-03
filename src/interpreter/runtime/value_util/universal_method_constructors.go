@@ -67,8 +67,8 @@ func newToStringMethod(value_ value.Value) *function.Function {
 			case value_types.StringValue:
 				result = stringToString(value_)
 
-			case value_types.TupleValue:
-				result = tupleToString(runtime_, value_)
+			case *value_types.TupleValue:
+				result = tupleToString(runtime_, *value_)
 
 			case value_types.UnitValue:
 				result = "(unit)"
