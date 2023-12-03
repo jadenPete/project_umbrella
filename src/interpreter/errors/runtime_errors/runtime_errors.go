@@ -175,14 +175,14 @@ func ModuleCycle(moduleLoaderStack []string) *errors.Error {
 	}
 }
 
-func TupleGetIndexOutOfBounds(i int, length int) *errors.Error {
+func IndexOutOfBounds(typeName string, methodName string, i int, maximumIndex int) *errors.Error {
 	return &errors.Error{
 		Section: "RUNTIME",
 		Code:    14,
-		Name:    "An out-of-bounds index was provided",
+		Name:    fmt.Sprintf("An out-of-bounds index was provided to %s#%s", typeName, methodName),
 		Description: fmt.Sprintf(
-			"tuple#get expected an index in the range [0, %d), but got %d.",
-			length,
+			"Expected an index in the range [0, %d), but got %d.",
+			maximumIndex+1,
 			i,
 		),
 	}
@@ -231,4 +231,17 @@ func LibrarySymbolNotFound(libraryPath string, symbolName string) *errors.Error 
 		17,
 		fmt.Sprintf("\"%s\" doesn't exist.", symbolName),
 	)
+}
+
+func CodepointCalledOnNonCharacter(stringValue string) *errors.Error {
+	return &errors.Error{
+		Section: "RUNTIME",
+		Code:    18,
+		Name:    "`codepoint` was called on a non-character",
+		Description: fmt.Sprintf(
+			"`codepoint` was called on a string of length %d: \"%s\"",
+			len([]rune(stringValue)),
+			stringValue,
+		),
+	}
 }

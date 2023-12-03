@@ -59,15 +59,15 @@ def test_get() -> None:
 	assert output_from_code('println(("foo",).get(0))\n') == "foo\n"
 	assert output_from_code('println(("foo", "bar").get(1))\n') == "bar\n"
 	assert output_from_code('println(("foo", "bar").get(2))\n', expected_return_code=1) == """\
-Error (RUNTIME-14): An out-of-bounds index was provided
+Error (RUNTIME-14): An out-of-bounds index was provided to tuple#get
 
-tuple#get expected an index in the range [0, 2), but got 2.
+Expected an index in the range [0, 2), but got 2.
 """
 
 	assert output_from_code('println(("foo", "bar").get(-1))\n', expected_return_code=1) == """\
-Error (RUNTIME-14): An out-of-bounds index was provided
+Error (RUNTIME-14): An out-of-bounds index was provided to tuple#get
 
-tuple#get expected an index in the range [0, 2), but got -1.
+Expected an index in the range [0, 2), but got -1.
 """
 
 def test_length() -> None:

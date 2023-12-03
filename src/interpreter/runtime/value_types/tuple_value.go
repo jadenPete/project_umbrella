@@ -29,7 +29,12 @@ func (value_ *TupleValue) Definition() *value.ValueDefinition {
 
 					if i < 0 || i >= len(value_.Elements) {
 						errors.RaiseError(
-							runtime_errors.TupleGetIndexOutOfBounds(i, len(value_.Elements)),
+							runtime_errors.IndexOutOfBounds(
+								"tuple",
+								built_in_declarations.TupleGetMethod.Name,
+								i,
+								len(value_.Elements),
+							),
 						)
 					}
 

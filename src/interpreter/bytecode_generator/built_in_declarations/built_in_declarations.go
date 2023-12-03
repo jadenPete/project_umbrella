@@ -27,6 +27,16 @@ var (
 
 // Implemented on str
 var (
+	StringCodepointMethod = &BuiltInField{
+		Name: "codepoint",
+		Type: parser_types.NormalFunction,
+	}
+
+	StringGetMethod = &BuiltInField{
+		Name: "get",
+		Type: parser_types.NormalFunction,
+	}
+
 	StringLengthField = &BuiltInField{
 		Name: "length",
 		Type: nil,
@@ -36,7 +46,18 @@ var (
 		Name: "+",
 		Type: parser_types.InfixFunction,
 	}
+
+	StringSplit = &BuiltInField{
+		Name: "split",
+		Type: parser_types.NormalFunction,
+	}
 )
+
+// Implemented on int
+var IntegerToCharacterMethod = &BuiltInField{
+	Name: "to_character",
+	Type: parser_types.NormalFunction,
+}
 
 // Implemented on int and float
 var (

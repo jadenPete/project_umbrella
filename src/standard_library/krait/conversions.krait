@@ -1,0 +1,29 @@
+option = import("option")
+
+Some = option.Some
+None = option.None
+
+fn string_to_int(string):
+	fn slice_to_int(start, end):
+		if end <= start:
+			Some(0)
+		else:
+			slice_to_int(start, end - 1).map_flatten((value):
+				offset = string.get(end - 1).codepoint() - "0".codepoint()
+
+				if (offset < 0) || (offset > 9):
+					None()
+				else:
+					Some(value * 10 + offset)
+			)
+
+	fn starting_at(i):
+		if i >= string.length:
+			None()
+		else:
+			slice_to_int(i, string.length)
+
+	if (string.length > 0) && (string.get(0) == "-"):
+		-starting_at(1)
+	else:
+		starting_at(0)

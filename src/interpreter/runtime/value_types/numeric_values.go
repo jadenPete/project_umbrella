@@ -21,7 +21,20 @@ func (value_ FloatValue) Definition() *value.ValueDefinition {
 type IntegerValue int64
 
 func (value_ IntegerValue) Definition() *value.ValueDefinition {
-	return newNumberDefinition(value_, "int")
+	result := newNumberDefinition(value_, "int")
+	result.Fields[built_in_declarations.IntegerToCharacterMethod.Name] = function.NewBuiltInFunction(
+		function.NewFixedFunctionArgumentValidator(
+			built_in_declarations.IntegerToCharacterMethod.Name,
+		),
+
+		func(_ *runtime.Runtime, arguments ...value.Value) value.Value {
+			return StringValue([]rune{rune(value_)})
+		},
+
+		built_in_declarations.IntegerToCharacterMethod.Type,
+	)
+
+	return result
 }
 
 func newMinusMethod[Value IntegerValue | FloatValue](value_ Value) *function.Function {

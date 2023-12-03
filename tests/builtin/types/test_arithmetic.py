@@ -82,17 +82,17 @@ def test_arithmetic_strong_typing() -> None:
 	_test_strong_typing("+", "-", "*", "/", "%")
 
 def _test_comparison_case(
-	leftHandSide: int,
+	left_hand_side: int,
 	operator: str,
-	rightHandSide: int,
-	expectedValue: str
+	right_hand_side: int,
+	expected_value: str
 ) -> None:
-	assert output_from_code(f"println({leftHandSide} {operator} {rightHandSide})\n") == \
-		expectedValue
+	assert output_from_code(f"println({left_hand_side} {operator} {right_hand_side})\n") == \
+		expected_value
 
 	assert output_from_code(
-		f"println({float(leftHandSide)} {operator} {float(rightHandSide)})\n"
-	) == expectedValue
+		f"println({float(left_hand_side)} {operator} {float(right_hand_side)})\n"
+	) == expected_value
 
 def test_int_comparison() -> None:
 	_test_comparison_case(1, "<", 2, "true\n")
