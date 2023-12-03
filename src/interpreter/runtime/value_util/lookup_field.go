@@ -44,7 +44,7 @@ func CallEqualsMethod(
 	return callUniversalMethod[value_types.BooleanValue](
 		runtime_,
 		value1,
-		built_in_declarations.EqualsMethod.Name,
+		built_in_declarations.UniversalEqualsMethod.Name,
 		"boolean",
 		value2,
 	)
@@ -54,7 +54,7 @@ func CallToStringMethod(runtime_ *runtime.Runtime, value_ value.Value) value_typ
 	return callUniversalMethod[value_types.StringValue](
 		runtime_,
 		value_,
-		built_in_declarations.ToStringMethod.Name,
+		built_in_declarations.UniversalToStringMethod.Name,
 		"str",
 	)
 }
@@ -66,9 +66,9 @@ func LookupField(
 	selectType parser_types.SelectType,
 ) value.Value {
 	var universalMethodConstructors = map[string]func(value.Value) *function.Function{
-		built_in_declarations.EqualsMethod.Name:    newEqualsMethod,
-		built_in_declarations.NotEqualsMethod.Name: newNotEqualsMethod,
-		built_in_declarations.ToStringMethod.Name:  newToStringMethod,
+		built_in_declarations.UniversalEqualsMethod.Name:    newEqualsMethod,
+		built_in_declarations.UniversalNotEqualsMethod.Name: newNotEqualsMethod,
+		built_in_declarations.UniversalToStringMethod.Name:  newToStringMethod,
 	}
 
 	var result value.Value

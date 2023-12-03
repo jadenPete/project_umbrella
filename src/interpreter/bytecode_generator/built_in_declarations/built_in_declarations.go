@@ -9,65 +9,71 @@ type BuiltInField struct {
 
 // Implemented on every type
 var (
-	EqualsMethod = &BuiltInField{
+	UniversalEqualsMethod = &BuiltInField{
 		Name: "==",
 		Type: parser_types.InfixFunction,
 	}
 
-	NotEqualsMethod = &BuiltInField{
+	UniversalNotEqualsMethod = &BuiltInField{
 		Name: "!=",
 		Type: parser_types.InfixFunction,
 	}
 
-	ToStringMethod = &BuiltInField{
+	UniversalToStringMethod = &BuiltInField{
 		Name: "__to_str__",
 		Type: parser_types.NormalFunction,
 	}
 )
 
+// Implemented on str
+var StringPlusMethod = &BuiltInField{
+	Name: "+",
+	Type: parser_types.InfixFunction,
+}
+
 // Implemented on int and float
 var (
-	PlusMethod = &BuiltInField{ // Implemented on str, int, and float
+	NumericPlusMethod = &BuiltInField{
 		Name: "+",
 		Type: parser_types.InfixFunction,
 	}
 
-	MinusMethod = &BuiltInField{
+	NumericMinusMethod = &BuiltInField{
 		Name: "-",
 		Type: parser_types.InfixPrefixFunction,
 	}
 
-	TimesMethod = &BuiltInField{
+	NumericTimesMethod = &BuiltInField{
 		Name: "*",
 		Type: parser_types.InfixFunction,
 	}
 
-	OverMethod = &BuiltInField{
+	NumericOverMethod = &BuiltInField{
 		Name: "/",
 		Type: parser_types.InfixFunction,
 	}
 
-	ModuloMethod = &BuiltInField{
+	NumericModuloMethod = &BuiltInField{
 		Name: "%",
 		Type: parser_types.InfixFunction,
 	}
 
-	LessThanMethod = &BuiltInField{
+	NumericLessThanMethod = &BuiltInField{
 		Name: "<",
 		Type: parser_types.InfixFunction,
 	}
 
-	LessThanOrEqualToMethod = &BuiltInField{
+	NumericLessThanOrEqualToMethod = &BuiltInField{
 		Name: "<=",
 		Type: parser_types.InfixFunction,
 	}
 
-	GreaterThanMethod = &BuiltInField{
+	NumericGreaterThanMethod = &BuiltInField{
 		Name: ">",
 		Type: parser_types.InfixFunction,
 	}
 
-	GreaterThanOrEqualToMethod = &BuiltInField{
+	NumericGreaterThanOrEqualToMethod = &BuiltInField{
 		Name: ">=",
 		Type: parser_types.InfixFunction,
 	}
@@ -75,17 +81,17 @@ var (
 
 // Implemented on bool
 var (
-	NotMethod = &BuiltInField{
+	BooleanNotMethod = &BuiltInField{
 		Name: "!",
 		Type: parser_types.PrefixFunction,
 	}
 
-	AndMethod = &BuiltInField{
+	BooleanAndMethod = &BuiltInField{
 		Name: "&&",
 		Type: parser_types.InfixFunction,
 	}
 
-	OrMethod = &BuiltInField{
+	BooleanOrMethod = &BuiltInField{
 		Name: "||",
 		Type: parser_types.InfixFunction,
 	}
@@ -93,12 +99,12 @@ var (
 
 // Implemented on tuple
 var (
-	GetMethod = &BuiltInField{
+	TupleGetMethod = &BuiltInField{
 		Name: "get",
 		Type: parser_types.NormalFunction,
 	}
 
-	LengthField = &BuiltInField{
+	TupleLengthField = &BuiltInField{
 		Name: "length",
 		Type: nil,
 	}

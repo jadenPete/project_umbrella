@@ -18,9 +18,9 @@ type TupleValue struct {
 func (value_ TupleValue) Definition() *value.ValueDefinition {
 	return &value.ValueDefinition{
 		Fields: map[string]value.Value{
-			built_in_declarations.GetMethod.Name: function.NewBuiltInFunction(
+			built_in_declarations.TupleGetMethod.Name: function.NewBuiltInFunction(
 				function.NewFixedFunctionArgumentValidator(
-					built_in_declarations.GetMethod.Name,
+					built_in_declarations.TupleGetMethod.Name,
 					reflect.TypeOf(*new(IntegerValue)),
 				),
 
@@ -36,10 +36,10 @@ func (value_ TupleValue) Definition() *value.ValueDefinition {
 					return value_.Elements[i]
 				},
 
-				built_in_declarations.GetMethod.Type,
+				built_in_declarations.TupleGetMethod.Type,
 			),
 
-			built_in_declarations.LengthField.Name: IntegerValue(len(value_.Elements)),
+			built_in_declarations.TupleLengthField.Name: IntegerValue(len(value_.Elements)),
 		},
 	}
 }

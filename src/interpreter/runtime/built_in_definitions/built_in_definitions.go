@@ -109,9 +109,9 @@ func builtInStructFields(
 		}
 
 	return map[string]value.Value{
-		built_in_declarations.EqualsMethod.Name: function.NewBuiltInFunction(
+		built_in_declarations.UniversalEqualsMethod.Name: function.NewBuiltInFunction(
 			function.NewFixedFunctionArgumentValidator(
-				built_in_declarations.EqualsMethod.Name,
+				built_in_declarations.UniversalEqualsMethod.Name,
 				reflect.TypeOf(&function.Function{}),
 			),
 
@@ -119,12 +119,12 @@ func builtInStructFields(
 				return equalsMethodEvaluator(runtime_, arguments...)
 			},
 
-			built_in_declarations.EqualsMethod.Type,
+			built_in_declarations.UniversalEqualsMethod.Type,
 		),
 
-		built_in_declarations.NotEqualsMethod.Name: function.NewBuiltInFunction(
+		built_in_declarations.UniversalNotEqualsMethod.Name: function.NewBuiltInFunction(
 			function.NewFixedFunctionArgumentValidator(
-				built_in_declarations.EqualsMethod.Name,
+				built_in_declarations.UniversalEqualsMethod.Name,
 				reflect.TypeOf(&function.Function{}),
 			),
 
@@ -132,12 +132,15 @@ func builtInStructFields(
 				return !equalsMethodEvaluator(runtime_, arguments...)
 			},
 
-			built_in_declarations.NotEqualsMethod.Type,
+			built_in_declarations.UniversalNotEqualsMethod.Type,
 		),
 
 		built_in_declarations.StructConstructorMethod.Name: structConstructor,
-		built_in_declarations.ToStringMethod.Name: function.NewBuiltInFunction(
-			function.NewFixedFunctionArgumentValidator(built_in_declarations.ToStringMethod.Name),
+		built_in_declarations.UniversalToStringMethod.Name: function.NewBuiltInFunction(
+			function.NewFixedFunctionArgumentValidator(
+				built_in_declarations.UniversalToStringMethod.Name,
+			),
+
 			func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 				argumentsAsStrings := make([]string, 0, len(structArgumentValues))
 
@@ -157,7 +160,7 @@ func builtInStructFields(
 				)
 			},
 
-			built_in_declarations.ToStringMethod.Type,
+			built_in_declarations.UniversalToStringMethod.Type,
 		),
 	}
 }

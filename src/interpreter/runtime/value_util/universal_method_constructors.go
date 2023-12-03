@@ -10,29 +10,40 @@ import (
 
 func newEqualsMethod(value_ value.Value) *function.Function {
 	return function.NewBuiltInFunction(
-		function.NewFixedFunctionArgumentValidator(built_in_declarations.EqualsMethod.Name, nil),
+		function.NewFixedFunctionArgumentValidator(
+			built_in_declarations.UniversalEqualsMethod.Name,
+			nil,
+		),
+
 		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 			return builtInEquals(runtime_, value_, arguments[0])
 		},
 
-		built_in_declarations.EqualsMethod.Type,
+		built_in_declarations.UniversalEqualsMethod.Type,
 	)
 }
 
 func newNotEqualsMethod(value_ value.Value) *function.Function {
 	return function.NewBuiltInFunction(
-		function.NewFixedFunctionArgumentValidator(built_in_declarations.NotEqualsMethod.Name, nil),
+		function.NewFixedFunctionArgumentValidator(
+			built_in_declarations.UniversalNotEqualsMethod.Name,
+			nil,
+		),
+
 		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 			return !builtInEquals(runtime_, value_, arguments[0])
 		},
 
-		built_in_declarations.NotEqualsMethod.Type,
+		built_in_declarations.UniversalNotEqualsMethod.Type,
 	)
 }
 
 func newToStringMethod(value_ value.Value) *function.Function {
 	return function.NewBuiltInFunction(
-		function.NewFixedFunctionArgumentValidator(built_in_declarations.ToStringMethod.Name),
+		function.NewFixedFunctionArgumentValidator(
+			built_in_declarations.UniversalToStringMethod.Name,
+		),
+
 		func(runtime_ *runtime.Runtime, _ ...value.Value) value.Value {
 			var result string
 
@@ -62,6 +73,6 @@ func newToStringMethod(value_ value.Value) *function.Function {
 			return value_types.StringValue(result)
 		},
 
-		built_in_declarations.ToStringMethod.Type,
+		built_in_declarations.UniversalToStringMethod.Type,
 	)
 }

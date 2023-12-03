@@ -14,13 +14,17 @@ type StringValue string
 func (value_ StringValue) Definition() *value.ValueDefinition {
 	return &value.ValueDefinition{
 		Fields: map[string]value.Value{
-			built_in_declarations.PlusMethod.Name: function.NewBuiltInFunction(
-				function.NewFixedFunctionArgumentValidator("+", reflect.TypeOf(*new(StringValue))),
+			built_in_declarations.StringPlusMethod.Name: function.NewBuiltInFunction(
+				function.NewFixedFunctionArgumentValidator(
+					built_in_declarations.StringPlusMethod.Name,
+					reflect.TypeOf(*new(StringValue)),
+				),
+
 				func(_ *runtime.Runtime, arguments ...value.Value) value.Value {
 					return value_ + arguments[0].(StringValue)
 				},
 
-				built_in_declarations.PlusMethod.Type,
+				built_in_declarations.StringPlusMethod.Type,
 			),
 		},
 	}
