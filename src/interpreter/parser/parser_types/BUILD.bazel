@@ -4,5 +4,5 @@ go_library(
     name = "parser_types",
     srcs = glob(["*.go"]),
     importpath = "project_umbrella/interpreter/parser/parser_types",
-    visibility = ["//src/interpreter:__subpackages__"],
+    visibility = ["//visibility:public"],
 )

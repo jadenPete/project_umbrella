@@ -4,8 +4,5 @@ go_library(
     name = "value",
     srcs = glob(["*.go"]),
     importpath = "project_umbrella/interpreter/runtime/value",
-    visibility = [
-        "//src/interpreter/loader:__subpackages__",
-        "//src/interpreter/runtime:__subpackages__",
-    ],
+    visibility = ["//visibility:public"],
 )

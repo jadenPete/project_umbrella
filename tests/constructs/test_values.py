@@ -103,11 +103,11 @@ Consider assigning to a new value.
 
 	assert output_from_code(
 		"""\
-println = print
+true = false
 
-println("Hello, world!")
+println(true)
 """
-	) == "Hello, world!"
+	) == "false\n"
 
 def test_values_containing_keywords() -> None:
 	assert output_from_code("if_ = unit") == ""

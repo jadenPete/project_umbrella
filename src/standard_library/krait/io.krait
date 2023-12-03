@@ -1,0 +1,4 @@
+_library = import_library("io")
+
+print = _library.get("Print")
+println = _library.get("Println")

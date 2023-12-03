@@ -68,24 +68,6 @@ var BuiltInValues = map[built_in_declarations.BuiltInValueID]value.Value{
 		parser_types.NormalFunction,
 	),
 
-	built_in_declarations.PrintFunctionID: function.NewBuiltInFunction(
-		function.NewVariadicFunctionArgumentValidator("print", nil),
-		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
-			return print(runtime_, "", arguments...)
-		},
-
-		parser_types.NormalFunction,
-	),
-
-	built_in_declarations.PrintlnFunctionID: function.NewBuiltInFunction(
-		function.NewVariadicFunctionArgumentValidator("println", nil),
-		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
-			return print(runtime_, "\n", arguments...)
-		},
-
-		parser_types.NormalFunction,
-	),
-
 	built_in_declarations.StructFunctionID: function.NewBuiltInFunction(
 		function.NewFixedFunctionArgumentValidator(
 			"__struct__",
@@ -261,18 +243,6 @@ func newLookupFunction(fields map[value_types.StringValue]value.Value) *function
 			IsLookup: true,
 		},
 	)
-}
-
-func print(runtime_ *runtime.Runtime, suffix string, arguments ...value.Value) value_types.UnitValue {
-	serialized := make([]string, 0, len(arguments))
-
-	for _, argument := range arguments {
-		serialized = append(serialized, string(value_util.CallToStringMethod(runtime_, argument)))
-	}
-
-	fmt.Print(strings.Join(serialized, " ") + suffix)
-
-	return value_types.UnitValue{}
 }
 
 func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {

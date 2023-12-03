@@ -3,7 +3,10 @@ load("@python_deps//:requirements.bzl", "requirement")
 py_library(
 	name = "tests-library",
 	srcs = ["__init__.py"],
-	data = ["//src/interpreter"],
+	data = [
+		"//src/interpreter",
+		"//src/standard_library",
+	],
 	visibility = [":__subpackages__"],
 )
 

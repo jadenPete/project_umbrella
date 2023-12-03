@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_binary")
+
+go_binary(
+    name = "io",
+    srcs = glob(["*.go"]),
+	linkmode = "plugin",
+    visibility = ["//src/standard_library:__pkg__"],
+    deps = [
+        "//src/interpreter/parser/parser_types",
+        "//src/interpreter/runtime",
+        "//src/interpreter/runtime/value",
+        "//src/interpreter/runtime/value_types",
+        "//src/interpreter/runtime/value_types/function",
+        "//src/interpreter/runtime/value_util",
+    ],
+)

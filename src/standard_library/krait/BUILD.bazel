@@ -1,0 +1,5 @@
+filegroup(
+	name = "krait",
+	srcs = glob(["**/*.krait"]),
+	visibility = ["//src/standard_library:__pkg__"],
+)

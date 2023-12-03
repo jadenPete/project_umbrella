@@ -1,10 +1,15 @@
-linked_list = import("linked_list")
+_io = import("io")
 
-Cons = linked_list.Cons
-Nil = linked_list.Nil
-new_linked_list = linked_list.new_linked_list
+print = _io.print
+println = _io.println
 
-option = import("option")
+_linked_list = import("linked_list")
 
-Some = option.Some
-None = option.None
+Cons = _linked_list.Cons
+Nil = _linked_list.Nil
+new_linked_list = _linked_list.new_linked_list
+
+_option = import("option")
+
+Some = _option.Some
+None = _option.None

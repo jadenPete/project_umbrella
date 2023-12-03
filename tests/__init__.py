@@ -4,7 +4,7 @@ import subprocess
 import tempfile
 
 REPOSITORY_DIRECTORY = os.environ["BUILD_WORKING_DIRECTORY"]
-STANDARD_LIBRARY_DIRECTORY = os.path.join(REPOSITORY_DIRECTORY, "src", "standard_library")
+STANDARD_LIBRARY_DIRECTORY = os.path.join("src", "standard_library", "standard_library")
 STARTUP_FILE_PATH = os.path.join(REPOSITORY_DIRECTORY, "src", "startup_file.krait")
 
 def output_from_code(

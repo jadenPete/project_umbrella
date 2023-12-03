@@ -135,8 +135,6 @@ const (
 	ImportFunctionID
 	ImportLibraryFunctionID
 	ModuleFunctionID
-	PrintFunctionID
-	PrintlnFunctionID
 	TupleFunctionID
 	StructFunctionID
 )

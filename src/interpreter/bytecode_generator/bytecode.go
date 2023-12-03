@@ -152,8 +152,6 @@ var builtInValues = map[string]built_in_declarations.BuiltInValueID{
 	"false":          built_in_declarations.FalseValueID,
 	"import":         built_in_declarations.ImportFunctionID,
 	"import_library": built_in_declarations.ImportLibraryFunctionID,
-	"print":          built_in_declarations.PrintFunctionID,
-	"println":        built_in_declarations.PrintlnFunctionID,
 	"true":           built_in_declarations.TrueValueID,
 	"unit":           built_in_declarations.UnitValueID,
 }
