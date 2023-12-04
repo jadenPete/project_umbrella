@@ -136,6 +136,16 @@ var (
 		Name: "length",
 		Type: nil,
 	}
+
+	TuplePlusMethod = &BuiltInField{
+		Name: "+",
+		Type: parser_types.InfixFunction,
+	}
+
+	TupleSliceMethod = &BuiltInField{
+		Name: "slice",
+		Type: parser_types.NormalFunction,
+	}
 )
 
 // Implemented on structs

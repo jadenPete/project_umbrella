@@ -74,3 +74,30 @@ def test_length() -> None:
 	assert output_from_code("println((,).length)\n") == "0\n"
 	assert output_from_code("println((0,).length)\n") == "1\n"
 	assert output_from_code("println((0, 1).length)\n") == "2\n"
+
+def test_plus() -> None:
+	assert output_from_code("println((((0,) + (,)) == (0,)) && (((,) + (0,)) == (0,)))\n") == \
+		"true\n"
+
+	assert output_from_code("println((((0,) + (1,)) == (0, 1)) && (((1,) + (0,)) == (1, 0)))") == \
+		"true\n"
+
+	assert output_from_code(
+		"println((((0,) + (1, 2)) == (0, 1, 2)) && (((1, 2) + (0,)) == (1, 2, 0)))"
+	) == "true\n"
+
+	assert output_from_code("(,) + 0", expected_return_code=1) == """\
+Error (RUNTIME-2): A built-in function was called with an argument of incorrect type
+
++ expected argument #1 to be of a different type.
+"""
+
+def test_slice() -> None:
+	assert output_from_code("println((1, 2, 3).slice(0, 3))\n") == "(1, 2, 3)\n"
+	assert output_from_code("println((1, 2, 3).slice(1, 2))\n") == "(2,)\n"
+	assert output_from_code("println((1, 2, 3).slice(1, 1))\n") == "(,)\n"
+	assert output_from_code("println((1, 2, 3).slice(1, 0))\n") == "(,)\n"
+	assert output_from_code("println((1, 2, 3).slice(-1, 2))\n") == "(1, 2)\n"
+	assert output_from_code("println((1, 2, 3).slice(1, 4))\n") == "(2, 3)\n"
+	assert output_from_code("println((1, 2, 3).slice(0))\n", expected_return_code=1) == ""
+	assert output_from_code('println((1, 2, 3).slice("0", "3"))\n', expected_return_code=1) == ""

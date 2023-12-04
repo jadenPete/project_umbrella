@@ -1,0 +1,88 @@
+option = import("option")
+
+Some = option.Some
+None = option.None
+
+struct Iterator(self, next):
+	fn flatten():
+		next()
+			.map((next_value):
+				next_value
+					.get(0)
+					.plus(next_value.get(1).flatten())
+					.plus(next_value.get(2).flatten())
+			)
+			.get_or((): Iterator((): None()))
+
+	fn fold(initial, transformer):
+		next()
+			.map((next_value):
+				transformer(
+					next_value.get(0),
+					transformer(
+						next_value.get(1).fold(initial, transformer),
+						next_value.get(2).fold(initial, transformer)
+					)
+				)
+			)
+			.get_or((): initial)
+
+	fn fold_nonassociative(initial, transformer):
+		next()
+			.map((next_value):
+				next_value.get(2).fold_nonassociative(
+					next_value.get(1).fold_nonassociative(
+						transformer(initial, next_value.get(0)),
+						transformer
+					),
+
+					transformer
+				)
+			)
+			.get_or((): initial)
+
+	fn map(mapper):
+		Iterator(():
+			next().map((next_value):
+				(
+					mapper(next_value.get(0)),
+					next_value.get(1).map(mapper),
+					next_value.get(2).map(mapper)
+				)
+			)
+		)
+
+	fn plus(other):
+		pop_left()
+			.map((head_tail): Iterator((): Some((head_tail.get(0), head_tail.get(1), other))))
+			.get_or((): other)
+
+	fn pop_left():
+		next().map((next_value): (next_value.get(0), next_value.get(1).plus(next_value.get(2))))
+
+	fn sum(): fold(0, (number1, number2): number1 + number2)
+	fn to_tuple(): fold_nonassociative((,), (result, element): result + (element,))
+
+fn _from_string_or_tuple(string_or_tuple):
+	fn iterator(start, end):
+		Iterator(():
+			if end <= start:
+				None()
+			else:
+				middle = (start + end + 1) / 2
+
+				Some(
+					(
+						string_or_tuple.get(start),
+						iterator(start + 1, middle),
+						iterator(middle, end)
+					)
+				)
+		)
+
+	iterator(0, string_or_tuple.length)
+
+fn empty(): Iterator((): None())
+fn from_option(option_): Iterator((): option_.map((value): (value, empty(), empty())))
+
+from_string = from_tuple = _from_string_or_tuple

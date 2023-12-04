@@ -8,6 +8,10 @@ _io = import("io")
 print = _io.print
 println = _io.println
 
+_iterator = import("iterator")
+
+Iterator = _iterator.Iterator
+
 _linked_list = import("linked_list")
 
 Cons = _linked_list.Cons

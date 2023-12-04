@@ -1,9 +1,9 @@
 struct Some(self, value):
-	fn get_or_else(_): value
+	fn get_or(_): value
 	fn map(mapper): Some(mapper(value))
 	fn map_flatten(mapper): mapper(value)
 
 struct None(self):
-	fn get_or_else(default): default
+	fn get_or(default): default()
 	fn map(_): self
 	fn map_flatten(mapper): self
