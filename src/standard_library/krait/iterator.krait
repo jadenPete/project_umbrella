@@ -3,7 +3,21 @@ option = import("option")
 Some = option.Some
 None = option.None
 
+math = import("math")
+
 struct Iterator(self, next):
+	fn count(matcher):
+		next()
+			.map((next_value):
+				next_count = if matcher(next_value.get(0)):
+					1
+				else:
+					0
+
+				next_count + next_value.get(1).count(matcher) + next_value.get(2).count(matcher)
+			)
+			.get_or((): 0)
+
 	fn exists(matcher): find(matcher).__is_instance_of__(Some)
 	fn find(matcher):
 		next().map_flatten((next_value):
@@ -21,7 +35,7 @@ struct Iterator(self, next):
 					.plus(next_value.get(1).flatten())
 					.plus(next_value.get(2).flatten())
 			)
-			.get_or((): Iterator((): None()))
+			.get_or((): self)
 
 	fn fold(initial, transformer):
 		next()
@@ -50,6 +64,25 @@ struct Iterator(self, next):
 			)
 			.get_or((): initial)
 
+	fn for_all(matcher): !exists((element): !matcher(element))
+	fn include(matcher):
+		next()
+			.map((next_value):
+				if matcher(next_value.get(0)):
+					Iterator(():
+						Some(
+							(
+								next_value.get(0),
+								next_value.get(1).include(matcher),
+								next_value.get(2).include(matcher)
+							)
+						)
+					)
+				else:
+					next_value.get(1).include(matcher).plus(next_value.get(2).include(matcher))
+			)
+			.get_or((): self)
+
 	fn map(mapper):
 		Iterator(():
 			next().map((next_value):
@@ -59,6 +92,16 @@ struct Iterator(self, next):
 					next_value.get(2).map(mapper)
 				)
 			)
+		)
+
+	fn map_flatten(mapper): map(mapper).flatten()
+	fn min():
+		map(Some).fold(None(), (number1, number2):
+			number1
+				.zip((): number2)
+				.map((number1_number2): math.min(number1_number2.get(0), number1_number2.get(1)))
+				.or((): number1)
+				.or((): number2)
 		)
 
 	fn plus(other):

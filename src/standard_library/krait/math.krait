@@ -1,0 +1,11 @@
+fn max(number1, number2):
+	if number1 > number2:
+		number1
+	else:
+		number2
+
+fn min(number1, number2):
+	if number1 < number2:
+		number1
+	else:
+		number2
