@@ -2,8 +2,10 @@ struct Some(self, value):
 	fn get_or(_): value
 	fn map(mapper): Some(mapper(value))
 	fn map_flatten(mapper): mapper(value)
+	fn or(_): self
 
 struct None(self):
 	fn get_or(default): default()
 	fn map(_): self
 	fn map_flatten(mapper): self
+	fn or(other): other()

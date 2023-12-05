@@ -1,0 +1,23 @@
+option = import("option")
+
+Some = option.Some
+None = option.None
+
+iterator = import("iterator")
+
+struct Range(self, start, end):
+	fn to_iterator():
+		iterator.Iterator(():
+			if end <= start:
+				None()
+			else:
+				middle = (start + end + 1) / 2
+
+				Some(
+					(
+						start,
+						Range(start + 1, middle).to_iterator(),
+						Range(middle, end).to_iterator()
+					)
+				)
+		)

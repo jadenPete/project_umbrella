@@ -4,6 +4,15 @@ Some = option.Some
 None = option.None
 
 struct Iterator(self, next):
+	fn exists(matcher): find(matcher).__is_instance_of__(Some)
+	fn find(matcher):
+		next().map_flatten((next_value):
+			if matcher(next_value.get(0)):
+				Some(next_value.get(0))
+			else:
+				next_value.get(1).find(matcher).or((): next_value.get(2).find(matcher))
+		)
+
 	fn flatten():
 		next()
 			.map((next_value):
