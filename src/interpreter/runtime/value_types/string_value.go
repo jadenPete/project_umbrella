@@ -78,5 +78,23 @@ func (value_ StringValue) Definition() *value.ValueDefinition {
 		built_in_declarations.StringSplit.Type,
 	)
 
+	result.Fields[built_in_declarations.StringStrip.Name] = function.NewBuiltInFunction(
+		function.NewFixedFunctionArgumentValidator(
+			built_in_declarations.StringSplit.Name,
+			reflect.TypeOf(*new(StringValue)),
+		),
+
+		func(_ *runtime.Runtime, arguments ...value.Value) value.Value {
+			return StringValue(
+				strings.Trim(
+					string(value_),
+					string(arguments[0].(StringValue)),
+				),
+			)
+		},
+
+		built_in_declarations.StringSplit.Type,
+	)
+
 	return result
 }

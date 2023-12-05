@@ -59,6 +59,11 @@ var (
 		Name: "split",
 		Type: parser_types.NormalFunction,
 	}
+
+	StringStrip = &BuiltInField{
+		Name: "strip",
+		Type: parser_types.NormalFunction,
+	}
 )
 
 // Implemented on int

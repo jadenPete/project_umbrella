@@ -85,3 +85,11 @@ Error (RUNTIME-2): A built-in function was called with an argument of incorrect 
 
 split expected argument #1 to be of a different type.
 """
+
+def test_strip() -> None:
+	assert output_from_code('println(" Hello, world! ".strip(" "))\n') == "Hello, world!\n"
+	assert output_from_code('println("Hello, world! 😀".strip("😀"))\n') == "Hello, world! \n"
+	assert output_from_code('println("Hello, world!".strip(" "))\n') == "Hello, world!\n"
+	assert output_from_code('println(" ".strip(" "))\n') == "\n"
+	assert output_from_code('println("Hello, world!".strip(""))\n') == "Hello, world!\n"
+	assert output_from_code('println("Hello, world!".strip("H!"))\n') == "ello, world\n"
