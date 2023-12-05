@@ -57,6 +57,22 @@ Error (RUNTIME-2): A built-in function was called with an argument of incorrect 
 + expected argument #1 to be of a different type.
 """
 
+def test_slice() -> None:
+	assert output_from_code('println("Hello".slice(0, 5))\n') == "Hello\n"
+	assert output_from_code('println("Hello".slice(1, 4))\n') == "ell\n"
+	assert output_from_code('println("Hello".slice(1, 1))\n') == "\n"
+	assert output_from_code('println("Hello".slice(1, 0))\n') == "\n"
+	assert output_from_code('println("Hello".slice(-1, 4))\n') == "Hell\n"
+	assert output_from_code('println("Hello".slice(1, 6))\n') == 'ello\n'
+	assert output_from_code('println("Hello".slice(0))\n', expected_return_code=1) == \
+		"Error (RUNTIME-1): A function accepting 2 arguments was called with 1 arguments\n"
+
+	assert output_from_code('println("Hello".slice("0", "3"))\n', expected_return_code=1) == """\
+Error (RUNTIME-2): A built-in function was called with an argument of incorrect type
+
+slice expected argument #1 to be of a different type.
+"""
+
 def test_split() -> None:
 	assert output_from_code('println("".split("") == (,))\n') == "true\n"
 	assert output_from_code('println("".split("foo") == ("",))\n') == "true\n"

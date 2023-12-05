@@ -25,26 +25,34 @@ var (
 	}
 )
 
+// Implemented on str and tuple
+var (
+	OrderedGetMethod = &BuiltInField{
+		Name: "get",
+		Type: parser_types.NormalFunction,
+	}
+
+	OrderedLengthField = &BuiltInField{
+		Name: "length",
+		Type: nil,
+	}
+
+	OrderedPlusMethod = &BuiltInField{
+		Name: "+",
+		Type: parser_types.InfixFunction,
+	}
+
+	OrderedSliceMethod = &BuiltInField{
+		Name: "slice",
+		Type: parser_types.NormalFunction,
+	}
+)
+
 // Implemented on str
 var (
 	StringCodepointMethod = &BuiltInField{
 		Name: "codepoint",
 		Type: parser_types.NormalFunction,
-	}
-
-	StringGetMethod = &BuiltInField{
-		Name: "get",
-		Type: parser_types.NormalFunction,
-	}
-
-	StringLengthField = &BuiltInField{
-		Name: "length",
-		Type: nil,
-	}
-
-	StringPlusMethod = &BuiltInField{
-		Name: "+",
-		Type: parser_types.InfixFunction,
 	}
 
 	StringSplit = &BuiltInField{
@@ -122,29 +130,6 @@ var (
 	BooleanOrMethod = &BuiltInField{
 		Name: "||",
 		Type: parser_types.InfixFunction,
-	}
-)
-
-// Implemented on tuple
-var (
-	TupleGetMethod = &BuiltInField{
-		Name: "get",
-		Type: parser_types.NormalFunction,
-	}
-
-	TupleLengthField = &BuiltInField{
-		Name: "length",
-		Type: nil,
-	}
-
-	TuplePlusMethod = &BuiltInField{
-		Name: "+",
-		Type: parser_types.InfixFunction,
-	}
-
-	TupleSliceMethod = &BuiltInField{
-		Name: "slice",
-		Type: parser_types.NormalFunction,
 	}
 )
 
