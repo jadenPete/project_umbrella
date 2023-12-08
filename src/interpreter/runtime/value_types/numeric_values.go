@@ -15,23 +15,70 @@ import (
 type FloatValue float64
 
 func (value_ FloatValue) Definition() *value.ValueDefinition {
-	return newNumberDefinition(value_, "float")
+	result := newNumberDefinition(value_, "float")
+	result.Fields[built_in_declarations.FloatCeilingMethod.Name] = function.NewBuiltInFunction(
+		function.NewFixedFunctionArgumentValidator(
+			built_in_declarations.FloatCeilingMethod.Name,
+		),
+
+		func(_ *runtime.Runtime, _ ...value.Value) value.Value {
+			return FloatValue(math.Ceil(float64(value_)))
+		},
+
+		built_in_declarations.FloatCeilingMethod.Type,
+	)
+
+	result.Fields[built_in_declarations.FloatFloorMethod.Name] = function.NewBuiltInFunction(
+		function.NewFixedFunctionArgumentValidator(
+			built_in_declarations.FloatFloorMethod.Name,
+		),
+
+		func(_ *runtime.Runtime, _ ...value.Value) value.Value {
+			return FloatValue(math.Floor(float64(value_)))
+		},
+
+		built_in_declarations.FloatFloorMethod.Type,
+	)
+
+	result.Fields[built_in_declarations.FloatToIntegerMethod.Name] = function.NewBuiltInFunction(
+		function.NewFixedFunctionArgumentValidator(
+			built_in_declarations.FloatToIntegerMethod.Name,
+		),
+
+		func(_ *runtime.Runtime, _ ...value.Value) value.Value {
+			return IntegerValue(value_)
+		},
+
+		built_in_declarations.FloatToIntegerMethod.Type,
+	)
+
+	return result
 }
 
 type IntegerValue int64
 
 func (value_ IntegerValue) Definition() *value.ValueDefinition {
 	result := newNumberDefinition(value_, "int")
-	result.Fields[built_in_declarations.IntegerToCharacterMethod.Name] = function.NewBuiltInFunction(
-		function.NewFixedFunctionArgumentValidator(
-			built_in_declarations.IntegerToCharacterMethod.Name,
-		),
+	result.Fields[built_in_declarations.IntegerToCharacterMethod.Name] =
+		function.NewBuiltInFunction(
+			function.NewFixedFunctionArgumentValidator(
+				built_in_declarations.IntegerToCharacterMethod.Name,
+			),
 
+			func(_ *runtime.Runtime, _ ...value.Value) value.Value {
+				return StringValue([]rune{rune(value_)})
+			},
+
+			built_in_declarations.IntegerToCharacterMethod.Type,
+		)
+
+	result.Fields[built_in_declarations.IntegerToFloatMethod.Name] = function.NewBuiltInFunction(
+		function.NewFixedFunctionArgumentValidator(built_in_declarations.IntegerToFloatMethod.Name),
 		func(_ *runtime.Runtime, arguments ...value.Value) value.Value {
-			return StringValue([]rune{rune(value_)})
+			return FloatValue(value_)
 		},
 
-		built_in_declarations.IntegerToCharacterMethod.Type,
+		built_in_declarations.IntegerToFloatMethod.Type,
 	)
 
 	return result

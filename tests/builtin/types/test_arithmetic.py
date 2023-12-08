@@ -94,7 +94,7 @@ def _test_comparison_case(
 		f"println({float(left_hand_side)} {operator} {float(right_hand_side)})\n"
 	) == expected_value
 
-def test_int_comparison() -> None:
+def test_comparison() -> None:
 	_test_comparison_case(1, "<", 2, "true\n")
 	_test_comparison_case(1, "<", 1, "false\n")
 	_test_comparison_case(1, "<=", 1, "true\n")
@@ -108,3 +108,37 @@ def test_int_comparison() -> None:
 
 def test_comparison_strong_typing() -> None:
 	_test_strong_typing("<", "<=", ">", ">=")
+
+def test_conversion() -> None:
+	assert output_from_code("println((42).to_float())\n") == "42\n"
+	assert output_from_code("println((0).to_float())\n") == "0\n"
+	assert output_from_code("println((-42).to_float())\n") == "-42\n"
+	assert output_from_code("println((42).to_float(0))\n", expected_return_code=1) == \
+		"Error (RUNTIME-1): A function accepting 0 arguments was called with 1 arguments\n"
+
+	assert output_from_code("println((42.0).to_int())\n") == "42\n"
+	assert output_from_code("println((42.69).to_int())\n") == "42\n"
+	assert output_from_code("println((0.0).to_int())\n") == "0\n"
+	assert output_from_code("println((-42.69).to_int())\n") == "-42\n"
+	assert output_from_code("println((42.0).to_int(0))\n", expected_return_code=1) == \
+		"Error (RUNTIME-1): A function accepting 0 arguments was called with 1 arguments\n"
+
+def test_float_ceil() -> None:
+	assert output_from_code("println((42.0).ceil())\n") == "42\n"
+	assert output_from_code("println((42.069).ceil())\n") == "43\n"
+	assert output_from_code("println((42.69).ceil())\n") == "43\n"
+	assert output_from_code("println((0.0).ceil())\n") == "0\n"
+	assert output_from_code("println((-42.69).ceil())\n") == "-42\n"
+	assert output_from_code("println((-42.069).ceil())\n") == "-42\n"
+	assert output_from_code("println((42.0).ceil(0))\n", expected_return_code=1) == \
+		"Error (RUNTIME-1): A function accepting 0 arguments was called with 1 arguments\n"
+
+def test_float_floor() -> None:
+	assert output_from_code("println((42.0).floor())\n") == "42\n"
+	assert output_from_code("println((42.069).floor())\n") == "42\n"
+	assert output_from_code("println((42.69).floor())\n") == "42\n"
+	assert output_from_code("println((0.0).floor())\n") == "0\n"
+	assert output_from_code("println((-42.69).floor())\n") == "-43\n"
+	assert output_from_code("println((-42.069).floor())\n") == "-43\n"
+	assert output_from_code("println((42.0).floor(0))\n", expected_return_code=1) == \
+		"Error (RUNTIME-1): A function accepting 0 arguments was called with 1 arguments\n"

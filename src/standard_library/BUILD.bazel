@@ -5,6 +5,7 @@ krait_standard_library(
 	deps = {
 		"//src/standard_library/krait": "",
 		"//src/standard_library/native/io": "",
+		"//src/standard_library/native/math": "",
 	},
 
 	visibility = ["//visibility:public"],

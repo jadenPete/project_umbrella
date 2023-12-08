@@ -67,10 +67,17 @@ var (
 )
 
 // Implemented on int
-var IntegerToCharacterMethod = &BuiltInField{
-	Name: "to_character",
-	Type: parser_types.NormalFunction,
-}
+var (
+	IntegerToCharacterMethod = &BuiltInField{
+		Name: "to_character",
+		Type: parser_types.NormalFunction,
+	}
+
+	IntegerToFloatMethod = &BuiltInField{
+		Name: "to_float",
+		Type: parser_types.NormalFunction,
+	}
+)
 
 // Implemented on int and float
 var (
@@ -117,6 +124,24 @@ var (
 	NumericGreaterThanOrEqualToMethod = &BuiltInField{
 		Name: ">=",
 		Type: parser_types.InfixFunction,
+	}
+)
+
+// Implemented on float
+var (
+	FloatCeilingMethod = &BuiltInField{
+		Name: "ceil",
+		Type: parser_types.NormalFunction,
+	}
+
+	FloatFloorMethod = &BuiltInField{
+		Name: "floor",
+		Type: parser_types.NormalFunction,
+	}
+
+	FloatToIntegerMethod = &BuiltInField{
+		Name: "to_int",
+		Type: parser_types.NormalFunction,
 	}
 )
 
