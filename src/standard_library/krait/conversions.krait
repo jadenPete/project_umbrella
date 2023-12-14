@@ -24,6 +24,6 @@ fn string_to_int(string):
 			slice_to_int(i, string.length)
 
 	if (string.length > 0) && (string.get(0) == "-"):
-		-starting_at(1)
+		starting_at(1).map((value): -value)
 	else:
 		starting_at(0)

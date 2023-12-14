@@ -1,5 +1,6 @@
 struct Some(self, value):
 	fn exists(matcher): matcher(value)
+	fn for_all(matcher): matcher(value)
 	fn get_or(_): value
 	fn include(matcher):
 		if matcher(value):
@@ -14,6 +15,7 @@ struct Some(self, value):
 
 struct None(self):
 	fn exists(_): false
+	fn for_all(matcher): true
 	fn get_or(default): default()
 	fn include(_): self
 	fn map(_): self

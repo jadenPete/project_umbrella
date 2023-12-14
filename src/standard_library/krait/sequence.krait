@@ -1,0 +1,22 @@
+struct Sequence(self, get, length):
+	fn binary_search_leftmost(number):
+		fn within_bounds(left, right):
+			if left >= right:
+				left
+			else:
+				middle = (left + right) / 2
+				middle_number = get(middle)
+
+				if number < middle_number:
+					within_bounds(left, middle)
+				else if number > middle_number:
+					within_bounds(middle + 1, right)
+				else:
+					middle
+
+		within_bounds(0, length)
+
+fn _from_string_or_tuple(string_or_tuple):
+	Sequence(string_or_tuple.get, string_or_tuple.length)
+
+from_string = from_tuple = _from_string_or_tuple

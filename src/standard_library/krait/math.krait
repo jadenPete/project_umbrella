@@ -7,6 +7,12 @@ _library = import_library("math")
 
 _square_root = _library.get("SquareRoot")
 
+fn abs(number):
+	if number < 0:
+		-number
+	else:
+		number
+
 fn max(number1, number2):
 	if number1 > number2:
 		number1

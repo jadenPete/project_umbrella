@@ -6,6 +6,7 @@ None = option.None
 math = import("math")
 
 struct Iterator(self, next):
+	fn contains(expected): exists(expected.==)
 	fn count(matcher):
 		next()
 			.map((next_value):
@@ -65,6 +66,7 @@ struct Iterator(self, next):
 			.get_or((): initial)
 
 	fn for_all(matcher): !exists((element): !matcher(element))
+	fn head(): pop_left().map((head_tail): head_tail.get(0))
 	fn include(matcher):
 		next()
 			.map((next_value):
