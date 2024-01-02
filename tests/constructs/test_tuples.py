@@ -99,5 +99,22 @@ def test_slice() -> None:
 	assert output_from_code("println((1, 2, 3).slice(1, 0))\n") == "(,)\n"
 	assert output_from_code("println((1, 2, 3).slice(-1, 2))\n") == "(1, 2)\n"
 	assert output_from_code("println((1, 2, 3).slice(1, 4))\n") == "(2, 3)\n"
-	assert output_from_code("println((1, 2, 3).slice(0))\n", expected_return_code=1) == ""
-	assert output_from_code('println((1, 2, 3).slice("0", "3"))\n', expected_return_code=1) == ""
+	assert output_from_code("println((1, 2, 3).slice(0))\n", expected_return_code=1) == \
+		"Error (RUNTIME-1): A function accepting 2 arguments was called with 1 arguments\n"
+
+	assert output_from_code('println((1, 2, 3).slice("0", "3"))\n', expected_return_code=1) == """\
+Error (RUNTIME-2): A built-in function was called with an argument of incorrect type
+
+slice expected argument #1 to be of a different type.
+"""
+
+def test_times() -> None:
+	assert output_from_code('println((1,) * 4)\n') == "(1, 1, 1, 1)\n"
+	assert output_from_code('println((1, 2, 3) * 3)\n') == "(1, 2, 3, 1, 2, 3, 1, 2, 3)\n"
+	assert output_from_code('println((,) * 4)\n') == "(,)\n"
+	assert output_from_code('println((1,) * -1)\n') == "(,)\n"
+	assert output_from_code('println((1,) * "0")\n', expected_return_code=1) == """\
+Error (RUNTIME-2): A built-in function was called with an argument of incorrect type
+
+* expected argument #1 to be of a different type.
+"""

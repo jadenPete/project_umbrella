@@ -34,6 +34,14 @@ func (value_ StringValue) Definition() *value.ValueDefinition {
 		func(start int, end int) StringValue {
 			return StringValue([]rune(value_)[start:end])
 		},
+
+		func(count int) StringValue {
+			if count < 0 {
+				return ""
+			}
+
+			return StringValue(strings.Repeat(string(value_), count))
+		},
 	)
 
 	result.Fields[built_in_declarations.StringCodepointMethod.Name] = function.NewBuiltInFunction(

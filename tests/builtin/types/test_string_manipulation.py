@@ -93,3 +93,14 @@ def test_strip() -> None:
 	assert output_from_code('println(" ".strip(" "))\n') == "\n"
 	assert output_from_code('println("Hello, world!".strip(""))\n') == "Hello, world!\n"
 	assert output_from_code('println("Hello, world!".strip("H!"))\n') == "ello, world\n"
+
+def test_times() -> None:
+	assert output_from_code('println("0" * 4)\n') == "0000\n"
+	assert output_from_code('println("abc" * 3)\n') == "abcabcabc\n"
+	assert output_from_code('println("" * 4)\n') == "\n"
+	assert output_from_code('println("0" * -1)\n') == "\n"
+	assert output_from_code('println("0" * "0")\n', expected_return_code=1) == """\
+Error (RUNTIME-2): A built-in function was called with an argument of incorrect type
+
+* expected argument #1 to be of a different type.
+"""

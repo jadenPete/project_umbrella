@@ -32,5 +32,17 @@ func (value_ *TupleValue) Definition() *value.ValueDefinition {
 				Elements: value_.Elements[start:end],
 			}
 		},
+
+		func(count int) *TupleValue {
+			result := &TupleValue{
+				Elements: []value.Value{},
+			}
+
+			for i := 0; i < count; i++ {
+				result.Elements = append(result.Elements, value_.Elements...)
+			}
+
+			return result
+		},
 	)
 }

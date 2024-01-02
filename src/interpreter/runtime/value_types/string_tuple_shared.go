@@ -19,6 +19,7 @@ func orderedCollectionDefinition[Value value.Value](
 	appendValue func(Value) Value,
 	emptyValue func() Value,
 	sliceValue func(int, int) Value,
+	repeatValue func(int) Value,
 ) *value.ValueDefinition {
 	return &value.ValueDefinition{
 		Fields: map[string]value.Value{
@@ -95,6 +96,19 @@ func orderedCollectionDefinition[Value value.Value](
 				},
 
 				built_in_declarations.OrderedSliceMethod.Type,
+			),
+
+			built_in_declarations.OrderedTimesMethod.Name: function.NewBuiltInFunction(
+				function.NewFixedFunctionArgumentValidator(
+					built_in_declarations.OrderedTimesMethod.Name,
+					reflect.TypeOf(*new(IntegerValue)),
+				),
+
+				func(_ *runtime.Runtime, arguments ...value.Value) value.Value {
+					return repeatValue(int(arguments[0].(IntegerValue)))
+				},
+
+				built_in_declarations.OrderedTimesMethod.Type,
 			),
 		},
 	}

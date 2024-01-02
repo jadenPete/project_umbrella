@@ -46,6 +46,11 @@ var (
 		Name: "slice",
 		Type: parser_types.NormalFunction,
 	}
+
+	OrderedTimesMethod = &BuiltInField{
+		Name: "*",
+		Type: parser_types.InfixFunction,
+	}
 )
 
 // Implemented on str
