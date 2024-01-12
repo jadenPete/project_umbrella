@@ -3,18 +3,42 @@ option = import("option")
 Some = option.Some
 None = option.None
 
-fn string_to_int(string):
+fn int_to_str(integer, base):
+	if integer < 0:
+		"-" + -int_to_str(integer)
+	else if integer == 0:
+		"0"
+	else:
+		digit = integer % base
+		digit_character = (
+			(
+				if digit < 10:
+					"0"
+				else:
+					"a"
+			).codepoint() + digit
+		).to_character()
+
+		int_to_str(integer / base) + digit_character
+
+fn str_to_int_with_base(string, base):
 	fn slice_to_int(start, end):
 		if end <= start:
 			Some(0)
 		else:
 			slice_to_int(start, end - 1).map_flatten((value):
-				offset = string.get(end - 1).codepoint() - "0".codepoint()
+				codepoint = string.get(end - 1).codepoint()
+				offset_decimal = codepoint - "0".codepoint()
+				offset_hexadecimal = codepoint - "a".codepoint() + 10
 
-				if (offset < 0) || (offset > 9):
-					None()
-				else:
-					Some(value * 10 + offset)
+				(
+					if (offset_decimal >= 0) && (offset_decimal < 10):
+						Some(offset_decimal)
+					else if offset_hexadecimal >= 10:
+						Some(offset_hexadecimal)
+					else:
+						None()
+				).include((offset): offset < base).map((offset): value * base + offset)
 			)
 
 	fn starting_at(i):
@@ -27,3 +51,6 @@ fn string_to_int(string):
 		starting_at(1).map((value): -value)
 	else:
 		starting_at(0)
+
+fn str_to_int(string):
+	str_to_int_with_base(string, 10)
