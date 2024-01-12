@@ -1,0 +1,5 @@
+struct Left(self, value):
+	fn fold(transformer, _): transformer(value)
+
+struct Right(self, value):
+	fn fold(_, transformer): transformer(value)

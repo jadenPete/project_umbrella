@@ -1,0 +1,38 @@
+option = import("option")
+
+Some = option.Some
+None = option.None
+
+_library = import_library("math")
+
+_square_root = _library.get("SquareRoot")
+
+fn abs(number):
+	if number < 0:
+		-number
+	else:
+		number
+
+fn abs_float(number):
+	if number < 0.0:
+		-number
+	else:
+		number
+
+fn max(number1, number2):
+	if number1 > number2:
+		number1
+	else:
+		number2
+
+fn min(number1, number2):
+	if number1 < number2:
+		number1
+	else:
+		number2
+
+fn square_root(number):
+	if number < 0.0:
+		None()
+	else:
+		Some(_square_root(number))

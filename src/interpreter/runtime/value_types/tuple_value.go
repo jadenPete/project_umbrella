@@ -1,45 +1,48 @@
 package value_types
 
-import (
-	"reflect"
-
-	"project_umbrella/interpreter/bytecode_generator/built_in_declarations"
-	"project_umbrella/interpreter/errors"
-	"project_umbrella/interpreter/errors/runtime_errors"
-	"project_umbrella/interpreter/runtime"
-	"project_umbrella/interpreter/runtime/value"
-	"project_umbrella/interpreter/runtime/value_types/function"
-)
+import "project_umbrella/interpreter/runtime/value"
 
 type TupleValue struct {
 	Elements []value.Value
 }
 
-func (value_ TupleValue) Definition() *value.ValueDefinition {
-	return &value.ValueDefinition{
-		Fields: map[string]value.Value{
-			built_in_declarations.GetMethod.Name: function.NewBuiltInFunction(
-				function.NewFixedFunctionArgumentValidator(
-					built_in_declarations.GetMethod.Name,
-					reflect.TypeOf(*new(IntegerValue)),
-				),
-
-				func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
-					i := int(arguments[0].(IntegerValue))
-
-					if i < 0 || i >= len(value_.Elements) {
-						errors.RaiseError(
-							runtime_errors.TupleGetIndexOutOfBounds(i, len(value_.Elements)),
-						)
-					}
-
-					return value_.Elements[i]
-				},
-
-				built_in_declarations.GetMethod.Type,
-			),
-
-			built_in_declarations.LengthField.Name: IntegerValue(len(value_.Elements)),
+func (value_ *TupleValue) Definition() *value.ValueDefinition {
+	return orderedCollectionDefinition(
+		value_,
+		"tuple",
+		len(value_.Elements),
+		func(i int) value.Value {
+			return value_.Elements[i]
 		},
-	}
+
+		func(other *TupleValue) *TupleValue {
+			return &TupleValue{
+				Elements: append(value_.Elements, other.Elements...),
+			}
+		},
+
+		func() *TupleValue {
+			return &TupleValue{
+				Elements: []value.Value{},
+			}
+		},
+
+		func(start int, end int) *TupleValue {
+			return &TupleValue{
+				Elements: value_.Elements[start:end],
+			}
+		},
+
+		func(count int) *TupleValue {
+			result := &TupleValue{
+				Elements: []value.Value{},
+			}
+
+			for i := 0; i < count; i++ {
+				result.Elements = append(result.Elements, value_.Elements...)
+			}
+
+			return result
+		},
+	)
 }

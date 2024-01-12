@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_binary")
+
+filegroup(
+    name = "test_library_invalid",
+    srcs = [":test_library_invalid.so"],
+    visibility = ["//tests/foreign_function_interface:__pkg__"],
+)
+
+go_binary(
+    name = "test_library_valid",
+    srcs = glob(["*.go"]),
+	linkmode = "plugin",
+    deps = [
+        "//src/interpreter/parser/parser_types",
+        "//src/interpreter/runtime",
+        "//src/interpreter/runtime/value",
+        "//src/interpreter/runtime/value_types",
+        "//src/interpreter/runtime/value_types/function",
+    ],
+    visibility = ["//tests/foreign_function_interface:__pkg__"],
+)

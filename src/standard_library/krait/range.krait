@@ -1,0 +1,51 @@
+iterator = import("iterator")
+math = import("math")
+option = import("option")
+
+Some = option.Some
+None = option.None
+
+struct Range(self, start, end):
+	length = end - start
+
+	fn intersection(other):
+		min_max = if start < other.start:
+			(self, other)
+		else:
+			(other, self)
+
+		min = min_max.get(0)
+		max = min_max.get(1)
+
+		if max.start >= min.end:
+			None()
+		else if max.end > min.end:
+			Some(Range(max.start, min.end))
+		else:
+			Some(max)
+
+	fn minus(other):
+		result = if other.start < start:
+			(Range(math.max(other.end, start), end),)
+		else if other.start < end:
+			(Range(start, other.start), Range(other.end, end))
+		else:
+			(self,)
+
+		iterator.from_tuple(result).include((range): range.start < range.end).to_tuple()
+
+	fn to_iterator():
+		iterator.Iterator(():
+			if end <= start:
+				None()
+			else:
+				middle = (start + end + 1) / 2
+
+				Some(
+					(
+						start,
+						Range(start + 1, middle).to_iterator(),
+						Range(middle, end).to_iterator()
+					)
+				)
+		)

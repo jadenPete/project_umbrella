@@ -9,106 +9,185 @@ type BuiltInField struct {
 
 // Implemented on every type
 var (
-	EqualsMethod = &BuiltInField{
+	UniversalEqualsMethod = &BuiltInField{
 		Name: "==",
 		Type: parser_types.InfixFunction,
 	}
 
-	NotEqualsMethod = &BuiltInField{
+	UniversalNotEqualsMethod = &BuiltInField{
 		Name: "!=",
 		Type: parser_types.InfixFunction,
 	}
 
-	ToStringMethod = &BuiltInField{
+	UniversalToStringMethod = &BuiltInField{
 		Name: "__to_str__",
+		Type: parser_types.NormalFunction,
+	}
+)
+
+// Implemented on str and tuple
+var (
+	OrderedGetMethod = &BuiltInField{
+		Name: "get",
+		Type: parser_types.NormalFunction,
+	}
+
+	OrderedLengthField = &BuiltInField{
+		Name: "length",
+		Type: nil,
+	}
+
+	OrderedPlusMethod = &BuiltInField{
+		Name: "+",
+		Type: parser_types.InfixFunction,
+	}
+
+	OrderedSliceMethod = &BuiltInField{
+		Name: "slice",
+		Type: parser_types.NormalFunction,
+	}
+
+	OrderedTimesMethod = &BuiltInField{
+		Name: "*",
+		Type: parser_types.InfixFunction,
+	}
+)
+
+// Implemented on str
+var (
+	StringCodepointMethod = &BuiltInField{
+		Name: "codepoint",
+		Type: parser_types.NormalFunction,
+	}
+
+	StringSplit = &BuiltInField{
+		Name: "split",
+		Type: parser_types.NormalFunction,
+	}
+
+	StringStrip = &BuiltInField{
+		Name: "strip",
+		Type: parser_types.NormalFunction,
+	}
+)
+
+// Implemented on int
+var (
+	IntegerToCharacterMethod = &BuiltInField{
+		Name: "to_character",
+		Type: parser_types.NormalFunction,
+	}
+
+	IntegerToFloatMethod = &BuiltInField{
+		Name: "to_float",
 		Type: parser_types.NormalFunction,
 	}
 )
 
 // Implemented on int and float
 var (
-	PlusMethod = &BuiltInField{ // Implemented on str, int, and float
+	NumericPlusMethod = &BuiltInField{
 		Name: "+",
 		Type: parser_types.InfixFunction,
 	}
 
-	MinusMethod = &BuiltInField{
+	NumericMinusMethod = &BuiltInField{
 		Name: "-",
 		Type: parser_types.InfixPrefixFunction,
 	}
 
-	TimesMethod = &BuiltInField{
+	NumericTimesMethod = &BuiltInField{
 		Name: "*",
 		Type: parser_types.InfixFunction,
 	}
 
-	OverMethod = &BuiltInField{
+	NumericOverMethod = &BuiltInField{
 		Name: "/",
 		Type: parser_types.InfixFunction,
 	}
 
-	ModuloMethod = &BuiltInField{
+	NumericModuloMethod = &BuiltInField{
 		Name: "%",
 		Type: parser_types.InfixFunction,
 	}
 
-	LessThanMethod = &BuiltInField{
+	NumericLessThanMethod = &BuiltInField{
 		Name: "<",
 		Type: parser_types.InfixFunction,
 	}
 
-	LessThanOrEqualToMethod = &BuiltInField{
+	NumericLessThanOrEqualToMethod = &BuiltInField{
 		Name: "<=",
 		Type: parser_types.InfixFunction,
 	}
 
-	GreaterThanMethod = &BuiltInField{
+	NumericGreaterThanMethod = &BuiltInField{
 		Name: ">",
 		Type: parser_types.InfixFunction,
 	}
 
-	GreaterThanOrEqualToMethod = &BuiltInField{
+	NumericGreaterThanOrEqualToMethod = &BuiltInField{
 		Name: ">=",
 		Type: parser_types.InfixFunction,
 	}
 )
 
+// Implemented on float
+var (
+	FloatCeilingMethod = &BuiltInField{
+		Name: "ceil",
+		Type: parser_types.NormalFunction,
+	}
+
+	FloatFloorMethod = &BuiltInField{
+		Name: "floor",
+		Type: parser_types.NormalFunction,
+	}
+
+	FloatToIntegerMethod = &BuiltInField{
+		Name: "to_int",
+		Type: parser_types.NormalFunction,
+	}
+)
+
 // Implemented on bool
 var (
-	NotMethod = &BuiltInField{
+	BooleanNotMethod = &BuiltInField{
 		Name: "!",
 		Type: parser_types.PrefixFunction,
 	}
 
-	AndMethod = &BuiltInField{
+	BooleanAndMethod = &BuiltInField{
 		Name: "&&",
 		Type: parser_types.InfixFunction,
 	}
 
-	OrMethod = &BuiltInField{
+	BooleanOrMethod = &BuiltInField{
 		Name: "||",
 		Type: parser_types.InfixFunction,
 	}
 )
 
-// Implemented on tuple
+// Implemented on structs
 var (
-	GetMethod = &BuiltInField{
-		Name: "get",
+	StructIsInstanceOfMethod = &BuiltInField{
+		Name: "__is_instance_of__",
 		Type: parser_types.NormalFunction,
 	}
 
-	LengthField = &BuiltInField{
-		Name: "length",
-		Type: nil,
+	StructConstructorMethod = &BuiltInField{
+		Name: "__constructor__",
+		Type: parser_types.NormalFunction,
 	}
 )
 
-// Implemented on structs
-var StructConstructorMethod = &BuiltInField{
-	Name: "__constructor__",
-	Type: parser_types.NormalFunction,
-}
+// Implemented on libraries
+var (
+	LibraryGetMethod = &BuiltInField{
+		Name: "get",
+		Type: parser_types.NormalFunction,
+	}
+)
 
 type BuiltInValueID int
 
@@ -119,9 +198,8 @@ const (
 
 	IfElseFunctionID
 	ImportFunctionID
+	ImportLibraryFunctionID
 	ModuleFunctionID
-	PrintFunctionID
-	PrintlnFunctionID
 	TupleFunctionID
 	StructFunctionID
 )

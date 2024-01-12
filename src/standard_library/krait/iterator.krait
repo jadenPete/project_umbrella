@@ -1,0 +1,142 @@
+option = import("option")
+
+Some = option.Some
+None = option.None
+
+math = import("math")
+
+struct Iterator(self, next):
+	fn contains(expected): exists(expected.==)
+	fn count(matcher):
+		next()
+			.map((next_value):
+				next_count = if matcher(next_value.get(0)):
+					1
+				else:
+					0
+
+				next_count + next_value.get(1).count(matcher) + next_value.get(2).count(matcher)
+			)
+			.get_or((): 0)
+
+	fn exists(matcher): find(matcher).__is_instance_of__(Some)
+	fn find(matcher):
+		next().map_flatten((next_value):
+			if matcher(next_value.get(0)):
+				Some(next_value.get(0))
+			else:
+				next_value.get(1).find(matcher).or((): next_value.get(2).find(matcher))
+		)
+
+	fn flatten():
+		next()
+			.map((next_value):
+				next_value
+					.get(0)
+					.plus(next_value.get(1).flatten())
+					.plus(next_value.get(2).flatten())
+			)
+			.get_or((): self)
+
+	fn fold(initial, transformer):
+		next()
+			.map((next_value):
+				transformer(
+					next_value.get(0),
+					transformer(
+						next_value.get(1).fold(initial, transformer),
+						next_value.get(2).fold(initial, transformer)
+					)
+				)
+			)
+			.get_or((): initial)
+
+	fn fold_nonassociative(initial, transformer):
+		next()
+			.map((next_value):
+				next_value.get(2).fold_nonassociative(
+					next_value.get(1).fold_nonassociative(
+						transformer(initial, next_value.get(0)),
+						transformer
+					),
+
+					transformer
+				)
+			)
+			.get_or((): initial)
+
+	fn for_all(matcher): !exists((element): !matcher(element))
+	fn head(): pop_left().map((head_tail): head_tail.get(0))
+	fn include(matcher):
+		next()
+			.map((next_value):
+				if matcher(next_value.get(0)):
+					Iterator(():
+						Some(
+							(
+								next_value.get(0),
+								next_value.get(1).include(matcher),
+								next_value.get(2).include(matcher)
+							)
+						)
+					)
+				else:
+					next_value.get(1).include(matcher).plus(next_value.get(2).include(matcher))
+			)
+			.get_or((): self)
+
+	fn map(mapper):
+		Iterator(():
+			next().map((next_value):
+				(
+					mapper(next_value.get(0)),
+					next_value.get(1).map(mapper),
+					next_value.get(2).map(mapper)
+				)
+			)
+		)
+
+	fn map_flatten(mapper): map(mapper).flatten()
+	fn min():
+		map(Some).fold(None(), (number1, number2):
+			number1
+				.zip((): number2)
+				.map((number1_number2): math.min(number1_number2.get(0), number1_number2.get(1)))
+				.or((): number1)
+				.or((): number2)
+		)
+
+	fn plus(other):
+		pop_left()
+			.map((head_tail): Iterator((): Some((head_tail.get(0), head_tail.get(1), other))))
+			.get_or((): other)
+
+	fn pop_left():
+		next().map((next_value): (next_value.get(0), next_value.get(1).plus(next_value.get(2))))
+
+	fn sum(): fold(0, (number1, number2): number1 + number2)
+	fn to_tuple(): fold_nonassociative((,), (result, element): result + (element,))
+
+fn _from_string_or_tuple(string_or_tuple):
+	fn iterator(start, end):
+		Iterator(():
+			if end <= start:
+				None()
+			else:
+				middle = (start + end + 1) / 2
+
+				Some(
+					(
+						string_or_tuple.get(start),
+						iterator(start + 1, middle),
+						iterator(middle, end)
+					)
+				)
+		)
+
+	iterator(0, string_or_tuple.length)
+
+fn empty(): Iterator((): None())
+fn from_option(option_): Iterator((): option_.map((value): (value, empty(), empty())))
+
+from_string = from_tuple = _from_string_or_tuple

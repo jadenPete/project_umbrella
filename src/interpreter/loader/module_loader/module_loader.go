@@ -19,7 +19,9 @@ import (
 	"project_umbrella/interpreter/errors/runtime_errors"
 	"project_umbrella/interpreter/loader"
 	"project_umbrella/interpreter/loader/file_loader"
+	"project_umbrella/interpreter/loader/library_loader"
 	"project_umbrella/interpreter/runtime/value"
+	"project_umbrella/interpreter/runtime/value_types/library"
 )
 
 type ModuleLoader struct {
@@ -58,16 +60,22 @@ func (moduleLoader *ModuleLoader) loadFileWithStack(
 	}()
 
 	for {
-		moduleName, ok := <-loaderChannel.LoadRequest
+		request, ok := <-loaderChannel.LoadRequest
 
 		if !ok {
 			break
 		}
 
-		loaderChannel.LoadResponse <- moduleLoader.loadModuleWithStack(
-			moduleName,
-			moduleLoaderStack_.Add(path_),
-		)
+		switch request.Type {
+		case loader.ModuleRequest:
+			loaderChannel.LoadResponse <- moduleLoader.loadModuleWithStack(
+				request.Name,
+				moduleLoaderStack_.Add(path_),
+			)
+
+		case loader.LibraryRequest:
+			loaderChannel.LoadResponse <- moduleLoader.loadLibrary(request.Name)
+		}
 	}
 
 	return entry.result
@@ -77,7 +85,7 @@ func (loader *ModuleLoader) loadModuleWithStack(
 	moduleName string,
 	moduleLoaderStack_ *moduleLoaderStack,
 ) value.Value {
-	path_, ok := getModulePath(moduleName)
+	path_, ok := getModuleOrLibraryPath(moduleName, "krait")
 
 	if !ok {
 		errors.RaiseError(runtime_errors.ModuleNotFound(moduleName))
@@ -86,9 +94,19 @@ func (loader *ModuleLoader) loadModuleWithStack(
 	return loader.loadFileWithStack(path_, moduleLoaderStack_)
 }
 
-func getModulePath(moduleName string) (string, bool) {
+func (loader *ModuleLoader) loadLibrary(libraryName string) *library.Library {
+	path, ok := getModuleOrLibraryPath(libraryName, "so")
+
+	if !ok {
+		errors.RaiseError(runtime_errors.LibraryNotFound(libraryName))
+	}
+
+	return library_loader.LoadLibrary(path)
+}
+
+func getModuleOrLibraryPath(name string, fileExtension string) (string, bool) {
 	kraitPathDirectories := strings.Split(environment_variables.KRAIT_PATH, ":")
-	moduleComponents := strings.Split(moduleName, ".")
+	moduleComponents := strings.Split(name, ".")
 
 	for _, path_ := range kraitPathDirectories {
 		if _, err := os.Stat(path_); standard_errors.Is(err, fs.ErrNotExist) {
@@ -112,7 +130,7 @@ func getModulePath(moduleName string) (string, bool) {
 
 			for _, entry := range currentEntries {
 				if i == len(moduleComponents)-1 {
-					if entry.Name() == fmt.Sprintf("%s.krait", component) {
+					if entry.Name() == fmt.Sprintf("%s.%s", component, fileExtension) {
 						newPath := path.Join(currentPath, entry.Name())
 
 						if common.IsFileUnsafe(newPath) {

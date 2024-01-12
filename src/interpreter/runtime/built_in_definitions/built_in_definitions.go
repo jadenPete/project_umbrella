@@ -8,6 +8,7 @@ import (
 	"project_umbrella/interpreter/bytecode_generator/built_in_declarations"
 	"project_umbrella/interpreter/errors"
 	"project_umbrella/interpreter/errors/runtime_errors"
+	"project_umbrella/interpreter/loader"
 	"project_umbrella/interpreter/parser/parser_types"
 	"project_umbrella/interpreter/runtime"
 	"project_umbrella/interpreter/runtime/value"
@@ -37,35 +38,33 @@ var BuiltInValues = map[built_in_declarations.BuiltInValueID]value.Value{
 			reflect.TypeOf(*new(value_types.StringValue)),
 		),
 
-		import_,
+		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
+			return import_(runtime_, loader.ModuleRequest, arguments...)
+		},
+
+		parser_types.NormalFunction,
+	),
+
+	built_in_declarations.ImportLibraryFunctionID: function.NewBuiltInFunction(
+		function.NewFixedFunctionArgumentValidator(
+			"import_library",
+			reflect.TypeOf(*new(value_types.StringValue)),
+		),
+
+		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
+			return import_(runtime_, loader.LibraryRequest, arguments...)
+		},
+
 		parser_types.NormalFunction,
 	),
 
 	built_in_declarations.ModuleFunctionID: function.NewBuiltInFunction(
 		function.NewFixedFunctionArgumentValidator(
 			"__module__",
-			reflect.TypeOf(value_types.TupleValue{}),
+			reflect.TypeOf(&value_types.TupleValue{}),
 		),
 
 		module,
-		parser_types.NormalFunction,
-	),
-
-	built_in_declarations.PrintFunctionID: function.NewBuiltInFunction(
-		function.NewVariadicFunctionArgumentValidator("print", nil),
-		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
-			return print(runtime_, "", arguments...)
-		},
-
-		parser_types.NormalFunction,
-	),
-
-	built_in_declarations.PrintlnFunctionID: function.NewBuiltInFunction(
-		function.NewVariadicFunctionArgumentValidator("println", nil),
-		func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
-			return print(runtime_, "\n", arguments...)
-		},
-
 		parser_types.NormalFunction,
 	),
 
@@ -75,7 +74,7 @@ var BuiltInValues = map[built_in_declarations.BuiltInValueID]value.Value{
 			reflect.TypeOf(*new(value_types.StringValue)),
 			reflect.TypeOf(&function.Function{}),
 			reflect.TypeOf(&function.Function{}),
-			reflect.TypeOf(value_types.TupleValue{}),
+			reflect.TypeOf(&value_types.TupleValue{}),
 		),
 
 		struct_,
@@ -109,9 +108,9 @@ func builtInStructFields(
 		}
 
 	return map[string]value.Value{
-		built_in_declarations.EqualsMethod.Name: function.NewBuiltInFunction(
+		built_in_declarations.UniversalEqualsMethod.Name: function.NewBuiltInFunction(
 			function.NewFixedFunctionArgumentValidator(
-				built_in_declarations.EqualsMethod.Name,
+				built_in_declarations.UniversalEqualsMethod.Name,
 				reflect.TypeOf(&function.Function{}),
 			),
 
@@ -119,12 +118,12 @@ func builtInStructFields(
 				return equalsMethodEvaluator(runtime_, arguments...)
 			},
 
-			built_in_declarations.EqualsMethod.Type,
+			built_in_declarations.UniversalEqualsMethod.Type,
 		),
 
-		built_in_declarations.NotEqualsMethod.Name: function.NewBuiltInFunction(
+		built_in_declarations.UniversalNotEqualsMethod.Name: function.NewBuiltInFunction(
 			function.NewFixedFunctionArgumentValidator(
-				built_in_declarations.EqualsMethod.Name,
+				built_in_declarations.UniversalEqualsMethod.Name,
 				reflect.TypeOf(&function.Function{}),
 			),
 
@@ -132,12 +131,28 @@ func builtInStructFields(
 				return !equalsMethodEvaluator(runtime_, arguments...)
 			},
 
-			built_in_declarations.NotEqualsMethod.Type,
+			built_in_declarations.UniversalNotEqualsMethod.Type,
+		),
+
+		built_in_declarations.StructIsInstanceOfMethod.Name: function.NewBuiltInFunction(
+			function.NewFixedFunctionArgumentValidator(
+				built_in_declarations.StructIsInstanceOfMethod.Name,
+				reflect.TypeOf(&function.Function{}),
+			),
+
+			func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
+				return value_types.BooleanValue(structConstructor == arguments[0])
+			},
+
+			built_in_declarations.StructIsInstanceOfMethod.Type,
 		),
 
 		built_in_declarations.StructConstructorMethod.Name: structConstructor,
-		built_in_declarations.ToStringMethod.Name: function.NewBuiltInFunction(
-			function.NewFixedFunctionArgumentValidator(built_in_declarations.ToStringMethod.Name),
+		built_in_declarations.UniversalToStringMethod.Name: function.NewBuiltInFunction(
+			function.NewFixedFunctionArgumentValidator(
+				built_in_declarations.UniversalToStringMethod.Name,
+			),
+
 			func(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 				argumentsAsStrings := make([]string, 0, len(structArgumentValues))
 
@@ -157,7 +172,7 @@ func builtInStructFields(
 				)
 			},
 
-			built_in_declarations.ToStringMethod.Type,
+			built_in_declarations.UniversalToStringMethod.Type,
 		),
 	}
 }
@@ -174,14 +189,17 @@ func ifElse(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 	return arguments[branchIndex].(*function.Function).Evaluate(runtime_)
 }
 
-func import_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
-	runtime_.LoaderChannel.LoadRequest <- string(arguments[0].(value_types.StringValue))
+func import_(runtime_ *runtime.Runtime, type_ loader.LoaderRequestType, arguments ...value.Value) value.Value {
+	runtime_.LoaderChannel.LoadRequest <- &loader.LoaderRequest{
+		Type: type_,
+		Name: string(arguments[0].(value_types.StringValue)),
+	}
 
 	return <-runtime_.LoaderChannel.LoadResponse
 }
 
 func module(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
-	fields, ok := moduleOrStructFieldsToMap(arguments[0].(value_types.TupleValue))
+	fields, ok := moduleOrStructFieldsToMap(arguments[0].(*value_types.TupleValue))
 
 	if !ok {
 		errors.RaiseError(runtime_errors.IncorrectBuiltInFunctionArgumentType("__module__", 0))
@@ -191,12 +209,12 @@ func module(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 }
 
 func moduleOrStructFieldsToMap(
-	fields value_types.TupleValue,
+	fields *value_types.TupleValue,
 ) (map[value_types.StringValue]value.Value, bool) {
 	result := make(map[value_types.StringValue]value.Value, len(fields.Elements))
 
 	for _, element := range fields.Elements {
-		field, ok := element.(value_types.TupleValue)
+		field, ok := element.(*value_types.TupleValue)
 
 		if !ok || len(field.Elements) != 2 {
 			return nil, false
@@ -240,18 +258,6 @@ func newLookupFunction(fields map[value_types.StringValue]value.Value) *function
 	)
 }
 
-func print(runtime_ *runtime.Runtime, suffix string, arguments ...value.Value) value_types.UnitValue {
-	serialized := make([]string, 0, len(arguments))
-
-	for _, argument := range arguments {
-		serialized = append(serialized, string(value_util.CallToStringMethod(runtime_, argument)))
-	}
-
-	fmt.Print(strings.Join(serialized, " ") + suffix)
-
-	return value_types.UnitValue{}
-}
-
 func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 	allFields := map[value_types.StringValue]value.Value{}
 
@@ -259,7 +265,7 @@ func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 		errors.RaiseError(runtime_errors.IncorrectBuiltInFunctionArgumentType("__struct__", i))
 	}
 
-	populateFields := func(fieldEntries value_types.TupleValue, i int) {
+	populateFields := func(fieldEntries *value_types.TupleValue, i int) {
 		newFields, ok := moduleOrStructFieldsToMap(fieldEntries)
 
 		if ok {
@@ -273,13 +279,13 @@ func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 
 	result := newLookupFunction(allFields)
 	fieldFactory := arguments[2].(*function.Function)
-	fieldEntries, ok := fieldFactory.Evaluate(runtime_, result).(value_types.TupleValue)
+	fieldEntries, ok := fieldFactory.Evaluate(runtime_, result).(*value_types.TupleValue)
 
 	if !ok {
 		raiseIncorrectArgumentTypeError(2)
 	}
 
-	argumentFieldEntries := arguments[3].(value_types.TupleValue)
+	argumentFieldEntries := arguments[3].(*value_types.TupleValue)
 
 	populateFields(fieldEntries, 2)
 	populateFields(argumentFieldEntries, 3)
@@ -290,7 +296,7 @@ func struct_(runtime_ *runtime.Runtime, arguments ...value.Value) value.Value {
 	argumentFieldValues := make([]value.Value, 0, len(argumentFieldEntries.Elements))
 
 	for _, element := range argumentFieldEntries.Elements {
-		entry := element.(value_types.TupleValue)
+		entry := element.(*value_types.TupleValue)
 
 		argumentFieldNames =
 			append(argumentFieldNames, string(entry.Elements[0].(value_types.StringValue)))
@@ -346,7 +352,7 @@ func structEquals(
 }
 
 func tuple(_ *runtime.Runtime, arguments ...value.Value) value.Value {
-	return value_types.TupleValue{
+	return &value_types.TupleValue{
 		Elements: arguments,
 	}
 }

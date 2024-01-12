@@ -1,0 +1,24 @@
+struct Some(self, value):
+	fn exists(matcher): matcher(value)
+	fn for_all(matcher): matcher(value)
+	fn get_or(_): value
+	fn include(matcher):
+		if matcher(value):
+			self
+		else:
+			None()
+
+	fn map(mapper): Some(mapper(value))
+	fn map_flatten(mapper): mapper(value)
+	fn or(_): self
+	fn zip(other): other().map((other): (value, other))
+
+struct None(self):
+	fn exists(_): false
+	fn for_all(matcher): true
+	fn get_or(default): default()
+	fn include(_): self
+	fn map(_): self
+	fn map_flatten(mapper): self
+	fn or(other): other()
+	fn zip(_): self

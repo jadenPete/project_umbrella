@@ -1,0 +1,18 @@
+struct Cons(self, value, next):
+	length = next.length + 1
+
+	fn map(mapper): Cons(mapper(value), next.map(mapper))
+
+struct Nil(self):
+	length = 0
+
+	fn map(_): self
+
+fn from_tuple(tuple):
+	fn with_offset(i):
+		if i < tuple.length:
+			Cons(tuple.get(i), with_offset(i + 1))
+		else:
+			Nil()
+
+	with_offset(0)

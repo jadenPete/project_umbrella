@@ -1,0 +1,10 @@
+py_library(
+	name = "foreign_function_interface",
+	srcs = glob(["*.py"]),
+	data = [
+		"//tests/foreign_function_interface/test_libraries:test_library_invalid",
+		"//tests/foreign_function_interface/test_libraries:test_library_valid",
+	],
+	deps = ["//tests:tests-library"],
+	visibility = ["//tests:__pkg__"],
+)

@@ -3,7 +3,10 @@ load("@python_deps//:requirements.bzl", "requirement")
 py_library(
 	name = "tests-library",
 	srcs = ["__init__.py"],
-	data = ["//src/interpreter"],
+	data = [
+		"//src/interpreter",
+		"//src/standard_library",
+	],
 	visibility = [":__subpackages__"],
 )
 
@@ -15,6 +18,7 @@ py_test(
 		"//tests/builtin/functions",
 		"//tests/builtin/types",
 		"//tests/constructs",
+		"//tests/foreign_function_interface",
 		requirement("pytest"),
 	],
 )

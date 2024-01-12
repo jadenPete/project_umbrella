@@ -4,7 +4,7 @@ go_library(
     name = "function",
     srcs = glob(["*.go"]),
     importpath = "project_umbrella/interpreter/runtime/value_types/function",
-    visibility = ["//src/interpreter/runtime:__subpackages__"],
+    visibility = ["//visibility:public"],
 	deps = [
 		"//src/interpreter/errors",
 		"//src/interpreter/errors/runtime_errors",

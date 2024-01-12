@@ -18,10 +18,14 @@ func getEnvironmentVariable(name string, defaultLinuxValue string) string {
 }
 
 var (
-	KRAIT_PATH            = getEnvironmentVariable("KRAIT_PATH", "/usr/lib/standard_library")
-	KRAIT_STARTUP         = getEnvironmentVariable("KRAIT_STARTUP", "/usr/lib/startup_file.krait")
+	KRAIT_PATH    = getEnvironmentVariable("KRAIT_PATH", "/usr/lib/krait/standard_library")
+	KRAIT_STARTUP = getEnvironmentVariable(
+		"KRAIT_STARTUP",
+		"/usr/lib/krait/startup_file.krait",
+	)
+
 	KRAIT_STARTUP_EXCLUDE = getEnvironmentVariable(
 		"KRAIT_STARTUP_EXCLUDE",
-		"/usr/lib/standard_library",
+		"/usr/lib/krait/standard_library",
 	)
 )
