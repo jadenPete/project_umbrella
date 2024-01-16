@@ -58,8 +58,20 @@ func NewBalancedBinaryTreeFromSlice[T any](slice []T) *BinaryTree[T] {
 }
 
 type Graph[T any] struct {
-	Nodes []T
-	Edges map[int][]int
+	nodes []T
+	edges map[int][]int
+}
+
+func (graph *Graph[T]) AddEdge(i int, j int) {
+	if edges, ok := graph.edges[i]; ok {
+		graph.edges[i] = append(edges, j)
+	} else {
+		graph.edges[i] = []int{j}
+	}
+}
+
+func (graph *Graph[T]) AddNode(node T) {
+	graph.nodes = append(graph.nodes, node)
 }
 
 /*
@@ -73,15 +85,15 @@ type Graph[T any] struct {
  * The function returns whether the graph is acyclic (i.e. whether every node was processed).
  */
 func (graph *Graph[T]) Evaluate(evaluator func(i int)) bool {
-	dependencyCount := make(map[int]int, len(graph.Nodes))
+	dependencyCount := make(map[int]int, len(graph.nodes))
 
-	for _, dependents := range graph.Edges {
+	for _, dependents := range graph.edges {
 		for _, dependent := range dependents {
 			dependencyCount[dependent]++
 		}
 	}
 
-	for i := range graph.Nodes {
+	for i := range graph.nodes {
 		if _, ok := dependencyCount[i]; !ok {
 			dependencyCount[i] = 0
 		}
@@ -104,7 +116,7 @@ func (graph *Graph[T]) Evaluate(evaluator func(i int)) bool {
 
 		evaluator(i)
 
-		for _, j := range graph.Edges[i] {
+		for _, j := range graph.edges[i] {
 			dependencyCount[j]--
 
 			if dependencyCount[j] == 0 {
@@ -115,13 +127,21 @@ func (graph *Graph[T]) Evaluate(evaluator func(i int)) bool {
 		processed++
 	}
 
-	return processed == len(graph.Nodes)
+	return processed == len(graph.nodes)
+}
+
+func (graph *Graph[T]) GetNode(i int) T {
+	return graph.nodes[i]
+}
+
+func (graph *Graph[T]) Length() int {
+	return len(graph.nodes)
 }
 
 func NewGraph[T any]() *Graph[T] {
 	return &Graph[T]{
-		Nodes: []T{},
-		Edges: map[int][]int{},
+		nodes: []T{},
+		edges: map[int][]int{},
 	}
 }
 

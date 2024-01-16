@@ -47,7 +47,7 @@ func (evaluator *BytecodeFunctionEvaluator) Evaluator(
 	isAcyclic := evaluator.BlockGraph.Evaluate(func(i int) {
 		callArguments := []value.Value{}
 
-		switch node := evaluator.BlockGraph.Nodes[i].(type) {
+		switch node := evaluator.BlockGraph.GetNode(i).(type) {
 		case *runtime.BytecodeFunctionBlockGraph:
 			scope.values[node.ValueID] = NewBytecodeFunction(
 				node.ParameterCount,
