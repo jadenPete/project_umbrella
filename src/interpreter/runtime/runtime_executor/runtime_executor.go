@@ -55,7 +55,7 @@ func newBlockGraphFromBytecode(
 			functionCount:   0,
 			functionsSeen:   0,
 			blockGraph: &runtime.BytecodeFunctionBlockGraph{
-				Graph:          common.NewGraph[runtime.BytecodeFunctionBlock](),
+				DirectedGraph:  common.NewDirectedGraph[runtime.BytecodeFunctionBlock](),
 				ValueID:        -1,
 				FirstValueID:   0,
 				ParameterCount: 0,
@@ -103,8 +103,8 @@ func newBlockGraphFromBytecode(
 		valueID := currentScope().nextValueID
 
 		currentScope().nextValueID++
-		currentScope().blockGraph.AddNode(blockFromValueID(valueID))
-		currentScope().valueIDBlockMap[valueID] = currentScope().blockGraph.Length() - 1
+		currentScope().valueIDBlockMap[valueID] =
+			currentScope().blockGraph.AddNode(blockFromValueID(valueID))
 	}
 
 	addValuedInstruction := func(instruction *bytecode_generator.Instruction) {
@@ -124,7 +124,7 @@ func newBlockGraphFromBytecode(
 	for _, instruction := range bytecode.Instructions {
 		if instruction.Type == bytecode_generator.PushFunctionInstruction {
 			newBlockGraph := &runtime.BytecodeFunctionBlockGraph{
-				Graph:          common.NewGraph[runtime.BytecodeFunctionBlock](),
+				DirectedGraph:  common.NewDirectedGraph[runtime.BytecodeFunctionBlock](),
 				ValueID:        0,
 				FirstValueID:   0,
 				ParameterCount: instruction.Arguments[0],

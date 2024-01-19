@@ -32,7 +32,7 @@ type BytecodeFunctionBlock interface {
 }
 
 type BytecodeFunctionBlockGraph struct {
-	*common.Graph[BytecodeFunctionBlock]
+	*common.DirectedGraph[BytecodeFunctionBlock]
 
 	ValueID        int // Should be -1 if this is the root block graph
 	FirstValueID   int
