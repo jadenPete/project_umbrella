@@ -2,22 +2,32 @@ from tests import output_from_code
 
 def test_value_cycle_detection() -> None:
 	code1 = """\
-fn foo():
-	bar()
+result = foo(0)
 
-fn bar():
-	foo()
+fn foo(number):
+	if number >= 10:
+		result
+	else:
+		bar(number + 1)
+
+fn bar(number):
+	foo(number + 1)
 """
 
 	code2 = """\
-fn foo():
-	bar()
+result = foo(0)
 
-fn bar():
-	bizz()
+fn foo(number):
+	if number >= 10:
+		result
+	else:
+		bar(number + 1)
 
-fn bizz():
-	foo()
+fn bar(number):
+	bizz(number + 1)
+
+fn bizz(number):
+	foo(number + 1)
 """
 
 	code3 = """\

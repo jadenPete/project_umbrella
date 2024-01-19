@@ -55,10 +55,10 @@ func newBlockGraphFromBytecode(
 			functionCount:   0,
 			functionsSeen:   0,
 			blockGraph: &runtime.BytecodeFunctionBlockGraph{
-				DirectedGraph:  common.NewDirectedGraph[runtime.BytecodeFunctionBlock](),
-				ValueID:        -1,
-				FirstValueID:   0,
-				ParameterCount: 0,
+				ConsolidatedGraph: common.NewConsolidatedGraph[runtime.BytecodeFunctionBlock](),
+				ValueID:           -1,
+				FirstValueID:      0,
+				ParameterCount:    0,
 			},
 		},
 	}
@@ -124,10 +124,10 @@ func newBlockGraphFromBytecode(
 	for _, instruction := range bytecode.Instructions {
 		if instruction.Type == bytecode_generator.PushFunctionInstruction {
 			newBlockGraph := &runtime.BytecodeFunctionBlockGraph{
-				DirectedGraph:  common.NewDirectedGraph[runtime.BytecodeFunctionBlock](),
-				ValueID:        0,
-				FirstValueID:   0,
-				ParameterCount: instruction.Arguments[0],
+				ConsolidatedGraph: common.NewConsolidatedGraph[runtime.BytecodeFunctionBlock](),
+				ValueID:           0,
+				FirstValueID:      0,
+				ParameterCount:    instruction.Arguments[0],
 			}
 
 			addSingleValuedBlock(
@@ -237,7 +237,10 @@ func newBlockGraphFromBytecode(
 		}
 	}
 
-	return scopeStack[0].blockGraph
+	result := scopeStack[0].blockGraph
+	result.ConsolidateRecursively()
+
+	return result
 }
 
 func newValueFromConstant(constant bytecode_generator.Constant) value.Value {

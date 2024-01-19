@@ -32,7 +32,7 @@ type BytecodeFunctionBlock interface {
 }
 
 type BytecodeFunctionBlockGraph struct {
-	*common.DirectedGraph[BytecodeFunctionBlock]
+	*common.ConsolidatedGraph[BytecodeFunctionBlock]
 
 	ValueID        int // Should be -1 if this is the root block graph
 	FirstValueID   int
@@ -40,6 +40,42 @@ type BytecodeFunctionBlockGraph struct {
 }
 
 func (*BytecodeFunctionBlockGraph) BytecodeFunctionBlock() {}
+
+/*
+ * This function is like `common.ConsolidatedGraph#Consolidate`, but recursively consolidates every
+ * sub-block graph.
+ *
+ * See the documentation for `common.ConsolidatedGraph` to understand more about
+ * block graph consolidation.
+ */
+func (blockGraph *BytecodeFunctionBlockGraph) ConsolidateRecursively() {
+	for _, node := range blockGraph.Nodes() {
+		switch node := node.(type) {
+		case *BytecodeFunctionBlockGraph:
+			node.ConsolidateRecursively()
+		}
+	}
+
+	blockGraph.Consolidate()
+
+	/*
+	 * Consolidation will occasionally yield self-references, which we don't want because functions
+	 * are allowed to reference themselves in code without explicitly depending on themselves in the
+	 * block graph.
+	 */
+	blockGraph.RemoveConsolidatedSelfReferences(
+		func(consolidatedNode *common.ConsolidatedGraphNode[BytecodeFunctionBlock]) bool {
+			for _, i := range consolidatedNode.Nodes() {
+				switch blockGraph.GetNode(i).(type) {
+				case InstructionList:
+					return false
+				}
+			}
+
+			return true
+		},
+	)
+}
 
 type InstructionList []*InstructionListElement
 type InstructionListElement struct {

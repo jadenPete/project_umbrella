@@ -665,15 +665,14 @@ func (concrete *ConcreteIf) Abstract() Expression {
 		}
 	}
 
-	var elseBody *ConcreteBlock = nil
+	elseBody := (*ConcreteBlock)(nil)
 
 	if concrete.Else != nil {
 		elseBody = concrete.Else.Body
 	}
 
 	current := abstractFunctionFromBody(elseBody)
-
-	var currentPosition *errors.Position = nil
+	currentPosition := (*errors.Position)(nil)
 
 	if concrete.Else != nil {
 		currentPosition = tokenListSyntaxTreePosition(concrete.Else.Tokens)

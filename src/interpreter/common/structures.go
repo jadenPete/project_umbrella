@@ -284,6 +284,21 @@ func (graph *ConsolidatedGraph[T]) nextCycle() ([]int, bool) {
 	return nil, false
 }
 
+func (graph *ConsolidatedGraph[T]) Nodes() []T {
+	return graph.nodes
+}
+
+func (graph *ConsolidatedGraph[T]) RemoveConsolidatedSelfReferences(
+	shouldRemove func(*ConsolidatedGraphNode[T]) bool,
+) {
+	for _, i := range graph.dependencies.Nodes() {
+		if graph.dependencies.HasEdge(i, i) && shouldRemove(graph.dependencies.GetNode(i)) {
+			graph.dependencies.RemoveEdge(i, i)
+			graph.reverseDependencies.RemoveEdge(i, i)
+		}
+	}
+}
+
 func NewConsolidatedGraph[T any]() *ConsolidatedGraph[T] {
 	return &ConsolidatedGraph[T]{
 		nodes:                   []T{},
@@ -402,6 +417,12 @@ func (graph *DirectedGraph[T]) GetEdgesFrom(i int) []int {
 
 func (graph *DirectedGraph[T]) GetNode(i int) T {
 	return graph.nodes[i]
+}
+
+func (graph *DirectedGraph[T]) HasEdge(i int, j int) bool {
+	_, ok := graph.edges[i][j]
+
+	return ok
 }
 
 func (graph *DirectedGraph[T]) Length() int {
