@@ -55,10 +55,10 @@ func newBlockGraphFromBytecode(
 			functionCount:   0,
 			functionsSeen:   0,
 			blockGraph: &runtime.BytecodeFunctionBlockGraph{
-				Graph:          common.NewGraph[runtime.BytecodeFunctionBlock](),
-				ValueID:        -1,
-				FirstValueID:   0,
-				ParameterCount: 0,
+				ConsolidatedGraph: common.NewConsolidatedGraph[runtime.BytecodeFunctionBlock](),
+				ValueID:           -1,
+				FirstValueID:      0,
+				ParameterCount:    0,
 			},
 		},
 	}
@@ -86,16 +86,11 @@ func newBlockGraphFromBytecode(
 			if i < len(scopeStack)-1 {
 				dependentBlockID = scopeStack[i].functionsSeen - 1
 			} else {
-				dependentBlockID = len(scopeStack[i].blockGraph.Nodes) - 1
+				dependentBlockID = scopeStack[i].blockGraph.Length() - 1
 			}
 
 			if dependencyBlockID != dependentBlockID {
-				if dependents, ok := scopeStack[i].blockGraph.Edges[dependencyBlockID]; ok {
-					scopeStack[i].blockGraph.Edges[dependencyBlockID] =
-						append(dependents, dependentBlockID)
-				} else {
-					scopeStack[i].blockGraph.Edges[dependencyBlockID] = []int{dependentBlockID}
-				}
+				scopeStack[i].blockGraph.AddEdge(dependencyBlockID, dependentBlockID)
 			}
 		}
 	}
@@ -108,10 +103,8 @@ func newBlockGraphFromBytecode(
 		valueID := currentScope().nextValueID
 
 		currentScope().nextValueID++
-		currentScope().blockGraph.Nodes =
-			append(currentScope().blockGraph.Nodes, blockFromValueID(valueID))
-
-		currentScope().valueIDBlockMap[valueID] = len(currentScope().blockGraph.Nodes) - 1
+		currentScope().valueIDBlockMap[valueID] =
+			currentScope().blockGraph.AddNode(blockFromValueID(valueID))
 	}
 
 	addValuedInstruction := func(instruction *bytecode_generator.Instruction) {
@@ -131,10 +124,10 @@ func newBlockGraphFromBytecode(
 	for _, instruction := range bytecode.Instructions {
 		if instruction.Type == bytecode_generator.PushFunctionInstruction {
 			newBlockGraph := &runtime.BytecodeFunctionBlockGraph{
-				Graph:          common.NewGraph[runtime.BytecodeFunctionBlock](),
-				ValueID:        0,
-				FirstValueID:   0,
-				ParameterCount: instruction.Arguments[0],
+				ConsolidatedGraph: common.NewConsolidatedGraph[runtime.BytecodeFunctionBlock](),
+				ValueID:           0,
+				FirstValueID:      0,
+				ParameterCount:    instruction.Arguments[0],
 			}
 
 			addSingleValuedBlock(
@@ -167,7 +160,7 @@ func newBlockGraphFromBytecode(
 		case bytecode_generator.PushFunctionInstruction:
 			scopeBlockGraph := currentScope().
 				blockGraph.
-				Nodes[currentScope().functionsSeen].(*runtime.BytecodeFunctionBlockGraph)
+				GetNode(currentScope().functionsSeen).(*runtime.BytecodeFunctionBlockGraph)
 
 			scopeBlockGraph.ValueID = currentScope().blockGraph.FirstValueID +
 				currentScope().blockGraph.ParameterCount +
@@ -175,13 +168,13 @@ func newBlockGraphFromBytecode(
 
 			scopeBlockGraph.FirstValueID = currentScope().nextValueID
 
-			scopeFunctionCount := len(scopeBlockGraph.Nodes)
+			scopeFunctionCount := scopeBlockGraph.Length()
 			scopeNextValueID :=
 				scopeBlockGraph.FirstValueID + scopeBlockGraph.ParameterCount + scopeFunctionCount
 
-			scopeValueIDBlockMap := make(map[int]int, len(scopeBlockGraph.Nodes))
+			scopeValueIDBlockMap := make(map[int]int, scopeBlockGraph.Length())
 
-			for i := 0; i < len(scopeBlockGraph.Nodes); i++ {
+			for i := 0; i < scopeBlockGraph.Length(); i++ {
 				functionValueID := scopeBlockGraph.FirstValueID + scopeBlockGraph.ParameterCount + i
 
 				scopeValueIDBlockMap[functionValueID] = i
@@ -244,7 +237,10 @@ func newBlockGraphFromBytecode(
 		}
 	}
 
-	return scopeStack[0].blockGraph
+	result := scopeStack[0].blockGraph
+	result.ConsolidateRecursively()
+
+	return result
 }
 
 func newValueFromConstant(constant bytecode_generator.Constant) value.Value {

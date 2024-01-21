@@ -34,96 +34,143 @@ func (evaluator *BytecodeFunctionEvaluator) Evaluator(
 		firstValueID = evaluator.BlockGraph.FirstValueID
 	}
 
-	scope := &scope{
+	scope_ := &scope{
 		parent:       evaluator.ContainingScope,
 		firstValueID: firstValueID,
 		values:       map[int]value.Value{},
 	}
 
 	for i, argument := range arguments {
-		scope.values[scope.firstValueID+i] = argument
+		scope_.values[scope_.firstValueID+i] = argument
 	}
 
-	isAcyclic := evaluator.BlockGraph.Evaluate(func(i int) {
-		callArguments := []value.Value{}
+	isAcyclic := evaluator.BlockGraph.Evaluate(
+		func(consolidatedNode *common.ConsolidatedGraphNode[runtime.BytecodeFunctionBlock]) {
+			functions := []*runtime.BytecodeFunctionBlockGraph{}
+			instructionList := runtime.InstructionList(nil)
 
-		switch node := evaluator.BlockGraph.Nodes[i].(type) {
-		case *runtime.BytecodeFunctionBlockGraph:
-			scope.values[node.ValueID] = NewBytecodeFunction(
-				node.ParameterCount,
-				&BytecodeFunctionEvaluator{
-					Constants:       evaluator.Constants,
-					ContainingScope: scope,
-					BlockGraph:      node,
-				},
-			)
-
-		case runtime.InstructionList:
-			for _, element := range node {
-				switch element.Instruction.Type {
-				case bytecode_generator.PushArgumentInstruction:
-					callArguments =
-						append(callArguments, scope.getValue(element.Instruction.Arguments[0]))
-
-				case bytecode_generator.ValueCopyInstruction:
-					scope.values[element.InstructionValueID] =
-						scope.getValue(element.Instruction.Arguments[0])
-
-				case bytecode_generator.ValueFromCallInstruction:
-					function_, ok := scope.getValue(element.Instruction.Arguments[0]).(*function.Function)
-
-					if !ok {
-						errors.RaiseError(runtime_errors.NonFunctionCalled)
+			for _, i := range consolidatedNode.Nodes() {
+				switch node := evaluator.BlockGraph.ConsolidatedGraph.GetNode(i).(type) {
+				case *runtime.BytecodeFunctionBlockGraph:
+					if instructionList != nil {
+						errors.RaiseError(runtime_errors.ValueCycle)
 					}
 
-					scope.values[element.InstructionValueID] =
-						function_.Evaluate(runtime_, callArguments...)
+					functions = append(functions, node)
 
-				case bytecode_generator.ValueFromConstantInstruction:
-					scope.values[element.InstructionValueID] =
-						evaluator.Constants[element.Instruction.Arguments[0]]
-
-				case bytecode_generator.ValueFromStructValueInstruction:
-					value_ := scope.getValue(element.Instruction.Arguments[0])
-					fieldNameConstant := evaluator.Constants[element.Instruction.Arguments[1]]
-					fieldNameValue, ok := fieldNameConstant.(value_types.StringValue)
-
-					if !ok {
-						errors.RaiseError(runtime_errors.NonStringFieldName)
+				case runtime.InstructionList:
+					if len(functions) > 0 {
+						errors.RaiseError(runtime_errors.ValueCycle)
 					}
 
-					selectType := parser_types.SelectType(element.Instruction.Arguments[2])
+					if instructionList != nil {
+						errors.RaiseError(runtime_errors.ValueCycle)
+					}
 
-					scope.values[element.InstructionValueID] =
-						value_util.LookupField(runtime_, value_, string(fieldNameValue), selectType)
+					instructionList = node
 				}
 			}
-		}
-	})
+
+			if len(functions) > 0 {
+				scope_.addFunctions(evaluator, functions)
+			} else {
+				scope_.addInstructionList(runtime_, evaluator, instructionList)
+			}
+		},
+	)
 
 	if !isAcyclic {
 		errors.RaiseError(runtime_errors.ValueCycle)
 	}
 
-	if len(scope.values) == 0 {
+	if len(scope_.values) == 0 {
 		errors.RaiseError(runtime_errors.EmptyFunctionBlockGraph)
 	}
 
 	lastValueID := 0
 
-	for valueID := range scope.values {
+	for valueID := range scope_.values {
 		if valueID > lastValueID {
 			lastValueID = valueID
 		}
 	}
 
-	return scope.values[lastValueID]
+	return scope_.values[lastValueID]
 }
 
 type scope struct {
 	parent       *scope
 	firstValueID int
 	values       map[int]value.Value
+}
+
+func (scope_ *scope) addFunctions(
+	evaluator *BytecodeFunctionEvaluator,
+	functions []*runtime.BytecodeFunctionBlockGraph,
+) {
+	for _, blockGraph := range functions {
+		scope_.values[blockGraph.ValueID] = NewBytecodeFunction(
+			blockGraph.ParameterCount,
+			&BytecodeFunctionEvaluator{
+				Constants:       evaluator.Constants,
+				ContainingScope: scope_,
+				BlockGraph:      blockGraph,
+			},
+		)
+	}
+}
+
+func (scope_ *scope) addInstructionList(
+	runtime_ *runtime.Runtime,
+	evaluator *BytecodeFunctionEvaluator,
+	instructionList runtime.InstructionList,
+) {
+	callArguments := []value.Value{}
+
+	for _, element := range instructionList {
+		switch element.Instruction.Type {
+		case bytecode_generator.PushArgumentInstruction:
+			callArguments =
+				append(callArguments, scope_.getValue(element.Instruction.Arguments[0]))
+
+		case bytecode_generator.ValueCopyInstruction:
+			scope_.values[element.InstructionValueID] =
+				scope_.getValue(element.Instruction.Arguments[0])
+
+		case bytecode_generator.ValueFromCallInstruction:
+			function_, ok :=
+				scope_.getValue(element.Instruction.Arguments[0]).(*function.Function)
+
+			if !ok {
+				errors.RaiseError(runtime_errors.NonFunctionCalled)
+			}
+
+			scope_.values[element.InstructionValueID] =
+				function_.Evaluate(runtime_, callArguments...)
+
+		case bytecode_generator.ValueFromConstantInstruction:
+			scope_.values[element.InstructionValueID] =
+				evaluator.Constants[element.Instruction.Arguments[0]]
+
+		case bytecode_generator.ValueFromStructValueInstruction:
+			value_ := scope_.getValue(element.Instruction.Arguments[0])
+			fieldNameConstant := evaluator.Constants[element.Instruction.Arguments[1]]
+			fieldNameValue, ok := fieldNameConstant.(value_types.StringValue)
+
+			if !ok {
+				errors.RaiseError(runtime_errors.NonStringFieldName)
+			}
+
+			selectType := parser_types.SelectType(element.Instruction.Arguments[2])
+
+			scope_.values[element.InstructionValueID] = value_util.LookupField(
+				runtime_,
+				value_,
+				string(fieldNameValue),
+				selectType,
+			)
+		}
+	}
 }
 
 func (scope_ *scope) getValue(valueID int) value.Value {
